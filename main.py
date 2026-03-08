@@ -1,12 +1,11 @@
-from db_connector import connect_to_postgresql, connect_to_mysql
-import getopt, sys, getpass
+import getopt, sys, getpass, db_connector
 
 
 def main():
     
     args         = sys.argv[1:]
-    options      = "h"
-    long_options = ["help", "db_server", "host", "user", "db"]
+    options      = "hd:"
+    long_options = ["help", "db_server=", "host=", "user=", "db="]
     host = user = db_name = db_server = None
     
     
@@ -26,9 +25,13 @@ def main():
 
         password     = getpass.getpass("Zadajte heslo: ")
         if db_server in ("MySQL", "mysql"):
-            connect_to_mysql(host, user, password)
+            connection = db_connector.connect_to_mysql(host, user, password)
+            print("do something")
+            db_connector.disconnect_from_mysql(connection)
         elif db_server in ("PostgreSQL", "postgresql"):
-            connect_to_postgresql(db_name, host, user, db_server)
+            connection = db_connector.connect_to_postgresql(db_name, host, user, password)
+            print("do something")
+            db_connector.disconnect_from_postgresql(connection)
         else:
             print("Server not recognized")
 
