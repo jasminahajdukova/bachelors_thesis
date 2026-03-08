@@ -1,5 +1,18 @@
-import mysql.connector
-import psycopg2
+import mysql.connector, psycopg2, logging, colorlog
+
+handler = colorlog.StreamHandler()
+handler.setFormatter(colorlog.ColoredFormatter(
+	'%(log_color)s%(levelname)s:%(name)s:%(message)s'))
+
+logging.getLogger("mysql.connector").setLevel(logging.WARNING)
+logging.getLogger("psycopg2").setLevel(logging.WARNING)
+
+logger = logging.getLogger("DB_CONNECTOR")
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
+
 
 def connect_to_mysql(host_name,user_name,db_password):
     try:
@@ -8,16 +21,16 @@ def connect_to_mysql(host_name,user_name,db_password):
             user=user_name,
             password=db_password
             )
-        print("Connection to MySQL successful" if mydb else "Connection error")
+        logger.info("Connection to MySQL successful")
         return mydb
     except mysql.connector.Error as err:
-        print(f"Connection error: {err}")
+        logger.error(f"Connection error: {err}")
         return None
 
 def disconnect_from_mysql(mydb):
     mydb.close()
-    print("Connection to MySQL closed")
-    
+    logger.info("Connection to MySQL closed")
+
 
 def connect_to_postgresql(db_name,host_name,user_name,db_password):
     try:
@@ -27,12 +40,13 @@ def connect_to_postgresql(db_name,host_name,user_name,db_password):
             password=db_password,
             host=host_name
         )
-        print("Connection to PostgreSQL successful" if conn else "Connection error")
+        logger.info("Connection to PostgreSQL successful")
         return conn
     except psycopg2.Error as err:
-        print(f"Connection error: {err}")
+
+        logger.error(f"Connection error: {err}")
         return None
 
 def disconnect_from_postgresql(conn):
     conn.close()
-    print("Connection to PostgreSQL closed")
+    logger.info("Connection to PostgreSQL closed")
