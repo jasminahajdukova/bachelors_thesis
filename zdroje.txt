@@ -1,0 +1,2 @@
+https://www.w3schools.com/python/python_mysql_getstarted.asp
+https://www.geeksforgeeks.org/postgresql/postgresql-connecting-to-the-database-using-python/
