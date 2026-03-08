@@ -23,9 +23,13 @@ def connect_to_mysql(host_name,user_name,db_password):
             )
         logger.info("Connection to MySQL successful")
         return mydb
+    except mysql.connector.errors.InterfaceError as err:
+        logger.error(f"Server is either not running or is unreachable: {err}")
+        return None
     except mysql.connector.Error as err:
         logger.error(f"Connection error: {err}")
         return None
+    
 
 def disconnect_from_mysql(mydb):
     mydb.close()
@@ -42,10 +46,13 @@ def connect_to_postgresql(db_name,host_name,user_name,db_password):
         )
         logger.info("Connection to PostgreSQL successful")
         return conn
+    except psycopg2.OperationalError as err:
+        logger.error(f"Server is either not running or is unreachable: {err}")
+        return None
     except psycopg2.Error as err:
-
         logger.error(f"Connection error: {err}")
         return None
+    
 
 def disconnect_from_postgresql(conn):
     conn.close()
