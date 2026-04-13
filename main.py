@@ -1,27 +1,19 @@
-import getopt, sys, getpass, db_connector, logging
-
-def print_help():
-    logging.info("Usage: python main.py -d [mysql|postgresql] --host HOST --user USER --db DB")
+import argparse, getpass, db_connector, logging
 
 
-def parse_arguments(args, options, long_options):
-    host = user = db_name = db_server = None
-    no_password = False
-    arguments = getopt.getopt(args, options, long_options)[0]
-    for currentArg, currentVal in arguments:
-            if currentArg in ("-h", "--help"):
-                print_help()
-            elif currentArg in ("-d", "--db_server"):
-                db_server = currentVal
-            elif currentArg == "--host":
-                host = currentVal
-            elif currentArg == "--user":
-                user = currentVal
-            elif currentArg == "--db":
-                db_name = currentVal
-            elif currentArg == "--no-password":
-                no_password = True
-    return db_server, host, user, db_name, no_password
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="Generates Dataster YAML configuration using LLM"
+    )
+
+    parser.add_argument("-d", "--db_server", required=True, help="Database server (mysql/postgresql)")
+    parser.add_argument("--host", required=True, help="Database host")
+    parser.add_argument("--user", required=True, help="Database user")
+    parser.add_argument("--db", required=True, help="Database name")
+    parser.add_argument("--no-password", action="store_true", help="Connect without password")
+    return parser.parse_args()
+    
 
 def check_if_server_exists(db_server):
     if db_server not in ("MySQL", "mysql", "PostgreSQL", "postgresql"):
@@ -44,23 +36,23 @@ def disconnect(db_server,server):
         return db_connector.disconnect_from_postgresql(server)
 
 def main():
-    args         = sys.argv[1:]
-    options      = "hd:"
-    long_options = ["help", "db_server=", "host=", "user=", "db=", "no-password"]
+
+    args = parse_arguments()
+    db_server = args.db_server
+    host = args.host
+    user = args.user
+    db_name = args.db
+    no_password = args.no_password
+
+    if not check_if_server_exists(db_server):
+        return
     
-    try:
-        db_server, host, user, db_name, no_password = parse_arguments(args,options,long_options)
-        if not check_if_server_exists(db_server):
-            return
-        password = "" if no_password else getpass.getpass("Enter password: ")
-        server = choose_server(db_server, host, user, db_name, password)
+    password = "" if no_password else getpass.getpass("Enter password: ")
+    server = choose_server(db_server, host, user, db_name, password)
 
-        if server:
-            # TO DO
-            disconnect(db_server, server)
-    except getopt.error as err:
-        logging.error(str(err))
-
+    if server:
+        # TO DO
+        disconnect(db_server, server)
 
 if __name__ == "__main__":
     main()
