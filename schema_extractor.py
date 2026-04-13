@@ -1,12 +1,15 @@
 
+def error_check(types: str, table_name: str) -> None:
+    if types not in ["tables","columns", "prime_keys", "foreign_keys"]:
+        raise ValueError(f"Searech type:{types} is not part of templates for tables,columns, prime_keys:")
+    
+    if table_name is None and types in ["columns", "prime_keys", "foreign_keys"]:
+        raise ValueError(f"Table name is need to search for columns/primary keys")
+    
+
 def mysql_query_templates(db_name: str, table_name: str | None, types: str) -> str:
     
-    if types not in ["tables","columns", "prime_keys"]:
-        raise ValueError(f"Searech type:{types} is not part of templates for tables,columns, prime_keys:")
-
-    
-    if table_name is None and types in ["columns", "prime_keys"]:
-        raise ValueError(f"Table name is need to search for columns/primary keys")
+    error_check(types, table_name)
     
     templates_dict = {
         "tables":  f"""SELECT table_name 
@@ -23,20 +26,43 @@ def mysql_query_templates(db_name: str, table_name: str | None, types: str) -> s
 
         "foreign_keys": f"""SELECT column_name, referenced_table_name, referenced_column_name
                             FROM information_schema.KEY_COLUMN_USAGE
-                            WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL"""
+                            WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL; """
     }
 
     return templates_dict[types]
 
 
 
-def postgresql_query_template(db_name:str) -> str:
-    get_tables_name = f"""
-    SELECT table_name FROM information_schema.tables
-    WHERE table_schema NOT IN ('pg_catalog', 'information_schema)
-    AND table_schema = '{db_name}'
-    """
-    return get_tables_name
+def postgresql_query_template(db_name: str, table_name: str | None, types: str) -> str:
+
+    error_check(types, table_name)
+
+    templates_dict = {
+        "tables":       f"""SELECT table_name 
+                            FROM information_schema.tables
+                            WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_schema = '{db_name}'; """,
+
+        "columns":      f"""SELECT *
+                            FROM information_schema.columns
+                            WHERE table_schema = '{db_name}' and table_name = '{table_name}'; """,
+        
+        "prime_keys":   f"""SELECT kcu.column_name
+                            FROM information_schema.table_constraints tc
+                            JOIN information_schema.key_column_usage kcu
+                            ON tc.constraint_name = kcu.constraint_name
+                            WHERE tc.table_schema = '{db_name}' AND tc.table_name = '{table_name}' AND tc.constraint_type = 'PRIMARY KEY';""",
+
+        "foreign_keys": f"""SELECT tc.table_schema, tc.constraint_name, tc.table_name, kcu.column_name, ccu.table_schema AS foreign_table_schema, ccu.table_name AS foreign_table_name, ccu.column_name AS foreign_column_name 
+                            FROM information_schema.table_constraints AS tc 
+                            JOIN information_schema.key_column_usage AS kcu
+                            ON tc.constraint_name = kcu.constraint_name
+                            AND tc.table_schema = kcu.table_schema  
+                            JOIN information_schema.constraint_column_usage AS ccu
+                            ON ccu.constraint_name = tc.constraint_name
+                            WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema='{db_name}' AND tc.table_name='{table_name}'; """
+    }
+
+    return templates_dict[types]
 
 
 
