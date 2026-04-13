@@ -13,3 +13,5 @@ SCHEMA_EXTRACTOR:
 https://www.beekeeperstudio.io/blog/sql-query-templates
 https://stackoverflow.com/questions/8334493/get-table-names-using-select-statement-in-mysql
 https://www.geeksforgeeks.org/postgresql/postgresql-show-tables/
+https://www.psycopg.org/docs/cursor.html
+https://dev.mysql.com/doc/refman/9.6/en/show-columns.html
