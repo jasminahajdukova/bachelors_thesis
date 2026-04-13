@@ -1,3 +1,5 @@
+from mysql.connector.connection import MySQLConnection
+import psycopg2
 
 def error_check(types: str, table_name: str) -> None:
     if types not in ["tables","columns", "prime_keys", "foreign_keys"]:
@@ -66,15 +68,27 @@ def postgresql_query_template(db_name: str, table_name: str | None, types: str) 
 
 
 
-def mysql_execute_sql(db_name: str, queries: list[str]):
-    mycursor = db_name.cursor()
+def mysql_execute_sql(db_name: MySQLConnection, query):
+    try:
+        mycursor = db_name.cursor()
 
-    myresult: list[str] = []
-    for query in queries:
         mycursor.execute(query)
-        myresult.append(mycursor.fetchall())
 
-    return myresult
+        myresult = mycursor.fetchall()
 
-def postgre_execute_sql():
-    pass
+        return myresult
+    except Exception as e:
+        raise Exception("Failed to execute query.") from e
+
+
+def postgre_execute_sql(db_name: psycopg2.extensions.connection, query: str):
+    try:
+        mycursor = db_name.cursor()
+
+        mycursor.execute(query)
+
+        myresults = mycursor.fetchall()
+
+        return myresults
+    except Exception as e:
+        raise Exception("Failed to execute query.") from e
