@@ -41,3 +41,8 @@ https://www.w3schools.com/python/ref_func_all.asp
 https://dataster.testos.org/docs/manual
 https://www.w3schools.com/python/ref_string_startswith.asp
 https://www.w3schools.com/python/ref_func_any.asp
+https://www.w3schools.com/python/ref_string_split.asp
+https://stackoverflow.com/questions/3437059/does-python-have-a-string-contains-substring-method
+https://stackoverflow.com/questions/21388541/how-do-you-check-in-python-whether-a-string-contains-only-numbers
+https://www.w3schools.com/python/python_file_write.asp
+https://www.geeksforgeeks.org/python/pyyaml-dump-format-python/
