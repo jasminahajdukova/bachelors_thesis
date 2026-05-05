@@ -3,10 +3,15 @@ import yaml
 import re 
 
 
-global includes
+includes = None
+
+# TO DO
+# POZOR CO AK INCLUDE NIE JE PRVE
+
 
 def validate_yaml(yaml_str: str):
     try:
+        global includes
         stream = yaml.safe_load(yaml_str)
         stream_keys: list[str] = list(stream.keys())
 
@@ -14,7 +19,7 @@ def validate_yaml(yaml_str: str):
             print("error") # pridanie errors
         for key in stream_keys:
             if key == "include":
-                validate_include(stream[key])
+                validate_include(stream[key])   
                 includes = stream[key]
             elif key == "types":
                 iterate_types(stream[key])
@@ -41,7 +46,7 @@ def validate_types(each_type: str):
             pass
         elif any(value.startswith(whatever) for whatever in param_types):
             pass
-        elif value in dataset_types:
+        elif dataset_types is not None and value in dataset_types:
             pass
         
         else:
