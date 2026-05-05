@@ -18,3 +18,10 @@ https://dev.mysql.com/doc/refman/9.6/en/show-columns.html
 https://dba.stackexchange.com/questions/22362/list-all-columns-for-a-specified-table
 https://www.baeldung.com/sql/table-inspect-primary-key
 https://www.geeksforgeeks.org/python/python-psycopg-cursor-class/
+
+
+DATA_SAMPLE:
+https://www.geeksforgeeks.org/sql/sql-min-and-max/
+https://www.w3schools.com/sql/sql_avg.asp
+https://www.w3schools.com/sql/sql_count.asp
+https://stackoverflow.com/questions/7783372/sql-functions-using-min-and-max-together
