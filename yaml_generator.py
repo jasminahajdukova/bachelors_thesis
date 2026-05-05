@@ -1,6 +1,9 @@
 from jsonschema import validate
 import yaml
+import re 
 
+
+global includes
 
 def validate_yaml(yaml_str: str):
     try:
@@ -11,15 +14,16 @@ def validate_yaml(yaml_str: str):
             print("error") # pridanie errors
         for key in stream_keys:
             if key == "include":
-                validate_include()
+                validate_include(stream[key])
+                includes = stream[key]
             elif key == "types":
-                validate_type()
+                iterate_types(stream[key])
             elif key == "schema":
-                validate_schema()
+                validate_schema(stream[key])
             elif key == "generate":
-                validate_generate()
+                validate_generate(stream[key])
             elif key == "constrains":
-                validate_constrains()
+                validate_constrains(stream[key])
             else:
                 print("error") # pridanie errors
     except yaml.YAMLError as exc:
@@ -27,21 +31,40 @@ def validate_yaml(yaml_str: str):
     
     
 
+def validate_types(each_type: str):
+    basic_types: list[str] = ["int", "bool", "string", "float", "bigInt"]
+    param_types: list[str] = ["seq", "interval", "dinterval", "finterval", "str_len", "regex"]
+    dataset_types: list[str] = includes
 
-def validate_type():
+    for value in list(each_type.values()):
+        if value in basic_types:
+            pass
+        elif any(value.startswith(whatever) for whatever in param_types):
+            pass
+        elif value in dataset_types:
+            pass
+        
+        else:
+            print("error")
+
+
+
+def iterate_types(types: str):
+    list_of_types: list[dict[str, str]] = list(types.keys())
+    for part in list_of_types:
+        validate_types(types[part])
+
+def validate_schema(schema: str):
     pass
 
-def validate_schema():
+
+def validate_generate(generate: str):
     pass
 
 
-def validate_generate():
+def validate_include(includes: str):
     pass
 
 
-def validate_include():
-    pass
-
-
-def validate_constrains():
+def validate_constrains(constrains: str):
     pass
