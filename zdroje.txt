@@ -29,3 +29,12 @@ https://stackoverflow.com/questions/7783372/sql-functions-using-min-and-max-toge
 
 LLM_PROCESSOR:
 https://medium.com/@jonigl/using-ollama-with-python-a-simple-guide-0752369e1e55
+
+
+YAML_GENERATOR:
+https://stackoverflow.com/questions/3262569/validating-a-yaml-document-in-
+https://www.geeksforgeeks.org/python/parse-a-yaml-file-in-python/
+https://pyyaml.org/wiki/PyYAMLDocumentation
+https://stackoverflow.com/questions/1773805/how-can-i-parse-a-yaml-file-in-python
+https://www.w3schools.com/python/python_dictionaries_loop.asp
+https://www.w3schools.com/python/ref_func_all.asp
