@@ -1,6 +1,7 @@
-import argparse, getpass, db_connector, logging
+import argparse, getpass, db_connector, data_sampler, llm_processor, schema_extractor, yaml_generator,logging
 
-
+import psycopg2 
+from mysql.connector.connection import MySQLConnection
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -50,10 +51,52 @@ def main():
     password = "" if no_password else getpass.getpass("Enter password: ")
     server = choose_server(db_server, host, user, db_name, password)
 
-    if server:
-        # TO DO
+    if isinstance(server, MySQLConnection):
+        template = schema_extractor.mysql_query_templates(db_name, None, "tables")
+        sql_query = llm_processor.generate_sql_query(template, db_server)
+        tables = schema_extractor.mysql_execute_sql(server, sql_query)
+
+        samples = {}
+        for table in tables:
+            table_name = table[0]
+            samples[table_name] = {}
+            column_template = schema_extractor.mysql_query_templates(db_name, table_name, "columns")
+            columns = schema_extractor.mysql_execute_sql(server, column_template)
+
+            for column in columns:
+                column_name = column[0]
+                template = data_sampler.data_samples_templates(table_name, column_name)
+                result = schema_extractor.mysql_execute_sql(server, template)
+                samples[table_name][column_name] = result
+
+        yaml_str = llm_processor.generate_yaml(samples, "MySQL")
+        yaml_generator.validate_yaml(yaml_str)
         disconnect(db_server, server)
 
+    elif isinstance(server, psycopg2.extensions.connection):
+        template = schema_extractor.postgresql_query_template(db_name, None, "tables")
+        sql_query = llm_processor.generate_sql_query(template, db_server)
+        tables = schema_extractor.postgre_execute_sql(server, sql_query)
+
+        samples = {}
+        for table in tables:
+            table_name = table[0]
+            samples[table_name] = {}
+
+            column_template = schema_extractor.postgresql_query_template(db_name, table_name, "columns")
+            columns = schema_extractor.postgre_execute_sql(server, column_template)
+
+            for column in columns:
+                column_name = column[0]
+                template = data_sampler.data_samples_templates(table_name, column_name)
+                result = schema_extractor.postgre_execute_sql(server, template)
+                samples[table_name][column_name] = result
+
+        yaml_str = llm_processor.generate_yaml(samples, "PostgreSQL")
+        yaml_generator.validate_yaml(yaml_str)
+        disconnect(db_server, server)
+    else:
+        print("error")
 if __name__ == "__main__":
     main()
 
