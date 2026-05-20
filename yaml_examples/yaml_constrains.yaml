@@ -1,0 +1,16 @@
+include: []
+generate:
+  - 'object = 10'
+constraints:
+  - 'object.a <= 42'
+  - 'object.b > object.a'
+  - 'object.a > 0'
+  - 'object.b > 0'
+types:
+  object:
+    a: int
+    b: int
+schema:
+  tnumbers:
+    num1: object.a
+    num2: object.b

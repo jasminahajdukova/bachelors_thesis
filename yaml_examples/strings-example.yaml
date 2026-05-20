@@ -1,0 +1,44 @@
+include:
+  - first_names_cs
+  - last_names_cs
+generate:
+  - 'employee = 10'
+constraints:
+  - 'employee.access_code.expire_date > employee.access_code.from_date'
+types:
+  access_code:
+    id: 'seq(1,1000,1)'
+    code: 'regex(''[0-9]{4}[A-F]{3}'')'
+    expire_date: 'dinterval(2020-1-1,2021-12-31)'
+    from_date: 'dinterval(2020-1-1,2021-12-31)'
+  employee:
+    id: 'seq(1,1000,1)'
+    first_name: first_names_cs
+    last_name: last_names_cs
+    phone_number: 'regex(''(\+420-)?([6-7]){3}-(\d){3}-(\d){3}'')'
+    email:
+      format: '{}-{}@company.com'
+      values:
+        - employee.first_name
+        - employee.last_name
+    job_specialization:
+      - ORDERED_DATASET
+      - Driver
+      - Developer
+      - Cook
+      - Manager
+    access_code: '[access_code]{2,3}'
+schema:
+  employees:
+    id: employee.id
+    first_name: employee.first_name
+    last_name: employee.last_name
+    email: employee.email
+    phone_number: employee.phone_number
+    job_specialization: employee.job_specialization
+  access_codes:
+    code_id: employee.access_code.id
+    employee_id: employee.id
+    code: employee.access_code.code
+    from_date: employee.access_code.from_date
+    expire_date: employee.access_code.expire_date

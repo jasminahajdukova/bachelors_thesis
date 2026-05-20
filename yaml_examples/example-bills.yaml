@@ -1,0 +1,54 @@
+include:
+  - first_names_cs
+  - last_names_cs
+generate:
+  - 'user = 10'
+constraints:
+  - 'user.bill.from_date < user.bill.due_date'
+types:
+  bill_record:
+    type:
+      - food
+      - doctor
+      - 'car insurance'
+      - 'animal food'
+    price: 'regex(''([1-9]{1}([0-9]){1,2})\$'')'
+    from_date: 'dinterval(2020-1-1,2020-2-1)'
+    due_date: 'dinterval(2020-1-1,2020-2-1)'
+  user:
+    id: 'seq(1, 1000, 1)'
+    first_name: first_names_cs
+    height: 'interval(160,190)'
+    weight: 'interval(70,100)'
+    last_name: last_names_cs
+    email_domain:
+      - google
+      - seznam
+      - company
+    email:
+      format: '{}.{}@{}.cz'
+      values:
+        - user.first_name
+        - user.last_name
+        - user.email_domain
+    password: 'str_len(15,20)'
+    telnum: 'regex(''\+420-([1-9]){3}-(\d){3}-(\d){3}'')'
+    registration_date: 'regex(''(([1-9])|(2([1-9]))|(3([0-1])))\.(([1-9])|(1([0-2])))\.2019'')'
+    bill: '[bill_record]{2}'
+schema:
+  t_user:
+    id: user.id
+    height: user.height
+    weight: user.weight
+    first_name: user.first_name
+    last_name: user.last_name
+    email: user.email
+    password: user.password
+    telnum: user.telnum
+    registration_date: user.registration_date
+  t_bill:
+    user_id: user.id
+    type: user.bill.type
+    price: user.bill.price
+    from_date: user.bill.from_date
+    due_date: user.bill.due_date

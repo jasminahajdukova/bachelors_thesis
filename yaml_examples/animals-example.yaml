@@ -1,0 +1,30 @@
+include: []
+generate:
+  - 'animal = auto'
+constraints: []
+types:
+  animal:
+    id: 'seq(1,100,1)'
+    age:
+      - BLOCKS
+      - 'interval(1,4)'
+      - 'interval(5,11)'
+      - 'interval(11,30)'
+    animalType:
+      - BLOCKS
+      - mammal
+      - bird
+      - fish
+      - reptile
+    color:
+      - BLOCKS
+      - white
+      - black
+    dangerous: bool
+schema:
+  animals:
+    id: animal.id
+    age: animal.age
+    animalType: animal.animalType
+    color: animal.color
+    dangerous: animal.dangerous

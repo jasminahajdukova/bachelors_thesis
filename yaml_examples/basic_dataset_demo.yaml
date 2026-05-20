@@ -1,0 +1,16 @@
+include:
+  - last_names_cs
+  - first_names_cs
+generate:
+  - 'user = 10'
+constraints: []
+types:
+  user:
+    user_id: 'seq(1, 1000, 1)'
+    first_name: first_names_cs
+    last_name: last_names_cs
+schema:
+  users:
+    user_id: user.user_id
+    first_name: user.first_name
+    last_name: user.last_name

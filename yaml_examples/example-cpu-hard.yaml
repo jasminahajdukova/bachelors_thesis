@@ -1,0 +1,24 @@
+include: []
+generate:
+  - 'number = 20'
+constraints:
+  - 'number.a > number.b'
+  - 'number.b < number.c'
+  - 'number.c < number.d'
+  - 'number.d = 10'
+  - 'number.a > 20'
+  - 'number.b = number.e'
+types:
+  number:
+    a: 'interval(0,1000000)'
+    b: 'interval(0,1000000)'
+    c: 'interval(0,1000000)'
+    d: 'interval(0,1000000)'
+    e: 'interval(0,1000000)'
+schema:
+  tnumber:
+    a: number.a
+    b: number.b
+    c: number.c
+    d: number.d
+    e: number.e

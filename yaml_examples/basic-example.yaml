@@ -1,0 +1,15 @@
+include: []
+generate:
+  - 'object = 5'
+constraints:
+  - 'object.first_number > object.second_number'
+types:
+  object:
+    id: 'seq(1,1000,1)'
+    first_number: 'interval(1,100)'
+    second_number: 'interval(1,100)'
+schema:
+  objects:
+    id: object.id
+    first_number: object.first_number
+    second_number: object.second_number

@@ -1,0 +1,52 @@
+include: []
+generate:
+  - 'object = auto'
+constraints: []
+types:
+  object:
+    id: 'seq(1,10000,1)'
+    a:
+      - BLOCKS
+      - A1
+      - A2
+      - A3
+      - A4
+    b:
+      - BLOCKS
+      - B1
+      - B2
+      - B3
+      - B4
+    c:
+      - BLOCKS
+      - C1
+      - C2
+      - C3
+      - C4
+    d:
+      - BLOCKS
+      - D1
+      - D2
+      - D3
+      - D4
+    e:
+      - BLOCKS
+      - E1
+      - E2
+      - E3
+      - E4
+    f:
+      - BLOCKS
+      - F1
+      - F2
+      - F3
+      - F4
+schema:
+  objects:
+    id: object.id
+    a: object.a
+    b: object.b
+    c: object.c
+    d: object.d
+    e: object.e
+    f: object.f
