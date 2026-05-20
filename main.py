@@ -96,7 +96,7 @@ def main():
         yaml_generator.validate_yaml(yaml_str)
         disconnect(db_server, server)
     else:
-        print("error")
+        raise RuntimeError("Couldn't connect to server")
 if __name__ == "__main__":
     main()
 

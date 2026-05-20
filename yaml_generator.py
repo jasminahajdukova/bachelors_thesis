@@ -1,6 +1,18 @@
 from jsonschema import validate
 import yaml
-import re 
+import logging, colorlog
+
+handler = colorlog.StreamHandler()
+handler.setFormatter(colorlog.ColoredFormatter(
+	'%(log_color)s%(levelname)s:%(name)s:%(message)s'))
+
+logging.getLogger("mysql.connector").setLevel(logging.WARNING)
+logging.getLogger("psycopg2").setLevel(logging.WARNING)
+
+logger = logging.getLogger("YAML_GENERATOR")
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
 
 
 includes = None
@@ -18,7 +30,7 @@ def validate_yaml(yaml_str: str):
         stream_keys: list[str] = list(stream.keys())
 
         if not all(key in stream_keys for key in ["types", "schema", "generate"]):
-            print("error") # pridanie errors
+            logger.error("Schema containes invalid parts")
         for key in stream_keys:
             if key == "include":
                 validate_include(stream[key])   
@@ -33,10 +45,10 @@ def validate_yaml(yaml_str: str):
             elif key == "constrains":
                 validate_constrains(stream[key])
             else:
-                print("error") # pridanie errors
+                logger.error("Uknown type")
         save_yaml(stream)
     except yaml.YAMLError as exc:
-        print(exc)
+        logger.error(f"Error: {exc}")
     
     
 
@@ -54,7 +66,7 @@ def validate_types(each_type: str):
             pass
         
         else:
-            print("error")
+            logger.error("Uknown type")
 
 
 
@@ -63,29 +75,37 @@ def iterate_types(types: str):
     for part in list_of_types:
         validate_types(types[part])
 
+
+
 def validate_schema(each_schema: str):
     if types_ds is None:
         return
     for value in list(each_schema.values()):
         split_fiction = value.split(".")
         if split_fiction[0] not in types_ds:
-            print("error")
+            logger.error("Uknown type")
         elif split_fiction[1] not in list(types_ds[split_fiction[0]].keys()):
-            print("error")
+            logger.error("Uknown type")
+
+
 
 def iterate_schemas(schema: str):
     list_of_schemas: list[dict[str, str]] = list(schema.keys())
     for part in list_of_schemas:
         validate_schema(schema[part])
 
+
+
 def validate_generate(generate: str):
     split_generate: list[str]
     for value in generate:
         if not "=" in value:
-            print("error")
+            logger.error("Value is missing =")
         split_generate = value.split("=")
         if split_generate[0].strip() not in types_ds or not split_generate[1].strip().isdigit():
-            print("error")
+            logger.error("Uknown type")
+
+
 
 def validate_include(includes: str):
     pass
