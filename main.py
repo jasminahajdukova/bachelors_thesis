@@ -14,7 +14,6 @@ logger.propagate = False
 
 
 
-
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Generates Dataster YAML configuration using LLM"
@@ -68,10 +67,16 @@ def main():
     
     if db_server in ("MySQL", "mysql"):
         template = schema_extractor.mysql_query_templates(db_name, None, "tables")
-        sql_query = llm_processor.generate_sql_query(template, db_server)
+        print(f"SQL TEMPLATE: {template}")
+        sql_query = llm_processor.generate_sql_query(template, db_server, db_name)
+        print(f"SQL QUERY: {sql_query}")
         logger.debug(f"Generated SQL query for tables: {sql_query}")
         tables = schema_extractor.mysql_execute_sql(server, sql_query)
-        logger.info(f"Found {len(tables)} tables in {db_name}")
+        if len(tables) == 0:
+            logger.error("Db has no data. Cannot generate YAML.")
+            disconnect(db_server, server)
+            return
+        logger.info(f"Found {len(tables)} tables [{tables}] in {db_name}")
 
         samples = {}
         for table in tables:
@@ -100,6 +105,10 @@ def main():
         sql_query = llm_processor.generate_sql_query(template, db_server)
         logger.debug(f"Generated SQL query for tables: {sql_query}")
         tables = schema_extractor.postgre_execute_sql(server, sql_query)
+        if len(tables) == 0:
+            logger.error("Db has no data. Cannot generate YAML.")
+            disconnect(db_server, server)
+            return
         logger.info(f"Found {len(tables)} tables in {db_name}")
 
         samples = {}
