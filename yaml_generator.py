@@ -24,6 +24,13 @@ types_ds = None
 
 def validate_yaml(yaml_str: str):
     try:
+        yaml_str = yaml_str.strip()
+        print(f"YAML STR: \n {yaml_str}")
+        if yaml_str.startswith("```"):
+            yaml_str = yaml_str.split("\n", 1)[1]
+        if yaml_str.endswith("```"):
+            yaml_str = yaml_str.split("```", 1)[0]
+            
         global includes, types_ds
         stream = yaml.safe_load(yaml_str)
         stream_keys: list[str] = list(stream.keys())
