@@ -29,6 +29,9 @@ https://stackoverflow.com/questions/7783372/sql-functions-using-min-and-max-toge
 
 LLM_PROCESSOR:
 https://medium.com/@jonigl/using-ollama-with-python-a-simple-guide-0752369e1e55
+https://www.geeksforgeeks.org/python/os-module-python-examples/
+https://ollama.com/blog/how-to-prompt-code-llama
+
 
 
 YAML_GENERATOR:
@@ -46,3 +49,4 @@ https://stackoverflow.com/questions/3437059/does-python-have-a-string-contains-s
 https://stackoverflow.com/questions/21388541/how-do-you-check-in-python-whether-a-string-contains-only-numbers
 https://www.w3schools.com/python/python_file_write.asp
 https://www.geeksforgeeks.org/python/pyyaml-dump-format-python/
+https://stackoverflow.com/questions/28134319/fastest-way-to-remove-first-and-last-lines-from-a-python-string
