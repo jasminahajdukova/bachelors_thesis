@@ -1,7 +1,19 @@
-import argparse, getpass, db_connector, data_sampler, llm_processor, schema_extractor, yaml_generator,logging
+import argparse, getpass, db_connector, data_sampler, llm_processor, schema_extractor, yaml_generator,logging, colorlog
 
-import psycopg2 
-from mysql.connector.connection import MySQLConnection
+handler = colorlog.StreamHandler()
+handler.setFormatter(colorlog.ColoredFormatter(
+	'%(log_color)s%(levelname)s:%(name)s:%(message)s'))
+
+logging.getLogger("mysql.connector").setLevel(logging.WARNING)
+logging.getLogger("psycopg2").setLevel(logging.WARNING)
+
+logger = logging.getLogger("MAIN")
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
+
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -51,17 +63,24 @@ def main():
     password = "" if no_password else getpass.getpass("Enter password: ")
     server = choose_server(db_server, host, user, db_name, password)
 
-    if isinstance(server, MySQLConnection):
+    if server is None:
+        raise RuntimeError("Couldn't connect to server")
+    
+    if db_server in ("MySQL", "mysql"):
         template = schema_extractor.mysql_query_templates(db_name, None, "tables")
         sql_query = llm_processor.generate_sql_query(template, db_server)
+        logger.debug(f"Generated SQL query for tables: {sql_query}")
         tables = schema_extractor.mysql_execute_sql(server, sql_query)
+        logger.info(f"Found {len(tables)} tables in {db_name}")
 
         samples = {}
         for table in tables:
             table_name = table[0]
             samples[table_name] = {}
+            logger.info(f"Processing table: {table_name}")
             column_template = schema_extractor.mysql_query_templates(db_name, table_name, "columns")
             columns = schema_extractor.mysql_execute_sql(server, column_template)
+            logger.debug("Found columns in {table_name}: {[c[0] for c in columns]}")
 
             for column in columns:
                 column_name = column[0]
@@ -69,22 +88,28 @@ def main():
                 result = schema_extractor.mysql_execute_sql(server, template)
                 samples[table_name][column_name] = result
 
+        logger.info("Sending samples to LLM for YAML generation")
         yaml_str = llm_processor.generate_yaml(samples, "MySQL")
+        logger.debug(f"Generated YAML:\n{yaml_str}")
         yaml_generator.validate_yaml(yaml_str)
         disconnect(db_server, server)
+        logger.info("Done")
 
-    elif isinstance(server, psycopg2.extensions.connection):
+    elif db_server in ("PostgreSQL", "postgresql"):
         template = schema_extractor.postgresql_query_template(db_name, None, "tables")
         sql_query = llm_processor.generate_sql_query(template, db_server)
+        logger.debug(f"Generated SQL query for tables: {sql_query}")
         tables = schema_extractor.postgre_execute_sql(server, sql_query)
+        logger.info(f"Found {len(tables)} tables in {db_name}")
 
         samples = {}
         for table in tables:
             table_name = table[0]
             samples[table_name] = {}
-
+            logger.info(f"Processing table: {table_name}")
             column_template = schema_extractor.postgresql_query_template(db_name, table_name, "columns")
             columns = schema_extractor.postgre_execute_sql(server, column_template)
+            logger.debug("Found columns in {table_name}: {[c[0] for c in columns]}")
 
             for column in columns:
                 column_name = column[0]
@@ -92,11 +117,13 @@ def main():
                 result = schema_extractor.postgre_execute_sql(server, template)
                 samples[table_name][column_name] = result
 
+        logger.info("Sending samples to LLM for YAML generation")
         yaml_str = llm_processor.generate_yaml(samples, "PostgreSQL")
+        logger.debug(f"Generated YAML:\n{yaml_str}")
         yaml_generator.validate_yaml(yaml_str)
         disconnect(db_server, server)
-    else:
-        raise RuntimeError("Couldn't connect to server")
+        logger.info("Done")
+
 if __name__ == "__main__":
     main()
 

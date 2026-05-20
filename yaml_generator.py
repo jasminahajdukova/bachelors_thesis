@@ -1,4 +1,3 @@
-from jsonschema import validate
 import yaml
 import logging, colorlog
 
@@ -58,13 +57,16 @@ def validate_types(each_type: str):
     dataset_types: list[str] = includes
 
     for value in list(each_type.values()):
+        if isinstance(value, list):
+            pass
+        if isinstance(value,dict):
+            pass
         if value in basic_types:
             pass
         elif any(value.startswith(whatever) for whatever in param_types):
             pass
         elif dataset_types is not None and value in dataset_types:
             pass
-        
         else:
             logger.error("Uknown type")
 
@@ -81,6 +83,8 @@ def validate_schema(each_schema: str):
     if types_ds is None:
         return
     for value in list(each_schema.values()):
+        if isinstance(value, str) and value.startswith("FFROM: "):
+            continue
         split_fiction = value.split(".")
         if split_fiction[0] not in types_ds:
             logger.error("Uknown type")
@@ -97,13 +101,17 @@ def iterate_schemas(schema: str):
 
 
 def validate_generate(generate: str):
+    if types_ds is None:
+        return
+    
     split_generate: list[str]
     for value in generate:
         if not "=" in value:
             logger.error("Value is missing =")
         split_generate = value.split("=")
-        if split_generate[0].strip() not in types_ds or not split_generate[1].strip().isdigit():
-            logger.error("Uknown type")
+        count = split_generate[1].strip()
+        if split_generate[0].strip() not in types_ds or not split_generate[1].strip().isdigit() and count != "auto":
+            logger.error(f"Uknown type or invalid count: {value}")
 
 
 

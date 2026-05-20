@@ -1,9 +1,23 @@
 from mysql.connector.connection import MySQLConnection
-import psycopg2
+import psycopg2, logging, colorlog
+
+handler = colorlog.StreamHandler()
+handler.setFormatter(colorlog.ColoredFormatter(
+	'%(log_color)s%(levelname)s:%(name)s:%(message)s'))
+
+logging.getLogger("mysql.connector").setLevel(logging.WARNING)
+logging.getLogger("psycopg2").setLevel(logging.WARNING)
+
+logger = logging.getLogger("SCHEMA_EXTRACTOR")
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
+
 
 def error_check(types: str, table_name: str) -> None:
     if types not in ["tables","columns", "prime_keys", "foreign_keys"]:
-        raise ValueError(f"Searech type:{types} is not part of templates for tables,columns, prime_keys:")
+        raise ValueError(f"Search type:{types} is not part of templates for tables,columns, prime_keys:")
     
     if table_name is None and types in ["columns", "prime_keys", "foreign_keys"]:
         raise ValueError(f"Table name is need to search for columns/primary keys")
@@ -31,6 +45,7 @@ def mysql_query_templates(db_name: str, table_name: str | None, types: str) -> s
                             WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL; """
     }
 
+    logger.debug(f"Created SQL template: {templates_dict[types]}")
     return templates_dict[types]
 
 
@@ -64,6 +79,7 @@ def postgresql_query_template(db_name: str, table_name: str | None, types: str) 
                             WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema='{db_name}' AND tc.table_name='{table_name}'; """
     }
 
+    logger.debug(f"Created SQL template: {templates_dict[types]}")
     return templates_dict[types]
 
 
@@ -75,8 +91,10 @@ def mysql_execute_sql(db_name: MySQLConnection, query):
 
         myresult = mycursor.fetchall()
 
+        logger.debug(f"Query returned {len(myresult)} rows")
         return myresult
     except Exception as e:
+        logger.error(f"Failed to execute query: {e}") 
         raise Exception("Failed to execute query.") from e
 
 
@@ -88,11 +106,9 @@ def postgre_execute_sql(db_name: psycopg2.extensions.connection, query: str):
 
         myresults = mycursor.fetchall()
 
+        logger.debug(f"Query returned {len(myresults)} rows")
         return myresults
     except Exception as e:
+        logger.error(f"Failed to execute query: {e}") 
         raise Exception("Failed to execute query.") from e
     
-
-
-def extr_talk_to_llm():
-    pass
