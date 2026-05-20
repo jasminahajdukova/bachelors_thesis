@@ -14,12 +14,13 @@ logger.propagate = False
 
 
 
-def connect_to_mysql(host_name,user_name,db_password):
+def connect_to_mysql(host_name,user_name,db_password, db_name):
     try:
         mydb= mysql.connector.connect(
             host=host_name,
             user=user_name,
-            password=db_password
+            password=db_password,
+            database=db_name
             )
         logger.info("Connection to MySQL successful")
         return mydb

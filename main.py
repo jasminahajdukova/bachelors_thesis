@@ -37,7 +37,7 @@ def check_if_server_exists(db_server):
 
 def choose_server(db_server, host, user, db_name, password):
     if db_server in ("MySQL", "mysql"):
-        return db_connector.connect_to_mysql(host,user,password)  
+        return db_connector.connect_to_mysql(host,user,password, db_name)  
     elif db_server in ("PostgreSQL", "postgresql"):
         return db_connector.connect_to_postgresql(db_name, host, user, password)
 
