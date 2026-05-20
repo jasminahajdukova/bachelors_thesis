@@ -85,12 +85,15 @@ def postgresql_query_template(db_name: str, table_name: str | None, types: str) 
 
 def mysql_execute_sql(db_name: MySQLConnection, query):
     try:
+        print(query)
         mycursor = db_name.cursor()
 
         mycursor.execute(query)
 
         myresult = mycursor.fetchall()
 
+        print("MY RESULT", myresult)
+        
         logger.debug(f"Query returned {len(myresult)} rows")
         return myresult
     except Exception as e:
