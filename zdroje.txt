@@ -52,3 +52,8 @@ https://www.geeksforgeeks.org/python/pyyaml-dump-format-python/
 https://stackoverflow.com/questions/28134319/fastest-way-to-remove-first-and-last-lines-from-a-python-string
 https://www.mostlypython.com/using-any/
 
+
+MODELFILE:
+https://www.youtube.com/watch?v=bXf2Cxf3Wk0
+https://www.youtube.com/watch?v=QTv3DQ1tY6I&t=30s
+https://docs.ollama.com/modelfile

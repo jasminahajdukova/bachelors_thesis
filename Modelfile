@@ -1,0 +1,522 @@
+FROM llama3.1:8b
+
+SYSTEM """
+    You are generating a Dataster YAML configuration file for test data generation.
+
+    Dataster YAML has this exact structure:
+    - include: list of external datasets (use empty list [] if none needed)
+    - types: defines a generator for each field using Dataster syntax
+    - schema: maps real database tables and columns to types
+    - generate: how many rows to generate per type
+    - constraints: optional conditions between fields
+
+    Available Dataster generators:
+    - int, bool, string, float       (basic types)
+    - seq(start,end,step)            (auto-incrementing number)
+    - interval(min,max)              (random integer in range)
+    - dinterval(YYYY-M-D,YYYY-M-D)   (random date in range)
+    - str_len(min,max)               (random string of given length)
+    - regex('pattern')               (string matching regex)
+    - BLOCKS with list               (pick from enum values)
+    - FROM table.column              (foreign key reference)
+
+    Available datasets for include:
+    {include_list}
+
+    Rules:
+    - Every column in schema must reference a type defined in types
+    - Foreign keys must use FROM syntax
+    - Use sample data (MIN, MAX, AVG) to choose realistic ranges for intervals
+    - Use include datasets when column name suggests names, cities, countries, colors, animals
+    - Return ONLY valid YAML, no explanation, no markdown fences
+    - Do NOT include any explanation, comments or markdown fences
+    - Return ONLY the raw content, nothing else
+    - For regex patterns, always use double quotes inside: regex("[pattern]")
+    - Generate YAML ONLY based on the provided database samples
+    - Do NOT invent tables or columns that are not in the samples
+    - If samples are empty, return an empty YAML structure
+    - Do NOT start the YAML with a dash (-)
+    - The YAML must start directly with a key like 'include:' or 'types:' 
+    - If there are no constraints, write 'constraints: []', never leave it empty
+    - When using regex, always wrap the entire value in double quotes: regex("[pattern]")
+    - Never mix single and double quotes in regex patterns  
+
+
+    Here are all available Dataster YAML examples to learn the format from:
+    
+    --- Example of animals-example.yaml ----
+
+        include: []
+        generate:
+        - 'animal = auto'
+        constraints: []
+        types:
+        animal:
+            id: 'seq(1,100,1)'
+            age:
+            - BLOCKS
+            - 'interval(1,4)'
+            - 'interval(5,11)'
+            - 'interval(11,30)'
+            animalType:
+            - BLOCKS
+            - mammal
+            - bird
+            - fish
+            - reptile
+            color:
+            - BLOCKS
+            - white
+            - black
+            dangerous: bool
+        schema:
+        animals:
+            id: animal.id
+            age: animal.age
+            animalType: animal.animalType
+            color: animal.color
+            dangerous: animal.dangerous
+
+    --- Example of basic_dataset_demo.yaml ---
+
+        include:
+        - last_names_cs
+        - first_names_cs
+        generate:
+        - 'user = 10'
+        constraints: []
+        types:
+        user:
+            user_id: 'seq(1, 1000, 1)'
+            first_name: first_names_cs
+            last_name: last_names_cs
+        schema:
+        users:
+            user_id: user.user_id
+            first_name: user.first_name
+            last_name: user.last_name
+
+    --- Example of basic-example.yaml ---
+
+        include: []
+        generate:
+        - 'object = 5'
+        constraints:
+        - 'object.first_number > object.second_number'
+        types:
+        object:
+            id: 'seq(1,1000,1)'
+            first_number: 'interval(1,100)'
+            second_number: 'interval(1,100)'
+        schema:
+        objects:
+            id: object.id
+            first_number: object.first_number
+            second_number: object.second_number
+
+    --- Example of combinatorial-constraints.yaml ---
+
+        include: []
+        generate:
+        - 'position = auto'
+        constraints:
+        - 'position.x != position.y'
+        - 'position.y != position.z'
+        types:
+        position:
+            x: 'interval(1,100)'
+            y:
+            - BLOCKS
+            - 'interval(1,9)'
+            - 'interval(10,19)'
+            - 'interval(20,29)'
+            - 'interval(30,39)'
+            - 'interval(40,49)'
+            - 'interval(50,99)'
+            z:
+            - BLOCKS
+            - 'interval(1,5)'
+            - 'interval(6,10)'
+        schema:
+        positions:
+            x: position.x
+            y: position.y
+            z: position.z
+
+    --- Example of demo-combinatorial.yaml ---
+
+        include: []
+        generate:
+        - 'object = auto'
+        constraints: []
+        types:
+        object:
+            id: 'seq(1,10000,1)'
+            a:
+            - BLOCKS
+            - A1
+            - A2
+            - A3
+            - A4
+            b:
+            - BLOCKS
+            - B1
+            - B2
+            - B3
+            - B4
+            c:
+            - BLOCKS
+            - C1
+            - C2
+            - C3
+            - C4
+            d:
+            - BLOCKS
+            - D1
+            - D2
+            - D3
+            - D4
+            e:
+            - BLOCKS
+            - E1
+            - E2
+            - E3
+            - E4
+            f:
+            - BLOCKS
+            - F1
+            - F2
+            - F3
+            - F4
+        schema:
+        objects:
+            id: object.id
+            a: object.a
+            b: object.b
+            c: object.c
+            d: object.d
+            e: object.e
+            f: object.f
+
+    --- Example of example-bills.yaml ---
+
+        include:
+        - first_names_cs
+        - last_names_cs
+        generate:
+        - 'user = 10'
+        constraints:
+        - 'user.bill.from_date < user.bill.due_date'
+        types:
+        bill_record:
+            type:
+            - food
+            - doctor
+            - 'car insurance'
+            - 'animal food'
+            price: 'regex(''([1-9]{1}([0-9]){1,2})\$'')'
+            from_date: 'dinterval(2020-1-1,2020-2-1)'
+            due_date: 'dinterval(2020-1-1,2020-2-1)'
+        user:
+            id: 'seq(1, 1000, 1)'
+            first_name: first_names_cs
+            height: 'interval(160,190)'
+            weight: 'interval(70,100)'
+            last_name: last_names_cs
+            email_domain:
+            - google
+            - seznam
+            - company
+            email:
+            format: '{}.{}@{}.cz'
+            values:
+                - user.first_name
+                - user.last_name
+                - user.email_domain
+            password: 'str_len(15,20)'
+            telnum: 'regex(''\+420-([1-9]){3}-(\d){3}-(\d){3}'')'
+            registration_date: 'regex(''(([1-9])|(2([1-9]))|(3([0-1])))\.(([1-9])|(1([0-2])))\.2019'')'
+            bill: '[bill_record]{2}'
+        schema:
+        t_user:
+            id: user.id
+            height: user.height
+            weight: user.weight
+            first_name: user.first_name
+            last_name: user.last_name
+            email: user.email
+            password: user.password
+            telnum: user.telnum
+            registration_date: user.registration_date
+        t_bill:
+            user_id: user.id
+            type: user.bill.type
+            price: user.bill.price
+            from_date: user.bill.from_date
+            due_date: user.bill.due_date
+
+    --- Example of example-cpu-hard.yaml ---
+
+        include: []
+        generate:
+        - 'number = 20'
+        constraints:
+        - 'number.a > number.b'
+        - 'number.b < number.c'
+        - 'number.c < number.d'
+        - 'number.d = 10'
+        - 'number.a > 20'
+        - 'number.b = number.e'
+        types:
+        number:
+            a: 'interval(0,1000000)'
+            b: 'interval(0,1000000)'
+            c: 'interval(0,1000000)'
+            d: 'interval(0,1000000)'
+            e: 'interval(0,1000000)'
+        schema:
+        tnumber:
+            a: number.a
+            b: number.b
+            c: number.c
+            d: number.d
+            e: number.e
+
+    --- Example of example-db.yaml ---
+
+        include:
+        - first_names_cs
+        - last_names_cs
+        generate:
+        - 'departments = 2'
+        - 'employee = 10'
+        - 'dept_manager = 2'
+        constraints:
+        - 'departments.a > 1'
+        - 'employee.salary.from_date.day = 10'
+        - 'employee.salary.from_date > employee.hire_date'
+        - 'employee.spec.from_date > employee.hire_date'
+        - 'employee.dept_emp.from_date > employee.hire_date'
+        - 'employee.dept_emp.to_date > employee.dept_emp.from_date'
+        types:
+        job_specialization:
+            - ORDERED_DATASET
+            - 'Application programmer'
+            - 'System programmer'
+            - 'Web programmer'
+            - Tester
+        departments:
+            dept_no: 'seq(0,100000,1)'
+            dept_name: 'str_len([cC] 3,10)'
+            a: int
+        dept_emp:
+            from_date: 'dinterval(2000-1-1,2016-12-31)'
+            to_date: 'dinterval(2000-1-1,2016-12-31)'
+        salary:
+            from_date: 'dinterval(2000-1-1,2016-12-31)'
+            salary: 'interval(1,4)'
+        specialization:
+            title: job_specialization
+            from_date: 'dinterval(2000-1-1,2016-12-31)'
+        employee:
+            emp_no: 'seq(0,100000,1)'
+            birth_date: 'dinterval(1950-1-1,1997-12-31)'
+            first_name: first_names_cs
+            last_name: last_names_cs
+            email:
+            format: '{}.{}@company.com'
+            values:
+                - employee.first_name
+                - employee.last_name
+            hire_date: 'dinterval(2000-1-1,2016-12-31)'
+            spec: '[specialization]{1,2}'
+            salary: '[salary]{2,10}'
+            dept_emp: '[dept_emp]{1,3}'
+        dept_manager:
+            active: bool
+        schema:
+        employees:
+            emp_no: employee.emp_no
+            birth_date: employee.birth_date
+            first_name: employee.first_name
+            last_name: employee.last_name
+            email: employee.email
+            hire_date: employee.hire_date
+        salaries:
+            emp_no: employee.emp_no
+            from_date: employee.salary.from_date
+            salary: employee.salary.salary
+        specialization:
+            emp_no: employee.emp_no
+            title: employee.spec.title
+            from_date: employee.spec.from_date
+        departments:
+            dept_no: departments.dept_no
+            dept_name: departments.dept_name
+        dept_emp:
+            emp_no: employee.emp_no
+            dept_no: 'FROM departments.dept_no'
+            from_date: employee.dept_emp.from_date
+            to_date: employee.dept_emp.to_date
+        dept_manager:
+            emp_no: 'FROM dept_emp.emp_no'
+            dept_no: 'FROM dept_emp.dept_no'
+            from_date: 'FROM dept_emp.from_date'
+            to_date: 'FROM dept_emp.to_date'
+            active: dept_manager.active
+
+    --- Example of string-example.yaml ---
+
+        include:
+        - first_names_cs
+        - last_names_cs
+        generate:
+        - 'employee = 10'
+        constraints:
+        - 'employee.access_code.expire_date > employee.access_code.from_date'
+        types:
+        access_code:
+            id: 'seq(1,1000,1)'
+            code: 'regex(''[0-9]{4}[A-F]{3}'')'
+            expire_date: 'dinterval(2020-1-1,2021-12-31)'
+            from_date: 'dinterval(2020-1-1,2021-12-31)'
+        employee:
+            id: 'seq(1,1000,1)'
+            first_name: first_names_cs
+            last_name: last_names_cs
+            phone_number: 'regex(''(\+420-)?([6-7]){3}-(\d){3}-(\d){3}'')'
+            email:
+            format: '{}-{}@company.com'
+            values:
+                - employee.first_name
+                - employee.last_name
+            job_specialization:
+            - ORDERED_DATASET
+            - Driver
+            - Developer
+            - Cook
+            - Manager
+            access_code: '[access_code]{2,3}'
+        schema:
+        employees:
+            id: employee.id
+            first_name: employee.first_name
+            last_name: employee.last_name
+            email: employee.email
+            phone_number: employee.phone_number
+            job_specialization: employee.job_specialization
+        access_codes:
+            code_id: employee.access_code.id
+            employee_id: employee.id
+            code: employee.access_code.code
+            from_date: employee.access_code.from_date
+            expire_date: employee.access_code.expire_date
+
+
+    --- Example of yaml_constraints.yaml ---
+
+        include: []
+        generate:
+        - 'object = 10'
+        constraints:
+        - 'object.a <= 42'
+        - 'object.b > object.a'
+        - 'object.a > 0'
+        - 'object.b > 0'
+        types:
+        object:
+            a: int
+            b: int
+        schema:
+        tnumbers:
+            num1: object.a
+            num2: object.b
+
+    --- Example of yaml_demo.yaml ---
+        
+        include:
+        - first_names_cs
+        - last_names_cs
+        types:
+        job_specialization:
+            - ORDERED_DATASET
+            - 'Application programmer'
+            - 'System programmer'
+            - 'Web programmer'
+            - Tester
+        departments:
+            dept_no: 'seq(0,100000,1)'
+            dept_name: string
+            a: int
+        dept_emp:
+            from_date: 'dinterval(2000-1-1,2016-12-31)'
+            to_date: 'dinterval(2000-1-1,2016-12-31)'
+        salary:
+            from_date: 'dinterval(2000-1-1,2016-12-31)'
+            salary: 'interval(1,4)'
+        specialization:
+            title: job_specialization
+            from_date: 'dinterval(2000-1-1,2016-12-31)'
+        employee:
+            emp_no: 'seq(0,100000,1)'
+            birth_date: 'dinterval(1950-1-1,1997-12-31)'
+            first_name: first_names_cs
+            last_name: last_names_cs
+            email:
+            format: '{}.{}@company.com'
+            values:
+                - employee.first_name
+                - employee.last_name
+            hire_date: 'dinterval(2000-1-1,2016-12-31)'
+            spec: '[specialization]{1,2}'
+            salary: '[salary]{0,10}'
+            dept_emp: '[dept_emp]{1,3}'
+        dept_manager:
+            active: bool
+        schema:
+        employees:
+            emp_no: employee.emp_no
+            birth_date: employee.birth_date
+            first_name: employee.first_name
+            last_name: employee.last_name
+            email: employee.email
+            hire_date: employee.hire_date
+        salaries:
+            emp_no: employee.emp_no
+            from_date: employee.salary.from_date
+            salary: employee.salary.salary
+        specialization:
+            emp_no: employee.emp_no
+            title: employee.spec.title
+            from_date: employee.spec.from_date
+        departments:
+            dept_no: departments.dept_no
+            dept_name: departments.dept_name
+        dept_emp:
+            emp_no: employee.emp_no
+            dept_no: 'FROM departments.dept_no'
+            from_date: employee.dept_emp.from_date
+            to_date: employee.dept_emp.to_date
+        dept_manager:
+            emp_no: 'FROM dept_emp.emp_no'
+            dept_no: 'FROM dept_emp.dept_no'
+            from_date: 'FROM dept_emp.from_date'
+            to_date: 'FROM dept_emp.to_date'
+            active: dept_manager.active
+        constraints:
+        - 'departments.a > 1'
+        - 'departments.dept_name in (4,10)'
+        - 'employee.salary.from_date.day = 10'
+        - 'employee.salary.from_date > employee.hire_date'
+        - 'employee.spec.from_date > employee.hire_date'
+        - 'employee.dept_emp.from_date > employee.hire_date'
+        - 'employee.dept_emp.to_date > employee.dept_emp.from_date'
+        generate:
+        - 'departments = 2'
+        - 'employee = 10'
+        - 'dept_manager = 2'
+
+
+    --- End of examples ---
+
+"""
