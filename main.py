@@ -2,7 +2,7 @@ import argparse, getpass, db_connector, data_sampler, llm_processor, schema_extr
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
-	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
+	'%(asctime)s %(log_color)s %(levelname)s: %(name)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'))
 
 logging.getLogger("mysql.connector").setLevel(logging.WARNING)
@@ -10,7 +10,7 @@ logging.getLogger("psycopg2").setLevel(logging.WARNING)
 
 logger = logging.getLogger("MAIN")
 logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
 
@@ -103,7 +103,7 @@ def main():
 
     elif db_server in ("PostgreSQL", "postgresql"):
         template = schema_extractor.postgresql_query_template(db_name, None, "tables")
-        sql_query = llm_processor.generate_sql_query(template, db_server)
+        sql_query = llm_processor.generate_sql_query(template, db_server, db_name)
         logger.debug(f"Generated SQL query for tables: {sql_query}")
         tables = schema_extractor.postgre_execute_sql(server, sql_query)
         if len(tables) == 0:
@@ -119,10 +119,10 @@ def main():
             logger.info(f"Processing table: {table_name}")
             column_template = schema_extractor.postgresql_query_template(db_name, table_name, "columns")
             columns = schema_extractor.postgre_execute_sql(server, column_template)
-            logger.debug("Found columns in {table_name}: {[c[0] for c in columns]}")
+            logger.debug(f"Found columns in {table_name}: {[c[3] for c in columns]}")
 
             for column in columns:
-                column_name = column[0]
+                column_name = column[3]
                 template = data_sampler.data_samples_templates(table_name, column_name)
                 result = schema_extractor.postgre_execute_sql(server, template)
                 samples[table_name][column_name] = result

@@ -58,17 +58,17 @@ def postgresql_query_template(db_name: str, table_name: str | None, types: str) 
     templates_dict = {
         "tables":       f"""SELECT table_name 
                             FROM information_schema.tables
-                            WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_schema = '{db_name}'; """,
+                            WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_schema = 'public'; """,
 
         "columns":      f"""SELECT *
                             FROM information_schema.columns
-                            WHERE table_schema = '{db_name}' and table_name = '{table_name}'; """,
+                            WHERE table_schema = 'public' and table_name = '{table_name}'; """,
         
         "prime_keys":   f"""SELECT kcu.column_name
                             FROM information_schema.table_constraints tc
                             JOIN information_schema.key_column_usage kcu
                             ON tc.constraint_name = kcu.constraint_name
-                            WHERE tc.table_schema = '{db_name}' AND tc.table_name = '{table_name}' AND tc.constraint_type = 'PRIMARY KEY';""",
+                            WHERE tc.table_schema = 'public' AND tc.table_name = '{table_name}' AND tc.constraint_type = 'PRIMARY KEY';""",
 
         "foreign_keys": f"""SELECT tc.table_schema, tc.constraint_name, tc.table_name, kcu.column_name, ccu.table_schema AS foreign_table_schema, ccu.table_name AS foreign_table_name, ccu.column_name AS foreign_column_name 
                             FROM information_schema.table_constraints AS tc 
@@ -77,7 +77,7 @@ def postgresql_query_template(db_name: str, table_name: str | None, types: str) 
                             AND tc.table_schema = kcu.table_schema  
                             JOIN information_schema.constraint_column_usage AS ccu
                             ON ccu.constraint_name = tc.constraint_name
-                            WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema='{db_name}' AND tc.table_name='{table_name}'; """
+                            WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema='public' AND tc.table_name='{table_name}'; """
     }
 
     logger.debug(f"Created SQL template: {templates_dict[types]}")
@@ -110,6 +110,7 @@ def postgre_execute_sql(db_name: psycopg2.extensions.connection, query: str):
 
         myresults = mycursor.fetchall()
 
+        print(myresults)
         logger.debug(f"Query returned {len(myresults)} rows")
         return myresults
     except Exception as e:
