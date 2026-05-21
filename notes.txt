@@ -7,3 +7,12 @@ na testovanie:
 1. db bez tabuliek
 2. db bez hesla
 3. db s tabulkami ale prazdnymi
+4. db s viacerymi tabulkami 
+
+
+
+spustenie 
+ollama create yaml-generator-llm -f Modelfile
+ollama list
+python3 main.py -d mysql --host 127.0.0.1 --user root --db testdb
+python3 main.py -d postgresql --host 127.0.0.1 --user postgres --db testdb

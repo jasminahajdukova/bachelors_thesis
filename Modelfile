@@ -190,7 +190,9 @@ SYSTEM """
     - The YAML must start directly with a key like 'include:' or 'types:' 
     - If there are no constraints, write 'constraints: []', never leave it empty
     - When using regex, always wrap the entire value in double quotes: regex("[pattern]")
-    - Never mix single and double quotes in regex patterns  
+    - Never mix single and double quotes in regex patterns      
+    - In schema, reference types directly as 'typename.attribute', do NOT use FROM syntax for regular columns
+    - Use FROM syntax ONLY for foreign key references to other tables
 
 
     Here are all available Dataster YAML examples to learn the format from:
