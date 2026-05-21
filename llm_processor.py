@@ -36,7 +36,7 @@ def build_yaml_prompt(samples, sql_server_type):
         Database samples:
         {samples}
 
-        Generate the YAML:
+        Generate the YAML. Return ONLY the raw content, nothing else:
     """
 
 
@@ -52,7 +52,8 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: 
             {template}
 
             Rules:
-            - Return ONLY the SQL query, no explanation
+            - Return ONLY the SQL query, no explanation, no markdown
+            - do not wrap the query in ```sql``` blocks
             - The query must be valid {sql_server_type} syntax
 
             SQL query:"""
