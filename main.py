@@ -123,7 +123,7 @@ def main():
 
             for column in columns:
                 column_name = column[3]
-                template = data_sampler.data_samples_templates(table_name, column_name)
+                template = data_sampler.data_samples_templates_postgresql(table_name, column_name)
                 result = schema_extractor.postgre_execute_sql(server, template)
                 samples[table_name][column_name] = result
 
