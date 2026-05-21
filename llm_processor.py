@@ -1,9 +1,10 @@
 import ollama
-import os, logging, colorlog
+import logging, colorlog
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
-	'%(log_color)s%(levelname)s:%(name)s:%(message)s'))
+	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'))
 
 logging.getLogger("mysql.connector").setLevel(logging.WARNING)
 logging.getLogger("psycopg2").setLevel(logging.WARNING)
@@ -27,28 +28,16 @@ AVAILABLE_INCLUDES = [
 ]
 
 
-def load_yaml_examples(examples_dir = "yaml_examples"):
-    examples = []
-    if not os.path.exists(examples_dir):
-        logger.error("Folder does not exist.")
-        return []
-    
-    for file_name in os.listdir(examples_dir):
-        if file_name.endswith(".yaml"):
-            file_path = os.path.join(examples_dir, file_name)
-            with open(file_path, "r", encoding="utf-8") as file:
-                logger.debug(f"Reading file: {file_name}")
-                content = file.read()
-            examples.append(f"Example: {file_name} \n{content}")
-
-    return "\n\n".join(examples)
-
-
 def build_yaml_prompt(samples, sql_server_type):
-    examples = load_yaml_examples()
-    include_list = "\n".join(f" - {inc}" for inc in AVAILABLE_INCLUDES)
+    return f"""
+        Generate a Dataster YAML for this {sql_server_type} database.
+        Each sample shows (MIN, MAX, AVG, COUNT_DISTINCT) for that column.
 
-    return 
+        Database samples:
+        {samples}
+
+        Generate the YAML:
+    """
 
 
 
@@ -77,7 +66,10 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: 
     return response.message.content
 
 
-def generate_yaml(samples: dict[str, str], sql_server_type: str, model: str = "llama3.1:8b"):
+
+
+def generate_yaml(samples: dict[str, str], sql_server_type: str, model: str = "yaml-generator-llm"):
+    logger.info(f"Generating YAML for {sql_server_type}")
     prompt = build_yaml_prompt(samples, sql_server_type)
     response = ollama.chat(model=model,
                            messages=[
