@@ -43,7 +43,7 @@ def validate_yaml(yaml_str: str):
         stream_keys: list[str] = list(stream.keys())
 
         if not all(key in stream_keys for key in ["types", "schema", "generate"]):
-            logger.error("Schema containes invalid parts")
+            logger.error(f"Schema containes invalid parts")
         for key in stream_keys:
             if key == "include":
                 validate_include(stream[key])   
@@ -89,7 +89,10 @@ def validate_types(each_type: str):
 def iterate_types(types: str):
     list_of_types: list[dict[str, str]] = list(types.keys())
     for part in list_of_types:
-        validate_types(types[part])
+        if isinstance(types[part], list):
+            pass
+        else:
+            validate_types(types[part])
 
 
 
@@ -97,7 +100,10 @@ def validate_schema(each_schema: str):
     if types_ds is None:
         return
     for value in list(each_schema.values()):
-        if isinstance(value, str) and value.startswith("FFROM: "):
+        if value is None:
+            logger.error("Schema contains null value")
+            continue
+        if isinstance(value, str) and value.startswith("FFROM "):
             continue
         split_fiction = value.split(".")
         if split_fiction[0] not in types_ds:

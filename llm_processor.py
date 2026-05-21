@@ -29,8 +29,8 @@ AVAILABLE_INCLUDES = [
 
 
 def build_yaml_prompt(samples, sql_server_type):
-    return f"""
-        Generate a Dataster YAML for this {sql_server_type} database.
+    return f"""Generate a YAML file ONLY for these exacts tables and columns from a {sql_server_type} database.
+        Do NOT copy examples. Generate based ONLY on this data.
         Each sample shows (MIN, MAX, AVG, COUNT_DISTINCT) for that column.
 
         Database samples:

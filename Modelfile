@@ -185,14 +185,27 @@ Rules:
 - For regex patterns, always use double quotes inside: regex("[pattern]")
 - Generate YAML ONLY based on the provided database samples
 - Do NOT invent tables or columns that are not in the samples
+- Do NOT copy examples, generate based ONLY on the provided database samples
 - If samples are empty, return an empty YAML structure
 - Do NOT start the YAML with a dash (-)
-- The YAML must start directly with a key like 'include:' or 'types:' 
+- The YAML must start directly with a key like 'include:' or 'types:'
 - If there are no constraints, write 'constraints: []', never leave it empty
 - When using regex, always wrap the entire value in double quotes: regex("[pattern]")
-- Never mix single and double quotes in regex patterns    
+- Never mix single and double quotes in regex patterns
 - In schema, reference types directly as 'typename.attribute', do NOT use FROM syntax for regular columns
 - Use FROM syntax ONLY for foreign key references to other tables
+- ALWAYS include schema section - it is required
+- NEVER omit the schema section
+- schema must map every table column to its type
+- In generate section, always wrap values in single quotes: - 'employees = 2'
+- Date interval format is ALWAYS: dinterval(YYYY-M-D,YYYY-M-D)
+- Example: dinterval(2019-3-20,2021-6-10)
+- NEVER use datetime.date() or any Python syntax for dates
+- NEVER use 'date' as a type, always use dinterval for date columns
+- str_len categories are ONLY: C (uppercase), c (lowercase), d (digits), s (whitespace), S (special chars)
+- Example: str_len([cC] 3,10)
+- NEVER use regex patterns inside str_len
+- In schema, NEVER concatenate values with +, use format with values instead
 
 
 Here are all available Dataster YAML examples to learn the format from:
