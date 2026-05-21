@@ -110,7 +110,6 @@ def postgre_execute_sql(db_name: psycopg2.extensions.connection, query: str):
 
         myresults = mycursor.fetchall()
 
-        print(myresults)
         logger.debug(f"Query returned {len(myresults)} rows")
         return myresults
     except Exception as e:
