@@ -4,7 +4,8 @@ from llm_processor import AVAILABLE_INCLUDES
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
-	'%(log_color)s%(levelname)s:%(name)s:%(message)s'))
+	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'))
 
 logging.getLogger("mysql.connector").setLevel(logging.WARNING)
 logging.getLogger("psycopg2").setLevel(logging.WARNING)
@@ -26,7 +27,7 @@ types_ds = None
 def validate_yaml(yaml_str: str):
     try:
         yaml_str = yaml_str.strip()
-        #print(f"YAML STR: \n {yaml_str}")
+        print(f"YAML STR: \n {yaml_str}")
         if yaml_str.startswith("```"):
             yaml_str = yaml_str.split("\n", 1)[1]
         if yaml_str.endswith("```"):
