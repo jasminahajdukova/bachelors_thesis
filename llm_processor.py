@@ -82,6 +82,11 @@ def build_yaml_prompt(samples, sql_server_type):
         - Generate YAML ONLY based on the provided database samples
         - Do NOT invent tables or columns that are not in the samples
         - If samples are empty, return an empty YAML structure
+        - Do NOT start the YAML with a dash (-)
+        - The YAML must start directly with a key like 'include:' or 'types:' 
+        - If there are no constraints, write 'constraints: []', never leave it empty
+        - When using regex, always wrap the entire value in double quotes: regex("[pattern]")
+        - Never mix single and double quotes in regex patterns  
 
 
         Here are all available Dataster YAML examples to learn the format from:
@@ -117,7 +122,7 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: 
                            messages=[
                                {'role': 'user', 'content': prompt}
                            ])
-    print(f"QUERY MESSAGE = {response.message.content}")
+    #print(f"QUERY MESSAGE = {response.message.content}")
     logger.debug(f"Generated SQL query: {response.message.content}")
     return response.message.content
 

@@ -50,3 +50,5 @@ https://stackoverflow.com/questions/21388541/how-do-you-check-in-python-whether-
 https://www.w3schools.com/python/python_file_write.asp
 https://www.geeksforgeeks.org/python/pyyaml-dump-format-python/
 https://stackoverflow.com/questions/28134319/fastest-way-to-remove-first-and-last-lines-from-a-python-string
+https://www.mostlypython.com/using-any/
+

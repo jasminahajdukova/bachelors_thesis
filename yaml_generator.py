@@ -1,5 +1,6 @@
 import yaml
 import logging, colorlog
+from llm_processor import AVAILABLE_INCLUDES
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
@@ -25,12 +26,12 @@ types_ds = None
 def validate_yaml(yaml_str: str):
     try:
         yaml_str = yaml_str.strip()
-        print(f"YAML STR: \n {yaml_str}")
+        #print(f"YAML STR: \n {yaml_str}")
         if yaml_str.startswith("```"):
             yaml_str = yaml_str.split("\n", 1)[1]
         if yaml_str.endswith("```"):
             yaml_str = yaml_str.split("```", 1)[0]
-            
+
         global includes, types_ds
         stream = yaml.safe_load(yaml_str)
         stream_keys: list[str] = list(stream.keys())
@@ -48,10 +49,10 @@ def validate_yaml(yaml_str: str):
                 iterate_schemas(stream[key])
             elif key == "generate":
                 validate_generate(stream[key])
-            elif key == "constrains":
+            elif key == "constraints":
                 validate_constrains(stream[key])
             else:
-                logger.error("Uknown type")
+                logger.error(f"1. Uknown type {key}")
         save_yaml(stream)
     except yaml.YAMLError as exc:
         logger.error(f"Error: {exc}")
@@ -75,7 +76,7 @@ def validate_types(each_type: str):
         elif dataset_types is not None and value in dataset_types:
             pass
         else:
-            logger.error("Uknown type")
+            logger.error(f"2. Uknown type {value}")
 
 
 
@@ -94,9 +95,9 @@ def validate_schema(each_schema: str):
             continue
         split_fiction = value.split(".")
         if split_fiction[0] not in types_ds:
-            logger.error("Uknown type")
+            logger.error(f"3. Uknown type {split_fiction[0]}")
         elif split_fiction[1] not in list(types_ds[split_fiction[0]].keys()):
-            logger.error("Uknown type")
+            logger.error(f"4. Uknown type {split_fiction[1]}")
 
 
 
@@ -118,16 +119,18 @@ def validate_generate(generate: str):
         split_generate = value.split("=")
         count = split_generate[1].strip()
         if split_generate[0].strip() not in types_ds or not split_generate[1].strip().isdigit() and count != "auto":
-            logger.error(f"Uknown type or invalid count: {value}")
+            logger.error(f"5. Uknown type or invalid count: {value}")
 
 
 
 def validate_include(includes: str):
-    pass
+    if not all([value in AVAILABLE_INCLUDES for value in includes]):
+        logger.error(f"Include not part of available includes")
 
 
 def validate_constrains(constrains: str):
-    pass
+    #print("\n --------------Consstrains---------------\n", constrains, "\n-------------------------------\n")
+    logger.debug(f"Constraints: {constrains}")
 
 
 def save_yaml(stream: str):

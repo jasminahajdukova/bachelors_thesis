@@ -1,0 +1,2 @@
+1. templates su uplne to iste co mi vypluje llm cize otazka je ci tie templates maju byt slovne alebo jak to ma vyzerat
+2. llm je velmi pomale cize ako by sa to dalo zrychlit 
