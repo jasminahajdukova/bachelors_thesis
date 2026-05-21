@@ -24,6 +24,14 @@ def data_samples_templates(table_name: str | None, column_name: str | None) -> s
     return template
 
 
+
+def data_samples_templates_postgresql(table_name: str | None, column_name: str | None) -> str:
+    template = f"""SELECT MIN({column_name}), MAX({column_name}), COUNT(DISTINCT {column_name})
+                   FROM {table_name};"""
+    
+    logger.debug(f"Creating SQL query: {template}")
+    return template
+
 def mysql_execute_sql(db_name: MySQLConnection, query):
     try:
         mycursor = db_name.cursor()
