@@ -1,4 +1,4 @@
-import argparse, getpass, db_connector, data_sampler, llm_processor, schema_extractor, yaml_generator,logging, colorlog
+import argparse, getpass, kod.db_connector as db_connector, kod.data_sampler as data_sampler, kod.llm_processor as llm_processor, kod.schema_extractor as schema_extractor, kod.yaml_generator as yaml_generator,logging, colorlog
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(

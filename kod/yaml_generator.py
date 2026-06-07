@@ -1,6 +1,6 @@
 import yaml, re
 import logging, colorlog
-from llm_processor import AVAILABLE_INCLUDES
+from kod.llm_processor import AVAILABLE_INCLUDES
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
