@@ -71,9 +71,9 @@ def main():
     
     if db_server in ("MySQL", "mysql"):
         template = schema_extractor.mysql_query_templates(db_name, None, "tables")
-        #print(f"SQL TEMPLATE: {template}")
+        print(f"SQL TEMPLATE: {template}")
         sql_query = llm_processor.generate_sql_query(template, db_server, db_name)
-        #print(f"SQL QUERY: {sql_query}")
+        print(f"SQL QUERY: {sql_query}")
         logger.debug(f"Generated SQL query for tables: {sql_query}")
         tables = schema_extractor.mysql_execute_sql(server, sql_query)
         if len(tables) == 0:

@@ -72,15 +72,15 @@ def validate_types(each_type: str):
 
     for value in list(each_type.values()):
         if isinstance(value, list):
-            pass
+            continue
         if isinstance(value,dict):
-            pass
+            continue
         if value in basic_types:
-            pass
+            continue
         elif any(value.startswith(whatever) for whatever in param_types):
-            pass
+            continue
         elif dataset_types is not None and value in dataset_types:
-            pass
+            continue
         else:
             logger.error(f"2. Uknown type {value}")
 
@@ -108,6 +108,8 @@ def validate_schema(each_schema: str):
         split_fiction = value.split(".")
         if split_fiction[0] not in types_ds:
             logger.error(f"3. Uknown type {split_fiction[0]}")
+        elif len(split_fiction) < 2 :
+            continue
         elif split_fiction[1] not in list(types_ds[split_fiction[0]].keys()):
             logger.error(f"4. Uknown type {split_fiction[1]}")
 
@@ -141,6 +143,8 @@ def validate_include(includes: str):
 
 
 def validate_constrains(constrains: str):
+    if types_ds is None:
+        return
     #print("\n --------------Consstrains---------------\n", constrains, "\n-------------------------------\n")
     logger.debug(f"Constraints: {constrains}")
     for constraint in constrains:

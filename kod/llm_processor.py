@@ -1,5 +1,6 @@
 import ollama
-import logging, colorlog
+import logging, colorlog, json
+from decimal import Decimal
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
@@ -11,7 +12,7 @@ logging.getLogger("psycopg2").setLevel(logging.WARNING)
 
 logger = logging.getLogger("LLM_PROCESSOR")
 logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
 
@@ -28,16 +29,23 @@ AVAILABLE_INCLUDES = [
 ]
 
 
+def json_decimal(dec):
+    if isinstance(dec, Decimal):
+        return str(dec)
+
 def build_yaml_prompt(samples, sql_server_type):
-    return f"""Generate a YAML file ONLY for these exacts tables and columns from a {sql_server_type} database.
+    json_data = json.dumps(samples, default=json_decimal)
+    prompt = f"""Generate a YAML file ONLY for these exacts tables and columns from a {sql_server_type} database.
         Do NOT copy examples. Generate based ONLY on this data.
-        Each sample shows (MIN, MAX, AVG, COUNT_DISTINCT) for that column.
+        Each sample shows values in format [MIN, MAX, AVG, COUNT_DISTINCT] for that column.
 
         Database samples:
-        {samples}
+        {json_data}
 
         Generate the YAML. Return ONLY the raw content, nothing else:
     """
+    logger.debug(f"Prompt: {prompt}")
+    return prompt
 
 
 
@@ -62,7 +70,7 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: 
                            messages=[
                                {'role': 'user', 'content': prompt}
                            ])
-    #print(f"QUERY MESSAGE = {response.message.content}")
+    print(f"QUERY MESSAGE = {response.message.content}")
     logger.debug(f"Generated SQL query: {response.message.content}")
     return response.message.content
 
