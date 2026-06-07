@@ -1,4 +1,4 @@
-import yaml
+import yaml, re
 import logging, colorlog
 from llm_processor import AVAILABLE_INCLUDES
 
@@ -103,7 +103,7 @@ def validate_schema(each_schema: str):
         if value is None:
             logger.error("Schema contains null value")
             continue
-        if isinstance(value, str) and value.startswith("FFROM "):
+        if isinstance(value, str) and value.startswith("FROM "):
             continue
         split_fiction = value.split(".")
         if split_fiction[0] not in types_ds:
@@ -143,11 +143,19 @@ def validate_include(includes: str):
 def validate_constrains(constrains: str):
     #print("\n --------------Consstrains---------------\n", constrains, "\n-------------------------------\n")
     logger.debug(f"Constraints: {constrains}")
+    for constraint in constrains:
+        constraint_split = constraint.split(" ")
+        typename = constraint_split[0]
+        operator = constraint_split[1]
+        value = constraint_split[2]
+        regex = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)'
+        if (typename.split(".")[0] not in types_ds) or (operator not in ["=", "!=", "<", ">", "<=", ">="] or (not bool(re.match(regex, value)) and value.split(".")[0] not in types_ds)):
+            logger.error(f"Invalid constraint: {constraint}")
 
 
 def save_yaml(stream: str):
     yaml_string = yaml.dump(stream, default_flow_style=False, indent=4, width=80)
-    with open("demo.yaml", "w") as f:
+    with open("dataster_config.yaml", "w") as f:
         f.write(yaml_string)
 
        

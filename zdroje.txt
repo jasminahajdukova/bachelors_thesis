@@ -52,6 +52,8 @@ https://www.geeksforgeeks.org/python/pyyaml-dump-format-python/
 https://stackoverflow.com/questions/28134319/fastest-way-to-remove-first-and-last-lines-from-a-python-string
 https://www.mostlypython.com/using-any/
 
+7.6.2026
+https://stackoverflow.com/questions/17496871/how-to-determine-whether-string-is-a-number-when-the-number-is-negative
 
 MODELFILE:
 https://www.youtube.com/watch?v=bXf2Cxf3Wk0
