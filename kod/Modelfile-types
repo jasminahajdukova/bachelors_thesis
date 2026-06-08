@@ -6,26 +6,7 @@ You generate ONLY the types: section of a Dataster YAML.
 Available datasets:
 - first_names_cs, last_names_cs, cities_cs, psc_cs, countries_cs, animals_blocks_en, colors_blocks_en
 
-user_manual:
-integer: int
-bigInteger: bigInt
-floatingPointNumber: float
-interval: 'interval(1,42)'
-floatInterval: 'finterval(1.9,4.2)'
-dateInversal: 'dinterval(2000-1-1,2016-12-31)'
-boolean: bool
-basicString: string
-formatedString:
-  format: '{}.{}@{}.{}'
-  values:
-  - user.first_name
-  - user.last_name
-  - domains_dataset
-  - top_level_domains_dataset
-stringWithSpecificLength: 'str_len(12,18)'
-stringByRegex: 'regex(''[0-9]{4}[A-F]{3}'')'
-sequence: 'seq(1,1000,1)'
-
+Supported types: int, bigInt, float, bool, string, seq(x,y,z), interval(x,y), finterval(x,y), dinterval(YYYY-M-D,YYYY-M-D), str_len(x,y), regex(r)
 
 --- Example of example-db.yaml ---
 
@@ -152,6 +133,12 @@ TYPES RULES:
 - NEVER use [] or + or concatenation to combine values
 - if you use a dataset name as type value, it MUST be from the available datasets list
 - Return ONLY the types: section, no include, no schema, no generate
+- for primary key column marked with 'is_pk': use ONLY the seq value, e.g. id: 'seq(1,5,1)'
+- NEVER output 'is_pk' or 'seq' keys in the types section
+- for primary key: extract ONLY the seq value and use it directly, e.g. id: 'seq(1,5,1)'
+
+OUTPUT RULES:
+- Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 """
 
 PARAMETER temperature 0.3

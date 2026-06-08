@@ -40,6 +40,8 @@ GENERATE RULES:
 - Use ONLY type names that exist in the provided types section
 - Return ONLY the generate: section, nothing else
 
+OUTPUT RULES:
+- Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 """
 
 PARAMETER temperature 0.3
