@@ -53,16 +53,11 @@ def json_decimal(dec):
 # pridaj rozsirenie dalsich llm
 def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: str = "yaml-generator-sql"):
     logger.info(f"Generating SQL query for {sql_server_type}")
-    prompt = f"""You are a SQL expert. Generate a valid {sql_server_type} SQL query based on this template for database: {db_name}.
+    prompt = f"""Generate a valid {sql_server_type} SQL query based on this template for database: {db_name}.
 
             Template:
             {template}
-
-            Rules:
-            - Return ONLY the SQL query, no explanation, no markdown
-            - do not wrap the query in ```sql``` blocks
-            - The query must be valid {sql_server_type} syntax
-
+            
             SQL query:"""
     
     response = ollama.chat(model=model,
