@@ -91,10 +91,19 @@ def main():
             columns = schema_extractor.mysql_execute_sql(server, column_template)
             logger.debug("Found columns in {table_name}: {[c[0] for c in columns]}")
 
+            prime_keys = []
             for column in columns:
                 column_name = column[0]
-                template = data_sampler.data_samples_templates(table_name, column_name)
-                result = schema_extractor.mysql_execute_sql(server, template)
+                if column[3] == "PRI":
+                    prime_keys.append(column_name)
+
+                if column_name in prime_keys:
+                    template = data_sampler.data_samples_templates(table_name, column_name)
+                    result_result = schema_extractor.mysql_execute_sql(server, template)
+                    result = {"is_pk": True, "type": column[1], "extra": column[5], "min": result_result["min"], "max": result_result["max"]}
+                else:    
+                    template = data_sampler.data_samples_templates(table_name, column_name)
+                    result = schema_extractor.mysql_execute_sql(server, template)
                 samples[table_name][column_name] = result
 
         logger.info("Sending samples to LLM for YAML generation")

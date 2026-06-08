@@ -28,6 +28,8 @@ def validate_yaml(yaml_str: str):
     try:
         yaml_str = yaml_str.strip()
         
+        
+
         if "```" in yaml_str:
             yaml_part = yaml_str.split("```")
             yaml_str = yaml_part[1].strip()
@@ -36,7 +38,10 @@ def validate_yaml(yaml_str: str):
         if yaml_str.endswith("```"):
             yaml_str = yaml_str.split("```", 1)[0]
 
-        print(f"YAML STR: \n {yaml_str}")
+        if '---' in yaml_str:
+            yaml_str = yaml_str.split("---")[0].strip()
+
+        logger.debug(f"YAML STR: \n {yaml_str}")
 
         global includes, types_ds
         stream = yaml.safe_load(yaml_str)
@@ -158,7 +163,7 @@ def validate_constrains(constrains: str):
 
 
 def save_yaml(stream: str):
-    yaml_string = yaml.dump(stream, default_flow_style=False, indent=4, width=80)
+    yaml_string = yaml.dump(stream, default_flow_style=False, indent=4, width=80, sort_keys=False)
     with open("dataster_config.yaml", "w") as f:
         f.write(yaml_string)
 

@@ -193,6 +193,7 @@ SCHEMA RULES:
 - Every column must reference a type as 'typename.attribute'
 - Foreign keys use FROM syntax: 'FROM tablename.column'
 - NEVER concatenate values with +
+- NEVER put seq(), interval(), string, int or any data type directly in schema — schema must always reference 'typename.attribute'
 
 GENERATE RULES:
 - Generate entry for EVERY table in the provided samples
@@ -684,28 +685,4 @@ generate:
 
 """
 
-MESSAGE user """Generate a YAML file ONLY for these exacts tables and columns from a MySQL database.
-        Do NOT copy examples. Generate based ONLY on this data.
-        Each sample shows values in format [MIN, MAX, AVG, COUNT_DISTINCT] for that column.
-
-        Database samples:
-        {"person": {"id": [[1, 100, "50.0", 100]], "name": [["Adam", "Zuzka", 0.0, 95]]}}
-
-        Generate the YAML. Return ONLY the raw content, nothing else:"""
-
-
-MESSAGE assistant """include: []
-types:
-  person:
-    id: 'seq(1,100,1)'
-    name: string
-schema:
-  person:
-    id: person.id
-    name: person.name
-generate:
-  - 'person = 10'
-constraints: []"""
-
-
-PARAMETER temperature 0.1
+PARAMETER temperature 0.5
