@@ -163,3 +163,24 @@ MESSAGE assistant """types:
         - first_names_cs
         - last_names_cs
 """
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT]
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'}
+    
+    Database samples:
+    {"users": {"id": {"is_pk": true, "seq": "seq(1,5,1)"}, "name": [["Jana", "Jana", "Peter Horak", 5]], "email": [["jana@test.com", "jana@test.com", "peter@test.com", 3]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """
+types:
+  users:
+    id: 'seq(1,100,1)'
+    name: first_names_cs
+    email:
+      format: '{}@test.com'
+      values:
+        - users.name"""
