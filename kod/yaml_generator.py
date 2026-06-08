@@ -156,6 +156,9 @@ def validate_constrains(constrains: str):
     logger.debug(f"Constraints: {constrains}")
     for constraint in constrains:
         constraint_split = constraint.split(" ")
+        if len(constraint_split) < 3:
+            logger.error(f"Invalid constraint format: {constraint}")
+            continue
         typename = constraint_split[0]
         operator = constraint_split[1]
         value = constraint_split[2]

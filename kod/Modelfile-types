@@ -141,4 +141,4 @@ OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 """
 
-PARAMETER temperature 0.3
+PARAMETER temperature 0.1
