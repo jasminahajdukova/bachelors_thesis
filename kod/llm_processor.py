@@ -57,7 +57,7 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: 
 
             Template:
             {template}
-            
+
             SQL query:"""
     
     response = ollama.chat(model=model,
@@ -116,6 +116,14 @@ def build_generate_prompt(types_section, sql_server_type):
     """
     return prompt
 
+def strip_markdown(content: str) -> str:
+    content = content.strip()
+    if content.startswith("```"):
+        content = content.split("\n", 1)[1]
+    if content.endswith("```"):
+        content = content.rsplit("```", 1)[0]
+    return content.strip()
+
 def generate_yaml_generate(types_section, sql_server_type):
     logger.info("Generating YAML 'generate' section")
     prompt = build_generate_prompt(types_section, sql_server_type)
@@ -127,7 +135,8 @@ def generate_yaml_generate(types_section, sql_server_type):
                            ])
     )
     logger.debug(f"Generated YAML schemas: {response.message.content}")
-    return response.message.content
+    generated_yaml = strip_markdown(response.message.content)
+    return generated_yaml
 
 
 def generate_yaml_schema(types_section, sql_server_type):
@@ -141,7 +150,8 @@ def generate_yaml_schema(types_section, sql_server_type):
                            ])
     )
     logger.debug(f"Generated YAML schemas: {response.message.content}")
-    return response.message.content
+    generated_yaml = strip_markdown(response.message.content)
+    return generated_yaml
 
 
 
@@ -157,7 +167,8 @@ def generate_yaml_types(samples, sql_server_type):
                            ])
     )
     logger.debug(f"Generated YAML types: {response.message.content}")
-    return response.message.content
+    generated_yaml = strip_markdown(response.message.content)
+    return generated_yaml
 
 
 def generate_yaml(samples, sql_server_type):
@@ -168,7 +179,7 @@ def generate_yaml(samples, sql_server_type):
         f"include: []\n\n"
         f"{types_content}\n\n"
         f"{schema_content}\n\n"
-        f"{generate_content}"
+        f"{generate_content}\n\n"
         f"constraints: []"
     )
     return full_yaml
