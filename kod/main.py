@@ -11,7 +11,7 @@ logging.getLogger("psycopg2").setLevel(logging.WARNING)
 
 logger = logging.getLogger("MAIN")
 logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
 
@@ -92,19 +92,27 @@ def main():
             logger.debug("Found columns in {table_name}: {[c[0] for c in columns]}")
 
             prime_keys = []
+            logger.debug("Entering first column loop")
             for column in columns:
                 column_name = column[0]
                 if column[3] == "PRI":
                     prime_keys.append(column_name)
 
+            logger.debug("Entering second column loop")
+            for column in columns:
+                column_name = column[0]
+                template = data_sampler.data_samples_templates(table_name, column_name)
+                result = schema_extractor.mysql_execute_sql(server, template)
                 if column_name in prime_keys:
-                    template = data_sampler.data_samples_templates(table_name, column_name)
-                    result_result = schema_extractor.mysql_execute_sql(server, template)
-                    result = {"is_pk": True, "type": column[1], "extra": column[5], "min": result_result["min"], "max": result_result["max"]}
+                    logger.debug(f"2nd column loop: prime key: {column_name}")
+                    min_val = result[0][1]
+                    max_val = result[0][2]
+                    samples[table_name][column_name] = {"is_pk": True, "seq": f"seq({min_val}, {max_val}, 1)"}
+                    logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
                 else:    
-                    template = data_sampler.data_samples_templates(table_name, column_name)
-                    result = schema_extractor.mysql_execute_sql(server, template)
-                samples[table_name][column_name] = result
+                    logger.debug(f"2nd column loop: NOT prime key: {column_name}")
+                    samples[table_name][column_name] = result
+                    logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
 
         logger.info("Sending samples to LLM for YAML generation")
         yaml_str = llm_processor.generate_yaml(samples, "MySQL")

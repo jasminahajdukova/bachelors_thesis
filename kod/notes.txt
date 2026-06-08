@@ -14,5 +14,414 @@ na testovanie:
 spustenie 
 ollama create yaml-generator-llm -f Modelfile
 ollama list
+ollama show yaml-generator-llm --modelfile
 python3 main.py -d mysql --host 127.0.0.1 --user root --db testdb
 python3 main.py -d postgresql --host 127.0.0.1 --user postgres --db testdb
+
+
+--- DATASTER DOCUMENTATION ---
+Input configuration YAML
+
+Input configuration file is called recipe and is expected in YAML data-serialization language. Recipe contains up to five possible sections.
+include
+types
+schema
+generate
+constraints
+From these five sections input recipe must contain types, schema and generate section.
+Usage of sections include and constraints are optional.
+
+Section include
+In this section you can specify external datasets names, if you want use these datasets for data generate. Included dataset is used in types section as value of some attribute. Expected format of dataset file is YAML. Examples of dataset files are below.
+
+Datasets
+Dataset is an external YAML file with records. There are three different supported types of datasets in Dataster.
+
+Basic dataset - the records are chosen in random order.
+Ordered dataset - the records are chosen sequentially by order in dataset. This type of dataset must contain a keyword "ORDERED_DATASET" as a first record.
+Dataset with input domain blocks (combinatorial extension) - the records are chosen in order to pass a given combinatorial criterion. This type of dataset must contain a keyword "BLOCKS" as a first record.
+
+
+How to include dataset into recipe
+There are two possible ways how you can include dataset into recipe. You can type the dataset name into include section, or simply use a dataset include button. If you include dataset using button, the dataset must not be already included in recipe.
+
+
+Section types
+The purpose of the section types is to specify the templates of objects (objects types).
+Expected format is
+  Type name:
+    Attribute name:value
+
+
+Value can be a supported data type, name of a dataset included in include section, or a name of an another type from this section.
+
+Supported data types
+Integer - represents a pseudorandom whole number in 32 bits. In the recipe it is referred to as int.
+Big integer - represents a pseudorandom whole number in 64 bits. In the recipe it is referred to as bigInt.
+Float - represents a pseudorandom floating-point number. In the recipe it is referred to as float.
+Interval - represents a pseudorandom whole number from the current range. In the recipe it is referred to as interval(x,y).
+  x - minimum value
+  y - maximum value
+Float interval - represents a pseudorandom floating-point number from the current range. In the recipe it is referred to as finterval(x,y).
+  x - minimum value
+  y - maximum value
+Date interval - represents a pseudorandom calendar date from the current range. In the recipe it is referred to as dinterval(x,y).
+  x - from calendar date (minimum value)
+  y - to calendar date (maximum value)
+Boolean - Just a basic true/false data type. In the recipe it is referred to as bool.
+String - represents a alphanumber string with pseudorandom length in range 0 to 32 chars. In the recipe it is referred to as string.
+Formated String - represents a string which is composed of several parts. The part can be:
+  Other already generated value of object attribute
+  Name of an included dataset
+
+  email:
+    format: "{}.{}@{}.{}"
+    values:
+      -'user.first_name'
+      -'user.last_name'
+      -'domains_dataset'
+      -'top_level_domains_dataset'
+
+
+String with specific length - represents a string with a current length. In the recipe it is referred to as str_len(..).
+  str_len(x) - string with a current length x
+  str_len(>x) - string with a pseudorandom length grather then x
+  str_len(>=x) - string with a pseudorandom length grather or equal x
+  str_len(<x) - string with a pseudorandom length less then x
+  str_len(<=x) - string with a pseudorandom length less or equal x
+  str_len(x,y) - string with a pseudorandom length in range <x,y>
+Additionally, it is possible to specify the categories of characters that make up a string. These categories are writen into '[ ]'.
+str_len([cC] 3,5) - example of specificied characters categories.
+Supported categories are these:
+  C - upper-case letters
+  c - lower-case letters
+  d - digits
+  s - white spaces
+  S - special characters/symbols such as $, # ..
+
+String corresponding regular expression - represents a string that matches the given regular expression.
+In the recipe it is referred to as regex(''r'').
+  r - regular expression
+Sequence - mostly used to generate an id of the record. In the recipe it is referred to as seq(x,y,z).
+  x - minimum value
+  y - maximum value
+  z - step size
+
+
+user_manual:
+integer: int
+bigInteger: bigInt
+floatingPointNumber: float
+interval: 'interval(1,42)'
+floatInterval: 'finterval(1.9,4.2)'
+dateInversal: 'dinterval(2000-1-1,2016-12-31)'
+boolean: bool
+basicString: string
+formatedString:
+  format: '{}.{}@{}.{}'
+  values:
+  - user.first_name
+  - user.last_name
+  - domains_dataset
+  - top_level_domains_dataset
+stringWithSpecificLength: 'str_len(12,18)'
+stringByRegex: 'regex(''[0-9]{4}[A-F]{3}'')'
+sequence: 'seq(1,1000,1)'
+
+
+Section schema
+In the section schema you can define relations between objects attributes and columns of database tables (mapping).
+The expected format is
+  Table name:
+    table column name:type name.attribute name
+
+
+types:
+person:
+  id: 'seq(1, 1000, 1)'
+  first_name: first_names_cs
+  last_name: last_names_cs
+  age: int
+  telnum: 'regex(''\+420-([1-9]){3}-(\d){3}-(\d){3}'')'
+  password: 'str_len(8,12)'
+schema:
+persons:
+  id: person.id
+  first_name: person.first_name
+  last_name: person.last_name
+  age: person.age
+  telnum: person.telnum
+  password: person.password
+
+
+Section generate
+The purpose of this section is to specify a count of objects of current type to generate.
+The expected format of record is object type name:count
+
+generate:
+- 'departments = 2'
+- 'employee = 10'
+- 'dept_manager = 2'
+
+
+Section constraints
+In this section you can specify an addional constraints for data generate. These constraints are related to objects generate via types section. Not all data types support these additional constraints. Constraints you can add to int, bigint, float,dinterval, interval, finterval and bool type.
+Supported additional constraints are these =, != , < , >, <= , >= .
+
+types:
+object:
+  first_number: int
+  second_number: int
+constraints:
+- 'object.first_number > 0'
+- 'object.second_number > object.first_number'
+
+
+--- END OF DOCUMENTATION ---
+
+
+--- Example of animals-example.yaml ----
+
+include: []
+generate:
+  - 'animal = auto'
+constraints: []
+types:
+  animal:
+    id: 'seq(1,100,1)'
+    age:
+      - BLOCKS
+      - 'interval(1,4)'
+      - 'interval(5,11)'
+      - 'interval(11,30)'
+    animalType:
+      - BLOCKS
+      - mammal
+      - bird
+      - fish
+      - reptile
+    color:
+      - BLOCKS
+      - white
+      - black
+    dangerous: bool
+schema:
+  animals:
+    id: animal.id
+    age: animal.age
+    animalType: animal.animalType
+    color: animal.color
+    dangerous: animal.dangerous
+
+--- Example of basic-example.yaml ---
+
+include: []
+generate:
+  - 'object = 5'
+constraints:
+  - 'object.first_number > object.second_number'
+types:
+  object:
+    id: 'seq(1,1000,1)'
+    first_number: 'interval(1,100)'
+    second_number: 'interval(1,100)'
+schema:
+  objects:
+    id: object.id
+    first_number: object.first_number
+    second_number: object.second_number
+
+--- Example of combinatorial-constraints.yaml ---
+
+include: []
+generate:
+  - 'position = auto'
+constraints:
+  - 'position.x != position.y'
+  - 'position.y != position.z'
+types:
+  position:
+    x: 'interval(1,100)'
+    y:
+      - BLOCKS
+      - 'interval(1,9)'
+      - 'interval(10,19)'
+      - 'interval(20,29)'
+      - 'interval(30,39)'
+      - 'interval(40,49)'
+      - 'interval(50,99)'
+    z:
+      - BLOCKS
+      - 'interval(1,5)'
+      - 'interval(6,10)'
+schema:
+  positions:
+    x: position.x
+    y: position.y
+    z: position.z
+
+--- Example of demo-combinatorial.yaml ---
+
+include: []
+generate:
+  - 'object = auto'
+constraints: []
+types:
+  object:
+    id: 'seq(1,10000,1)'
+    a:
+      - BLOCKS
+      - A1
+      - A2
+      - A3
+      - A4
+    b:
+      - BLOCKS
+      - B1
+      - B2
+      - B3
+      - B4
+    c:
+      - BLOCKS
+      - C1
+      - C2
+      - C3
+      - C4
+    d:
+      - BLOCKS
+      - D1
+      - D2
+      - D3
+      - D4
+    e:
+      - BLOCKS
+      - E1
+      - E2
+      - E3
+      - E4
+    f:
+      - BLOCKS
+      - F1
+      - F2
+      - F3
+      - F4
+schema:
+  objects:
+    id: object.id
+    a: object.a
+    b: object.b
+    c: object.c
+    d: object.d
+    e: object.e
+    f: object.f
+
+
+--- Example of example-cpu-hard.yaml ---
+
+include: []
+generate:
+  - 'number = 20'
+constraints:
+  - 'number.a > number.b'
+  - 'number.b < number.c'
+  - 'number.c < number.d'
+  - 'number.d = 10'
+  - 'number.a > 20'
+  - 'number.b = number.e'
+types:
+  number:
+    a: 'interval(0,1000000)'
+    b: 'interval(0,1000000)'
+    c: 'interval(0,1000000)'
+    d: 'interval(0,1000000)'
+    e: 'interval(0,1000000)'
+schema:
+  tnumber:
+    a: number.a
+    b: number.b
+    c: number.c
+    d: number.d
+    e: number.e
+
+--- Example of example-db.yaml ---
+
+include:
+  - first_names_cs
+  - last_names_cs
+generate:
+  - 'departments = 2'
+  - 'employee = 10'
+  - 'dept_manager = 2'
+constraints:
+  - 'departments.a > 1'
+  - 'employee.salary.from_date.day = 10'
+  - 'employee.salary.from_date > employee.hire_date'
+  - 'employee.spec.from_date > employee.hire_date'
+  - 'employee.dept_emp.from_date > employee.hire_date'
+  - 'employee.dept_emp.to_date > employee.dept_emp.from_date'
+types:
+  job_specialization:
+    - ORDERED_DATASET
+    - 'Application programmer'
+    - 'System programmer'
+    - 'Web programmer'
+    - Tester
+  departments:
+    dept_no: 'seq(0,100000,1)'
+    dept_name: 'str_len([cC] 3,10)'
+    a: int
+  dept_emp:
+    from_date: 'dinterval(2000-1-1,2016-12-31)'
+    to_date: 'dinterval(2000-1-1,2016-12-31)'
+  salary:
+    from_date: 'dinterval(2000-1-1,2016-12-31)'
+    salary: 'interval(1,4)'
+  specialization:
+    title: job_specialization
+    from_date: 'dinterval(2000-1-1,2016-12-31)'
+  employee:
+    emp_no: 'seq(0,100000,1)'
+    birth_date: 'dinterval(1950-1-1,1997-12-31)'
+    first_name: first_names_cs
+    last_name: last_names_cs
+    email:
+      format: '{}.{}@company.com'
+      values:
+        - employee.first_name
+        - employee.last_name
+    hire_date: 'dinterval(2000-1-1,2016-12-31)'
+    spec: '[specialization]{1,2}'
+    salary: '[salary]{2,10}'
+    dept_emp: '[dept_emp]{1,3}'
+  dept_manager:
+    active: bool
+schema:
+  employees:
+    emp_no: employee.emp_no
+    birth_date: employee.birth_date
+    first_name: employee.first_name
+    last_name: employee.last_name
+    email: employee.email
+    hire_date: employee.hire_date
+  salaries:
+    emp_no: employee.emp_no
+    from_date: employee.salary.from_date
+    salary: employee.salary.salary
+  specialization:
+    emp_no: employee.emp_no
+    title: employee.spec.title
+    from_date: employee.spec.from_date
+  departments:
+    dept_no: departments.dept_no
+    dept_name: departments.dept_name
+  dept_emp:
+    emp_no: employee.emp_no
+    dept_no: 'FROM departments.dept_no'
+    from_date: employee.dept_emp.from_date
+    to_date: employee.dept_emp.to_date
+  dept_manager:
+    emp_no: 'FROM dept_emp.emp_no'
+    dept_no: 'FROM dept_emp.dept_no'
+    from_date: 'FROM dept_emp.from_date'
+    to_date: 'FROM dept_emp.to_date'
+    active: dept_manager.active

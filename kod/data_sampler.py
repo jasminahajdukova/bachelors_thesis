@@ -11,18 +11,21 @@ logging.getLogger("psycopg2").setLevel(logging.WARNING)
 
 logger = logging.getLogger("DATA_SAMPLER")
 logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
 
 def data_samples_templates(table_name: str | None, column_name: str | None) -> str:
     
-    template = f"""SELECT MIN({column_name}), MAX({column_name}), AVG({column_name}), COUNT(DISTINCT {column_name})
-                        FROM {table_name};"""
+    template = f"""SELECT DISTINCT {column_name},
+                        (SELECT MIN({column_name}) FROM {table_name}),
+                        (SELECT MAX({column_name}) FROM {table_name}),
+                        (SELECT COUNT(DISTINCT {column_name}) FROM {table_name})
+                    FROM {table_name}
+                    LIMIT 5;"""
     
     logger.debug(f"Creating SQL query: {template}")
     return template
-
 
 
 def data_samples_templates_postgresql(table_name: str | None, column_name: str | None) -> str:

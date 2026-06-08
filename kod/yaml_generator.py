@@ -110,6 +110,8 @@ def validate_schema(each_schema: str):
             continue
         if isinstance(value, str) and value.startswith("FROM "):
             continue
+        if isinstance(value, list) or isinstance(value,dict):
+            continue
         split_fiction = value.split(".")
         if split_fiction[0] not in types_ds:
             logger.error(f"3. Uknown type {split_fiction[0]}")
