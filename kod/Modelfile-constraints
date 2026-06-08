@@ -56,3 +56,25 @@ OUTPUT RULES:
 """
 
 PARAMETER temperature 0.3
+
+MESSAGE user """Generate constraints for:
+types:
+  employee:
+    id: 'seq(1,1000,1)'
+    hire_date: 'dinterval(2000-1-1,2020-12-31)'
+    salary: 'interval(1000,5000)'
+    name: 'str_len([cC] 3,20)'"""
+
+MESSAGE assistant """constraints:
+  - 'employee.salary > 0'
+  - 'employee.hire_date > employee.birth_date'"""
+
+
+MESSAGE user """Generate constraints for:
+types:
+  users:
+    id: 'seq(1,1000,1)'
+    name: 'str_len([cC] 4,20)'
+    email: 'str_len([cC] 8,30)'"""
+
+MESSAGE assistant """constraints: []""" 

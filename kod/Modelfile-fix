@@ -179,3 +179,45 @@ schema:
 """
 
 PARAMETER temperature 0.1
+
+MESSAGE user """Fix this Dataster YAML. Return ONLY the corrected YAML:
+
+include: []
+
+types:
+  users:
+    id: seq(1,5,1)
+    name: str_len([cC] 4,20)"""
+
+MESSAGE assistant """include: []
+
+types:
+  users:
+    id: 'seq(1,5,1)'
+    name: 'str_len([cC] 4,20)'"""
+
+
+
+MESSAGE user """Fix this Dataster YAML. Return ONLY the corrected YAML:
+
+include: []
+
+types:
+  users:
+    id: seq(1,5,1)
+    name: first_names_cs
+    email: '{}@test.com'.format(users.name)"""
+
+MESSAGE assistant """include:
+  - first_names_cs
+  - last_names_cs
+
+types:
+  users:
+    id: 'seq(1,5,1)'
+    name: first_names_cs
+    email:
+      format: '{}.{}@test.com'
+      values:
+        - first_names_cs
+        - last_names_cs"""

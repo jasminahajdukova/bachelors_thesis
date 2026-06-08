@@ -142,3 +142,24 @@ OUTPUT RULES:
 """
 
 PARAMETER temperature 0.1
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {{'is_pk': true, 'seq': 'seq(MIN,MAX,1)'}} - use the seq value directly as the type
+    
+    Database samples:
+    {"users": {"email": [["jana@test.com", "jana@test.com", "peter@test.com", 3]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else.
+"""
+
+MESSAGE assistant """types:
+  users:
+    email:
+      format: '{}.{}@test.com'
+      values:
+        - first_names_cs
+        - last_names_cs
+"""
