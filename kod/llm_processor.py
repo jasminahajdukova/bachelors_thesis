@@ -121,6 +121,7 @@ def build_generate_prompt(types_section, sql_server_type):
 
 def build_contraints_prompt(types_section, samples, sql_server_type):
     json_data = json.dumps(samples, default=json_decimal)
+    logger.debug(f"Inside build constraints prompt \ntypes_section:={types_section} \njson_data ={json_data}")
     prompt = f"""Generate ONLY the 'constraints:' section for a Dataster YAML from a {sql_server_type} database.
 
     Here are the generated types:
