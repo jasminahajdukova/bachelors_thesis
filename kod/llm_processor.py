@@ -51,7 +51,7 @@ def json_decimal(dec):
 
 
 # pridaj rozsirenie dalsich llm
-def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: str = "yaml-generator-llm"):
+def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: str = "yaml-generator-sql"):
     logger.info(f"Generating SQL query for {sql_server_type}")
     prompt = f"""You are a SQL expert. Generate a valid {sql_server_type} SQL query based on this template for database: {db_name}.
 
