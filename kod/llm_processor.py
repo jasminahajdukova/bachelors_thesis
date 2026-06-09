@@ -1,5 +1,5 @@
 import ollama
-import logging, colorlog, json
+import logging, colorlog, json, datetime
 from decimal import Decimal
 
 handler = colorlog.StreamHandler()
@@ -32,6 +32,9 @@ AVAILABLE_INCLUDES = [
 def json_decimal(dec):
     if isinstance(dec, Decimal):
         return str(dec)
+    if isinstance(dec, datetime.date):
+        return f"{dec.year}-{dec.month}-{dec.day}"
+    return None
 
 # def build_yaml_prompt(samples, sql_server_type):
 #     json_data = json.dumps(samples, default=json_decimal)
@@ -80,7 +83,8 @@ def build_types_prompt(samples, sql_server_type):
     {json_data}
     
     Return ONLY the types section starting with 'types:', nothing else.
-    """ 
+    """
+    logger.debug(f"Inside build types prompt \nPROMP = {prompt}\n")
     return prompt
 
 
@@ -100,6 +104,7 @@ def build_schema_prompt(types_section: str, sql_server_type: str):
     
     Return ONLY the schema section starting with 'schema:', nothing else.
     """
+    logger.debug(f"Inside build schema prompt \nPROMP = {prompt}\n")
     return prompt
 
 
@@ -116,12 +121,12 @@ def build_generate_prompt(types_section, sql_server_type):
     
     Return ONLY the generate section starting with 'generate:', nothing else.
     """
+    logger.debug(f"Inside build generate prompt \nPROMP = {prompt}\n")
     return prompt
 
 
 def build_contraints_prompt(types_section, samples, sql_server_type):
     json_data = json.dumps(samples, default=json_decimal)
-    logger.debug(f"Inside build constraints prompt \ntypes_section:={types_section} \njson_data ={json_data}")
     prompt = f"""Generate ONLY the 'constraints:' section for a Dataster YAML from a {sql_server_type} database.
 
     Here are the generated types:
@@ -143,6 +148,7 @@ def build_contraints_prompt(types_section, samples, sql_server_type):
 
     Return ONLY the constraints section or empty list if no meaningful constraints can be inferred. 
     """
+    logger.debug(f"Inside build constraints prompt \nPROMP = {prompt}\n")
     return prompt
 
 def strip_markdown(content: str) -> str:
@@ -256,5 +262,6 @@ def generate_yaml(samples, sql_server_type):
         f"{generate_content}\n\n"
         f"{constraints_content}"
     )
+    logger.debug(f"Sending yaml to fix. Original YAML = {full_yaml}\n")
     fixed_yaml = generate_yaml_fix(full_yaml)
     return fixed_yaml

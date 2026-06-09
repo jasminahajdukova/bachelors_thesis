@@ -77,3 +77,68 @@ OUTPUT RULES:
 """
 
 PARAMETER temperature 0.3
+
+
+MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.
+    
+    Here are the generated types:
+    types:
+      car_models:
+        model_code: 'seq(1,10,1)'
+        manufacturer_code:
+          - SKODA
+          - VW
+          - BMW
+          - AUDI
+          - TOYOTA
+        model_name:
+          - Octavia
+          - Superb
+          - Golf
+          - Passat
+          - Rad 3
+    
+    Return ONLY the schema section starting with 'schema:', nothing else."""
+
+MESSAGE assistant """schema:
+  car_models:
+    model_code: car_models.model_code
+    manufacturer_code: car_models.manufacturer_code
+    model_name: car_models.model_name"""
+
+
+MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a MySQL database.
+    
+    Here are the generated types:
+    types:
+      Customer_Payments:
+        customer_Payment_ID: 'seq(1,15,1)'
+        car_Sold_ID: 'seq(101,115,1)'
+        customer_ID: 'seq(501,515,1)'
+        payment_Status_Code:
+          - PAID
+          - OVERDUE
+          - PENDING
+        customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
+        customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
+        actual_Payment_Amount: float
+    
+    Rules:
+    - Every column must reference a type as 'typename.attribute'
+    - Schema table names must match exactly the type names
+    - Foreign keys use FROM syntax: 'FROM tablename.column'
+    - NEVER put data types directly in schema
+    
+    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
+    
+    Return ONLY the schema section starting with 'schema:', nothing else."""
+
+MESSAGE assistant """schema:
+  Customer_Payments:
+    customer_Payment_ID: Customer_Payments.customer_Payment_ID
+    car_Sold_ID: Customer_Payments.car_Sold_ID
+    customer_ID: Customer_Payments.customer_ID
+    payment_Status_Code: Customer_Payments.payment_Status_Code
+    customer_Payment_Date_Due: Customer_Payments.customer_Payment_Date_Due
+    customer_Payment_Date_Made: Customer_Payments.customer_Payment_Date_Made
+    actual_Payment_Amount: Customer_Payments.actual_Payment_Amount"""

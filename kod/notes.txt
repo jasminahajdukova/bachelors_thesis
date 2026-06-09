@@ -28,6 +28,13 @@ python3 main.py -d mysql --host 127.0.0.1 --user root --db testdb
 python3 main.py -d postgresql --host 127.0.0.1 --user postgres --db testdb
 
 
+--- tvorenie novej db ---
+docker exec -it mysql-test mysql -u root -p
+
+CREATE DATABASE moja_nova_db;
+USE moja_nova_db;
+CREATE TABLE ...
+
 --- DATASTER DOCUMENTATION ---
 Input configuration YAML
 

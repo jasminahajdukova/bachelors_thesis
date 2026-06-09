@@ -268,3 +268,126 @@ generate:
   - 'users = 100'
 constraints: []
 """
+
+
+MESSAGE user """Fix this Dataster YAML. Return ONLY the corrected YAML:
+
+include: []
+types:
+  car_models:
+    model_code: 'seq(1,10,1)'
+    manufacturer_code: 'FROM manufacturers.manufacturer_code'
+    model_name: 'str_len([cC] 3,50)'
+schema:
+  car_models:
+    model_code: car_models.model_code
+    manufacturer_code: manufacturers.manufacturer_code
+    model_name: car_models.model_name
+generate:
+  - 'car_models = 100'
+"""
+
+
+MESSAGE assistant """
+include: []
+
+types:
+  car_models:
+    model_code: 'seq(1,10,1)'
+    manufacturer_code:
+      - SKODA
+      - VW
+      - BMW
+      - AUDI
+      - TOYOTA
+    model_name:
+      - Octavia
+      - Superb
+      - Golf
+      - Passat
+      - Rad 3
+      - A4
+      - A6
+      - Tiguan
+      - Corolla
+
+schema:
+  car_models:
+    model_code: car_models.model_code
+    manufacturer_code: car_models.manufacturer_code
+    model_name: car_models.model_name
+
+generate:
+  - 'car_models = 10'
+
+constraints: []
+"""
+
+
+
+MESSAGE user """Fix this Dataster YAML. Return ONLY the corrected YAML:
+
+include: []
+
+types:
+  Customer_Payments:
+    customer_Payment_ID: 'seq(1,15,1)'
+    car_Sold_ID: 'seq(101,115,1)'
+    customer_ID: 'seq(501,515,1)'
+    payment_Status_Code:
+      - PAID
+      - OVERDUE
+      - PENDING
+    customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
+    customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
+    actual_Payment_Amount: 'float'
+
+schema:
+  Customer_Payments:
+    customer_Payment_ID: Customer_Payments.customer_Payment_ID
+    car_Sold_ID: Customer_Payments.car_Sold_ID
+    customer_ID: Customer_Payments.customer_ID
+    payment_Status_Code: Customer_Payments.payment_Status_Code
+    customer_Payment_Date_Due: Customer_Payments.customer_Payment_Date_Due
+    customer_Payment_Date_Made: Customer_Payments.customer_Payment_Date_Made
+    actual_Payment_Amount: Customer_Payments.actual_Payment_Amount
+
+generate:
+  - 'Customer_Payments = 15'
+
+constraints:
+  - 'Customer_Payments.customer_Payment_Date_Made <= Customer_Payments.customer_Payment_Date_Due'
+  - 'Customer_Payments.actual_Payment_Amount > 0'
+"""
+
+
+
+MESSAGE assistant """
+include: []
+types:
+  Customer_Payments:
+    customer_Payment_ID: 'seq(1,15,1)'
+    car_Sold_ID: 'seq(101,115,1)'
+    customer_ID: 'seq(501,515,1)'
+    payment_Status_Code:
+      - PAID
+      - OVERDUE
+      - PENDING
+    customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
+    customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
+    actual_Payment_Amount: float
+schema:
+  Customer_Payments:
+    customer_Payment_ID: Customer_Payments.customer_Payment_ID
+    car_Sold_ID: Customer_Payments.car_Sold_ID
+    customer_ID: Customer_Payments.customer_ID
+    payment_Status_Code: Customer_Payments.payment_Status_Code
+    customer_Payment_Date_Due: Customer_Payments.customer_Payment_Date_Due
+    customer_Payment_Date_Made: Customer_Payments.customer_Payment_Date_Made
+    actual_Payment_Amount: Customer_Payments.actual_Payment_Amount
+generate:
+  - 'Customer_Payments = 15'
+constraints:
+  - 'Customer_Payments.customer_Payment_Date_Made <= Customer_Payments.customer_Payment_Date_Due'
+  - 'Customer_Payments.actual_Payment_Amount > 0.0'
+"""

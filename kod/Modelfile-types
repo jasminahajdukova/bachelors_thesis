@@ -184,3 +184,60 @@ types:
       format: '{}@test.com'
       values:
         - users.name"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"car_models": {"model_code": {"is_pk": true, "seq": "seq(1, 10, 1)"}, "manufacturer_code": [["SKODA", "AUDI", "VW", 5], ["VW", "AUDI", "VW", 5], ["BMW", "AUDI", "VW", 5], ["AUDI", "AUDI", "VW", 5], ["TOYOTA", "AUDI", "VW", 5]], "model_name": [["Octavia", "A4", "Superb", 10], ["Superb", "A4", "Superb", 10], ["Golf", "A4", "Superb", 10], ["Passat", "A4", "Superb", 10], ["Rad 3", "A4", "Superb", 10]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else.
+"""
+
+MESSAGE assistant """types:
+  car_models:
+    model_code: 'seq(1,10,1)'
+    manufacturer_code:
+      - SKODA
+      - VW
+      - BMW
+      - AUDI
+      - TOYOTA
+    model_name:
+      - Octavia
+      - Superb
+      - Golf
+      - Passat
+      - 'Rad 3'
+      - A4
+      - A6
+      - Tiguan
+      - Corolla"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"Customer_Payments": {"customer_Payment_ID": {"is_pk": true, "seq": "seq(1, 15, 1)"}, "car_Sold_ID": [[101, 101, 115, 15], [102, 101, 115, 15], [103, 101, 115, 15], [104, 101, 115, 15], [105, 101, 115, 15]], "customer_ID": [[501, 501, 515, 15], [502, 501, 515, 15], [503, 501, 515, 15], [504, 501, 515, 15], [505, 501, 515, 15]], "payment_Status_Code": [["PAID", "OVERDUE", "PENDING", 3], ["PENDING", "OVERDUE", "PENDING", 3], ["OVERDUE", "OVERDUE", "PENDING", 3]], "customer_Payment_Date_Due": [["2026-1-15", "2026-1-15", "2026-7-10", 15], ["2026-1-20", "2026-1-15", "2026-7-10", 15], ["2026-6-20", "2026-1-15", "2026-7-10", 15], ["2026-2-10", "2026-1-15", "2026-7-10", 15], ["2026-5-1", "2026-1-15", "2026-7-10", 15]], "customer_Payment_Date_Made": [["2026-1-14", "2026-1-14", "2026-5-20", 9], ["2026-1-20", "2026-1-14", "2026-5-20", 9], [null, "2026-1-14", "2026-5-20", 9], ["2026-2-12", "2026-1-14", "2026-5-20", 9], ["2026-2-28", "2026-1-14", "2026-5-20", 9]], "actual_Payment_Amount": [["15000.00", "12350.00", "45000.00", 9], ["22500.50", "12350.00", "45000.00", 9], [null, "12350.00", "45000.00", 9], ["18900.00", "12350.00", "45000.00", 9], ["31000.00", "12350.00", "45000.00", 9]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+
+MESSAGE assistant """types:
+  Customer_Payments:
+    customer_Payment_ID: 'seq(1,15,1)'
+    car_Sold_ID: 'seq(101,115,1)'
+    customer_ID: 'seq(501,515,1)'
+    payment_Status_Code:
+      - PAID
+      - OVERDUE
+      - PENDING
+    customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
+    customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
+    actual_Payment_Amount: float"""

@@ -45,3 +45,49 @@ OUTPUT RULES:
 """
 
 PARAMETER temperature 0.3
+
+MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
+    
+    Here are the generated types:
+    types:
+      car_models:
+        model_code: 'seq(1,10,1)'
+        manufacturer_code:
+          - SKODA
+          - VW
+          - BMW
+          - AUDI
+          - TOYOTA
+        model_name:
+          - Octavia
+          - Superb
+          - Golf
+          - Passat
+          - Rad 3
+    
+    Return ONLY the generate section starting with 'generate:', nothing else."""
+
+MESSAGE assistant """generate:
+  - 'car_models = 10'"""
+
+
+MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
+    
+    Here are the generated types:
+    types:
+      Customer_Payments:
+        customer_Payment_ID: 'seq(1,15,1)'
+        car_Sold_ID: 'seq(101,115,1)'
+        customer_ID: 'seq(501,515,1)'
+        payment_Status_Code:
+          - PAID
+          - OVERDUE
+          - PENDING
+        customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
+        customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
+        actual_Payment_Amount: float
+    
+    Return ONLY the generate section starting with 'generate:', nothing else."""
+
+MESSAGE assistant """generate:
+ - 'Customer_Payments = 15'"""

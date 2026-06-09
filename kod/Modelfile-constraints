@@ -78,3 +78,42 @@ types:
     email: 'str_len([cC] 8,30)'"""
 
 MESSAGE assistant """constraints: []""" 
+
+
+MESSAGE user """Generate constraints for:
+types:
+  car_models:
+    model_code: 'seq(1,10,1)'
+    manufacturer_code:
+      - SKODA
+      - VW
+      - BMW
+      - AUDI
+      - TOYOTA
+    model_name:
+      - Octavia
+      - Superb
+      - Golf
+      - Passat
+      - Rad 3"""
+
+MESSAGE assistant """constraints: []"""
+
+
+MESSAGE user """Generate constraints for:
+types:
+  Customer_Payments:
+    customer_Payment_ID: 'seq(1,15,1)'
+    car_Sold_ID: 'seq(101,115,1)'
+    customer_ID: 'seq(501,515,1)'
+    payment_Status_Code:
+      - PAID
+      - OVERDUE
+      - PENDING
+    customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
+    customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
+    actual_Payment_Amount: float"""
+
+MESSAGE assistant """constraints:
+  - 'Customer_Payments.customer_Payment_Date_Made <= Customer_Payments.customer_Payment_Date_Due'
+  - 'Customer_Payments.actual_Payment_Amount > 0.0'"""
