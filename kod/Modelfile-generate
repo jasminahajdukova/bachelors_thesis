@@ -1,4 +1,4 @@
-FROM qwen2.5:7b
+FROM qwen2.5:3b
 
 SYSTEM """
 You are generating a Dataster YAML configuration file for test data generation.
