@@ -75,6 +75,8 @@ def validate_types(each_type: str):
     param_types: list[str] = ["seq", "interval", "dinterval", "finterval", "str_len", "regex"]
     dataset_types: list[str] = includes
 
+    if isinstance(each_type, str): # tohto sa musim zbavit
+        return
     for value in list(each_type.values()):
         if isinstance(value, list):
             continue
@@ -104,6 +106,10 @@ def iterate_types(types: str):
 def validate_schema(each_schema: str):
     if types_ds is None:
         return
+    
+    if isinstance(each_schema, str): # tohto sa musim zbavit
+        return
+
     for value in list(each_schema.values()):
         if value is None:
             logger.error("Schema contains null value")
