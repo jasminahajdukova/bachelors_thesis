@@ -152,7 +152,6 @@ def validate_include(includes: str):
 def validate_constrains(constrains: str):
     if types_ds is None:
         return
-    #print("\n --------------Consstrains---------------\n", constrains, "\n-------------------------------\n")
     logger.debug(f"Constraints: {constrains}")
     for constraint in constrains:
         constraint_split = constraint.split(" ")
