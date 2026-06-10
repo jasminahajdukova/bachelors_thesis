@@ -91,3 +91,21 @@ MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a
 
 MESSAGE assistant """generate:
  - 'Customer_Payments = 15'"""
+
+
+MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
+    
+    Here are the generated types:
+    types:
+      Corporate_Customer:
+        customer_id: seq(1,25,1)
+        company_name: str_len([cC] 10,50)
+        phone_number: regex('\+421[0-9]{9}')
+        credit_score: interval(410,880)
+        date_credit_score_reviewed: dinterval(2025-10-5,2026-5-20)
+        date_credit_class_reviewed: dinterval(2025-10-5,2026-5-20)
+    
+    Return ONLY the generate section starting with 'generate:', nothing else."""
+
+MESSAGE assistant """generate:
+ - 'Corporate_Customer = 25'"""
