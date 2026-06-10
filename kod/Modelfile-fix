@@ -426,4 +426,4 @@ MESSAGE assistant """include: []
 types:
   contacts:
     id: 'seq(1,10,1)'
-    phone: 'regex(''\+421[0-9]{9}'')'"""
+    phone: regex(''\+421[0-9]{9}'')"""
