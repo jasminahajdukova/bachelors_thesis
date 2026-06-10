@@ -64,12 +64,10 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: 
 
             SQL query:"""
     
-    response = ollama.chat(model=model,
-                           messages=[
-                               {'role': 'user', 'content': prompt}
-                           ])
-    logger.debug(f"Generated SQL query: {response.message.content}")
-    return response.message.content
+    response = ollama.generate(model=model,
+                           prompt=prompt)
+    logger.debug(f"Generated SQL query: {response.response}")
+    return response.response
 
 
 def build_types_prompt(samples, sql_server_type):
@@ -78,7 +76,7 @@ def build_types_prompt(samples, sql_server_type):
     Each sample shows values in format:
         - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
         - for primary key column: {{'is_pk': true, 'seq': 'seq(MIN,MAX,1)'}} - use the seq value directly as the type
-    
+      
     Database samples:
     {json_data}
     
@@ -163,14 +161,12 @@ def generate_yaml_generate(types_section, sql_server_type):
     logger.info("Generating YAML 'generate' section")
     prompt = build_generate_prompt(types_section, sql_server_type)
 
-    response = ollama.chat(
+    response = ollama.generate(
         model="yaml-generator-generate",
-        messages=([
-                               {'role': 'user', 'content': prompt}
-                           ])
+        prompt=prompt
     )
-    logger.debug(f"Generated YAML generate: {response.message.content}")
-    generated_yaml = strip_markdown(response.message.content)
+    logger.debug(f"Generated YAML generate: {response.response}")
+    generated_yaml = strip_markdown(response.response)
     return generated_yaml
 
 
@@ -178,29 +174,26 @@ def generate_yaml_schema(types_section, sql_server_type):
     logger.info("Generating YAML 'schema' section")
     prompt = build_schema_prompt(types_section, sql_server_type)
 
-    response = ollama.chat(
+    response = ollama.generate(
         model="yaml-generator-schema",
-        messages=([
-                               {'role': 'user', 'content': prompt}
-                           ])
+        prompt=prompt
     )
-    logger.debug(f"Generated YAML schemas: {response.message.content}")
-    generated_yaml = strip_markdown(response.message.content)
+    logger.debug(f"Generated YAML schemas: {response.response}")
+    generated_yaml = strip_markdown(response.response)
     return generated_yaml
 
 
 def generate_yaml_types(samples, sql_server_type):
     logger.info("Generating YAML 'types' section")
     prompt = build_types_prompt(samples,sql_server_type)
-
-    response = ollama.chat(
+    logger.info(f"PROMPT=\n{prompt}")
+    response = ollama.generate(
         model="yaml-generator-types",
-        messages=([
-                               {'role': 'user', 'content': prompt}
-                           ])
+        prompt=prompt
     )
-    logger.debug(f"Generated YAML types: {response.message.content}")
-    generated_yaml = strip_markdown(response.message.content)
+    
+    logger.info(f"Generated YAML types: {response.response}")
+    generated_yaml = strip_markdown(response.response)
     return generated_yaml
 
 
@@ -220,14 +213,12 @@ def generate_yaml_constraints(types_content, samples, sql_server_type):
     logger.info("Generating YAML 'constraints' section")
     prompt = build_contraints_prompt(types_content, samples, sql_server_type)
 
-    response = ollama.chat(
+    response = ollama.generate(
         model="yaml-generator-constraints",
-        messages=([
-                               {'role': 'user', 'content': prompt}
-                           ])
+        prompt=prompt
     )
-    logger.debug(f"Generated YAML constraints: {response.message.content}")
-    generated_yaml = strip_markdown(response.message.content)
+    logger.debug(f"Generated YAML constraints: {response.response}")
+    generated_yaml = strip_markdown(response.response)
     return generated_yaml
 
 
@@ -237,20 +228,19 @@ def generate_yaml_fix(full_yaml):
 
     {full_yaml}
     """
-    response = ollama.chat(
-        model="yaml-generator-fix",
-        messages=([
-                    {'role': 'user', 'content': prompt}
-                ])
+    response = ollama.generate(
+        model="yaml-generator-constraints",
+        prompt=prompt
     )
-    logger.debug(f"Generated YAML fix: {response.message.content}")
-    generated_yaml = strip_markdown(response.message.content)
+    logger.debug(f"Generated YAML fix: {response.response}")
+    generated_yaml = strip_markdown(response.response)
     return generated_yaml
 
 
 
 def generate_yaml(samples, sql_server_type, skip_fix=False):
     types_content = generate_yaml_types(samples, sql_server_type)
+    logger.info(f"types content:\n{types_content}")
     include_content = generate_yaml_include(types_content)
 
     with ThreadPoolExecutor() as executor:
