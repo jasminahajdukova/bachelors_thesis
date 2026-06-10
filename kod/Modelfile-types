@@ -120,7 +120,8 @@ types:
 TYPES RULES:
 - Generate types for EVERY table in the provided samples, no exceptions
 - Use sample MIN and MAX values to choose realistic ranges for intervals
-- Use dinterval for ALL date columns, NEVER use 'date' type or datetime.date()
+- Use dinterval for ALL date columns, format ALWAYS: dinterval(YYYY-M-D,YYYY-M-D)
+- NEVER use: date, date(), date("Y-m-d"), datetime, datetime.date() — these are INVALID types
 - Date format is ALWAYS: dinterval(YYYY-M-D,YYYY-M-D)
 - str_len categories are ONLY: C (uppercase), c (lowercase), d (digits), s (whitespace), S (special chars)
 - NEVER use regex patterns inside str_len
@@ -139,6 +140,7 @@ TYPES RULES:
 - if COUNT_DISTINCT equals the total row count, it is free text — use string or str_len, NEVER copy sample values as a list
 - for columns like address, street, description, details, notes — use str_len(10,50) or string, NEVER invent dataset names
 - str_len parameters are ONLY two integers: str_len(min_length, max_length) — NEVER put regex or character classes inside str_len
+- if a column contains small integers (COUNT_DISTINCT <= 10) but values are numeric, use interval(MIN,MAX) not str_len
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
@@ -284,3 +286,41 @@ MESSAGE assistant """types:
     contact_id: 'seq(1,10,1)'
     phone_number: 'regex(''\+[0-9]{9,12}'')'
     mobile: 'regex(''0[0-9]{9}'')'"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"Students": {"student_id": {"is_pk": true, "seq": "seq(1, 15, 1)"}, "first_name": [["Lukas", "Adam", "Zuzana", 15]], "last_name": [["Horvath", "Balaz", "Toth", 15]], "date_first_rental": [["2024-9-1", "2022-9-1", "2026-6-1", 15], ["2023-2-15", "2022-9-1", "2026-6-1", 15]], "date_left_university": [["2026-5-30", "2022-9-1", "2026-6-1", 8], [null, "2022-9-1", "2026-6-1", 8]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """types:
+  Students:
+    student_id: 'seq(1,15,1)'
+    first_name: first_names_cs
+    last_name: last_names_cs
+    date_first_rental: 'dinterval(2022-9-1,2026-6-1)'
+    date_left_university: 'dinterval(2022-9-1,2026-6-1)'"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"Plants": {"plant_id": {"is_pk": true, "seq": "seq(1, 60, 1)"}, "plant_hierarchy_id": [[101, 101, 107, 7], [102, 101, 107, 7], [103, 101, 107, 7], [104, 101, 107, 7], [105, 101, 107, 7]], "family_id": [[501, 501, 507, 7], [502, 501, 507, 7], [503, 501, 507, 7], [504, 501, 507, 7], [505, 501, 507, 7]], "plant_details": [["Rosa canina - Vytrval ker, lieiva rastlina.", "Abies alba - Vysoky ihlinaty strom.", "Zea mays - Vysoka mohutna trava.", 60], ["Malus domestica - Ovocny strom.", "Abies alba - Vysoky ihlinaty strom.", "Zea mays - Vysoka mohutna trava.", 60]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """types:
+  Plants:
+    plant_id: 'seq(1,60,1)'
+    plant_hierarchy_id: 'interval(101,107)'
+    family_id: 'interval(501,507)'
+    plant_details: 'str_len(50,255)'"""
+
