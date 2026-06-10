@@ -13,7 +13,7 @@ logging.getLogger("psycopg2").setLevel(logging.WARNING)
 
 logger = logging.getLogger("LLM_PROCESSOR")
 logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 logger.propagate = False
 
 
@@ -68,7 +68,6 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: 
                            messages=[
                                {'role': 'user', 'content': prompt}
                            ])
-    print(f"QUERY MESSAGE = {response.message.content}")
     logger.debug(f"Generated SQL query: {response.message.content}")
     return response.message.content
 
@@ -274,6 +273,6 @@ def generate_yaml(samples, sql_server_type, skip_fix=False):
     if skip_fix:
         logger.info("Skipping YAML fix")
         return full_yaml
-    logger.debug(f"Sending yaml to fix. Original YAML = {full_yaml}\n")
+    logger.info(f"Sending yaml to fix. Original YAML = {full_yaml}\n")
     fixed_yaml = generate_yaml_fix(full_yaml)
     return fixed_yaml
