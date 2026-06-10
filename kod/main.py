@@ -83,7 +83,7 @@ def main():
             logger.error("Db has no data. Cannot generate YAML.")
             disconnect(db_server, server)
             return
-        logger.info(f"Found {len(tables)} tables [{tables}] in {db_name}")
+        logger.info(f"Found {len(tables)} tables {tables} in {db_name}")
 
         samples = {}
         for table in tables:
@@ -101,10 +101,14 @@ def main():
                 if column[3] == "PRI":
                     prime_keys.append(column_name)
 
+            count_result = schema_extractor.mysql_execute_sql(server, f"SELECT COUNT(*) FROM {table_name};")
+            row_count = count_result[0][0]
+            limit = data_sampler.calculate_limit(row_count)
+            logger.info(f"Table {table_name}: {row_count} rows, LIMIT {limit}")
             logger.debug("Entering second column loop")
             for column in columns:
                 column_name = column[0]
-                template = data_sampler.data_samples_templates(table_name, column_name)
+                template = data_sampler.data_samples_templates(table_name, column_name, limit)
                 result = schema_extractor.mysql_execute_sql(server, template)
                 if column_name in prime_keys:
                     logger.debug(f"2nd column loop: prime key: {column_name}")
@@ -124,37 +128,37 @@ def main():
         disconnect(db_server, server)
         
 
-    elif db_server in ("PostgreSQL", "postgresql"):
-        template = schema_extractor.postgresql_query_template(db_name, None, "tables")
-        sql_query = llm_processor.generate_sql_query(template, db_server, db_name)
-        logger.debug(f"Generated SQL query for tables: {sql_query}")
-        tables = schema_extractor.postgre_execute_sql(server, sql_query)
-        if len(tables) == 0:
-            logger.error("Db has no data. Cannot generate YAML.")
-            disconnect(db_server, server)
-            return
-        logger.info(f"Found {len(tables)} tables in {db_name}")
+    # elif db_server in ("PostgreSQL", "postgresql"):
+    #     template = schema_extractor.postgresql_query_template(db_name, None, "tables")
+    #     sql_query = llm_processor.generate_sql_query(template, db_server, db_name)
+    #     logger.debug(f"Generated SQL query for tables: {sql_query}")
+    #     tables = schema_extractor.postgre_execute_sql(server, sql_query)
+    #     if len(tables) == 0:
+    #         logger.error("Db has no data. Cannot generate YAML.")
+    #         disconnect(db_server, server)
+    #         return
+    #     logger.info(f"Found {len(tables)} tables in {db_name}")
 
-        samples = {}
-        for table in tables:
-            table_name = table[0]
-            samples[table_name] = {}
-            logger.info(f"Processing table: {table_name}")
-            column_template = schema_extractor.postgresql_query_template(db_name, table_name, "columns")
-            columns = schema_extractor.postgre_execute_sql(server, column_template)
-            logger.debug(f"Found columns in {table_name}: {[c[3] for c in columns]}")
+    #     samples = {}
+    #     for table in tables:
+    #         table_name = table[0]
+    #         samples[table_name] = {}
+    #         logger.info(f"Processing table: {table_name}")
+    #         column_template = schema_extractor.postgresql_query_template(db_name, table_name, "columns")
+    #         columns = schema_extractor.postgre_execute_sql(server, column_template)
+    #         logger.debug(f"Found columns in {table_name}: {[c[3] for c in columns]}")
 
-            for column in columns:
-                column_name = column[3]
-                template = data_sampler.data_samples_templates_postgresql(table_name, column_name)
-                result = schema_extractor.postgre_execute_sql(server, template)
-                samples[table_name][column_name] = result
+    #         for column in columns:
+    #             column_name = column[3]
+    #             template = data_sampler.data_samples_templates_postgresql(table_name, column_name)
+    #             result = schema_extractor.postgre_execute_sql(server, template)
+    #             samples[table_name][column_name] = result
 
-        logger.info("Sending samples to LLM for YAML generation")
-        yaml_str = llm_processor.generate_yaml(samples, "PostgreSQL", no_fix)
-        logger.debug(f"Generated YAML:\n{yaml_str}")
-        yaml_generator.validate_yaml(yaml_str)
-        disconnect(db_server, server)
+    #     logger.info("Sending samples to LLM for YAML generation")
+    #     yaml_str = llm_processor.generate_yaml(samples, "PostgreSQL", no_fix)
+    #     logger.debug(f"Generated YAML:\n{yaml_str}")
+    #     yaml_generator.validate_yaml(yaml_str)
+    #     disconnect(db_server, server)
     
     
     elapsed = time.time() - start_time
