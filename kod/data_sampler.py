@@ -14,15 +14,18 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 logger.propagate = False
 
+def calculate_limit(row_count):
+    limit = int(row_count * 0.25)
+    return max(5, min(limit,20))
 
-def data_samples_templates(table_name: str | None, column_name: str | None) -> str:
+def data_samples_templates(table_name: str | None, column_name: str | None, limit: int = 5) -> str:
     
     template = f"""SELECT DISTINCT {column_name},
                         (SELECT MIN({column_name}) FROM {table_name}),
                         (SELECT MAX({column_name}) FROM {table_name}),
                         (SELECT COUNT(DISTINCT {column_name}) FROM {table_name})
                     FROM {table_name}
-                    LIMIT 5;"""
+                    LIMIT {limit};"""
     
     logger.debug(f"Creating SQL query: {template}")
     return template
