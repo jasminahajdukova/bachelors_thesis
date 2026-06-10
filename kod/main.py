@@ -1,5 +1,5 @@
 import argparse, getpass,db_connector, data_sampler, llm_processor, schema_extractor, yaml_generator,logging, colorlog
-
+import time
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
@@ -11,7 +11,7 @@ logging.getLogger("psycopg2").setLevel(logging.WARNING)
 
 logger = logging.getLogger("MAIN")
 logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 logger.propagate = False
 
 
@@ -54,6 +54,7 @@ def disconnect(db_server,server):
 
 def main():
 
+    start_time  = time.time()
     args        = parse_arguments()
     db_server   = args.db_server
     host        = args.host
@@ -121,7 +122,7 @@ def main():
         logger.debug(f"Generated YAML:\n{yaml_str}")
         yaml_generator.validate_yaml(yaml_str)
         disconnect(db_server, server)
-        logger.info("Done")
+        
 
     elif db_server in ("PostgreSQL", "postgresql"):
         template = schema_extractor.postgresql_query_template(db_name, None, "tables")
@@ -154,7 +155,13 @@ def main():
         logger.debug(f"Generated YAML:\n{yaml_str}")
         yaml_generator.validate_yaml(yaml_str)
         disconnect(db_server, server)
-        logger.info("Done")
+    
+    
+    elapsed = time.time() - start_time
+    minutes = int(elapsed // 60)
+    seconds = int(elapsed % 60)
+    logger.info(f"Total execution time: {minutes}m {seconds}s")
+    logger.info("Done")
 
 if __name__ == "__main__":
     main()
