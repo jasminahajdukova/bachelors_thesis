@@ -67,7 +67,7 @@ types:
 
 MESSAGE assistant """constraints:
   - 'employee.salary > 0'
-  - 'employee.hire_date > employee.birth_date'"""
+"""
 
 
 MESSAGE user """Generate constraints for:
@@ -117,3 +117,24 @@ types:
 MESSAGE assistant """constraints:
   - 'Customer_Payments.customer_Payment_Date_Made <= Customer_Payments.customer_Payment_Date_Due'
   - 'Customer_Payments.actual_Payment_Amount > 0.0'"""
+
+
+MESSAGE user """Generate constraints for:
+types:
+  Ebola_Victims:
+    Victim_ID: 'seq(1,15,1)'
+    Victim_Status_Code:
+      - CONFIRMED
+      - DECEASED
+      - SUSPECTED
+      - RECOVERED
+    First_Name: first_names_cs
+    Last_Name: last_names_cs
+    Date_First_Suspected: 'dinterval(2025-12-20,2026-5-15)'
+    Date_Confirfmed: 'dinterval(2025-12-22,2026-4-11)'
+    Date_of_Death: 'dinterval(2026-1-20,2026-3-27)'
+    Other_Details: 'str_len(10,100)'"""
+
+MESSAGE assistant """constraints:
+  - 'Ebola_Victims.Date_First_Suspected < Ebola_Victims.Date_Confirfmed'
+  - 'Ebola_Victims.Date_Confirfmed < Ebola_Victims.Date_of_Death'"""

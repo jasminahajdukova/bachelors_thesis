@@ -1,6 +1,7 @@
 import ollama
 import logging, colorlog, json, datetime
 from decimal import Decimal
+from concurrent.futures import ThreadPoolExecutor
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
@@ -169,7 +170,7 @@ def generate_yaml_generate(types_section, sql_server_type):
                                {'role': 'user', 'content': prompt}
                            ])
     )
-    logger.debug(f"Generated YAML schemas: {response.message.content}")
+    logger.debug(f"Generated YAML generate: {response.message.content}")
     generated_yaml = strip_markdown(response.message.content)
     return generated_yaml
 
@@ -226,7 +227,7 @@ def generate_yaml_constraints(types_content, samples, sql_server_type):
                                {'role': 'user', 'content': prompt}
                            ])
     )
-    logger.debug(f"Generated YAML types: {response.message.content}")
+    logger.debug(f"Generated YAML constraints: {response.message.content}")
     generated_yaml = strip_markdown(response.message.content)
     return generated_yaml
 
@@ -249,12 +250,20 @@ def generate_yaml_fix(full_yaml):
 
 
 
-def generate_yaml(samples, sql_server_type):
+def generate_yaml(samples, sql_server_type, skip_fix=False):
     types_content = generate_yaml_types(samples, sql_server_type)
     include_content = generate_yaml_include(types_content)
-    schema_content = generate_yaml_schema(types_content, sql_server_type)
-    generate_content = generate_yaml_generate(types_content, sql_server_type)
-    constraints_content = generate_yaml_constraints(types_content, samples, sql_server_type)
+
+    with ThreadPoolExecutor() as executor:
+        f_schema      = executor.submit(generate_yaml_schema, types_content, sql_server_type)
+        f_generate    = executor.submit(generate_yaml_generate, types_content, sql_server_type)
+        f_constraints = executor.submit(generate_yaml_constraints, types_content, samples, sql_server_type)
+    
+    schema_content      = f_schema.result()
+    generate_content    = f_generate.result()
+    constraints_content = f_constraints.result()
+    
+    
     full_yaml = (
         f"{include_content}\n\n"
         f"{types_content}\n\n"
@@ -262,6 +271,9 @@ def generate_yaml(samples, sql_server_type):
         f"{generate_content}\n\n"
         f"{constraints_content}"
     )
+    if skip_fix:
+        logger.info("Skipping YAML fix")
+        return full_yaml
     logger.debug(f"Sending yaml to fix. Original YAML = {full_yaml}\n")
     fixed_yaml = generate_yaml_fix(full_yaml)
     return fixed_yaml

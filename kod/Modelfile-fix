@@ -391,3 +391,22 @@ constraints:
   - 'Customer_Payments.customer_Payment_Date_Made <= Customer_Payments.customer_Payment_Date_Due'
   - 'Customer_Payments.actual_Payment_Amount > 0.0'
 """
+
+
+MESSAGE user """Fix this Dataster YAML. Return ONLY the corrected YAML:
+
+include: []
+
+types:
+  patients:
+    id: 'seq(1,20,1)'
+    address: address_street_city_country
+    notes: string_free_text"""
+
+MESSAGE assistant """include: []
+
+types:
+  patients:
+    id: 'seq(1,20,1)'
+    address: 'str_len(10,50)'
+    notes: 'str_len(10,100)'"""

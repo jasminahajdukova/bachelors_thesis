@@ -136,6 +136,9 @@ TYPES RULES:
 - for primary key column marked with 'is_pk': use ONLY the seq value, e.g. id: 'seq(1,5,1)'
 - NEVER output 'is_pk' or 'seq' keys in the types section
 - for primary key: extract ONLY the seq value and use it directly, e.g. id: 'seq(1,5,1)'
+- if COUNT_DISTINCT equals the total row count, it is free text — use string or str_len, NEVER copy sample values as a list
+- for columns like address, street, description, details, notes — use str_len(10,50) or string, NEVER invent dataset names
+- str_len parameters are ONLY two integers: str_len(min_length, max_length) — NEVER put regex or character classes inside str_len
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
@@ -241,3 +244,43 @@ MESSAGE assistant """types:
     customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
     customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
     actual_Payment_Amount: float"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"patients": {"patient_id": {"is_pk": true, "seq": "seq(1, 20, 1)"}, "first_name": [["John", "Adam", "Zoe", 20], ["Maria", "Adam", "Zoe", 20]], "middle_name": [["Robert", "Alan", "Zoe", 15], [null, "Alan", "Zoe", 15], ["James", "Alan", "Zoe", 15]], "last_name": [["Smith", "Brown", "Wilson", 20], ["Jones", "Brown", "Wilson", 20]], "address": [["72 High Street, London", "14 Baker Street", "York Road 5", 20], ["Flat 3, Oak Avenue", "14 Baker Street", "York Road 5", 20]], "status_code": [["ACTIVE", "ACTIVE", "INACTIVE", 2], ["INACTIVE", "ACTIVE", "INACTIVE", 2]], "notes": [["Patient shows signs of recovery.", "Allergic to penicillin.", "Transferred to ICU.", 20], ["Awaiting lab results.", "Allergic to penicillin.", "Transferred to ICU.", 20], ["Discharged after observation.", "Allergic to penicillin.", "Transferred to ICU.", 20]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """types:
+  patients:
+    patient_id: 'seq(1,20,1)'
+    first_name: first_names_cs
+    middle_name: first_names_cs
+    last_name: last_names_cs
+    address: 'str_len(10,50)'
+    status_code:
+      - ACTIVE
+      - INACTIVE
+    notes: 'str_len(10,100)'"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"contacts": {"contact_id": {"is_pk": true, "seq": "seq(1, 10, 1)"}, "phone_number": [["+421905111222", "+421902111555", "+421949111000", 10], ["+421911333444", "+421902111555", "+421949111000", 10]], "mobile": [["0905111222", "0902111555", "0949111000", 10], ["0911333444", "0902111555", "0949111000", 10]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """types:
+  contacts:
+    contact_id: 'seq(1,10,1)'
+    phone_number: 'regex(''\+[0-9]{9,12}'')'
+    mobile: 'regex(''0[0-9]{9}'')'"""

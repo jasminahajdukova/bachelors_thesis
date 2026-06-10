@@ -26,6 +26,7 @@ def parse_arguments():
     parser.add_argument("--user", required=True, help="Database user")
     parser.add_argument("--db", required=True, help="Database name")
     parser.add_argument("--no-password", action="store_true", help="Connect without password")
+    parser.add_argument("--no-fix", action="store_true", help="Skip YAML fix step")
     return parser.parse_args()
     
 
@@ -53,18 +54,19 @@ def disconnect(db_server,server):
 
 def main():
 
-    args = parse_arguments()
-    db_server = args.db_server
-    host = args.host
-    user = args.user
-    db_name = args.db
+    args        = parse_arguments()
+    db_server   = args.db_server
+    host        = args.host
+    user        = args.user
+    db_name     = args.db
     no_password = args.no_password
+    no_fix      = args.no_fix
 
     if not check_if_server_exists(db_server):
         return
     
     password = "" if no_password else getpass.getpass("Enter password: ")
-    server = choose_server(db_server, host, user, db_name, password)
+    server   = choose_server(db_server, host, user, db_name, password)
 
     if server is None:
         raise RuntimeError("Couldn't connect to server")
@@ -115,7 +117,7 @@ def main():
                     logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
 
         logger.info("Sending samples to LLM for YAML generation")
-        yaml_str = llm_processor.generate_yaml(samples, "MySQL")
+        yaml_str = llm_processor.generate_yaml(samples, "MySQL", no_fix)
         logger.debug(f"Generated YAML:\n{yaml_str}")
         yaml_generator.validate_yaml(yaml_str)
         disconnect(db_server, server)
@@ -148,7 +150,7 @@ def main():
                 samples[table_name][column_name] = result
 
         logger.info("Sending samples to LLM for YAML generation")
-        yaml_str = llm_processor.generate_yaml(samples, "PostgreSQL")
+        yaml_str = llm_processor.generate_yaml(samples, "PostgreSQL", no_fix)
         logger.debug(f"Generated YAML:\n{yaml_str}")
         yaml_generator.validate_yaml(yaml_str)
         disconnect(db_server, server)
