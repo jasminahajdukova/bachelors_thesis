@@ -138,3 +138,16 @@ types:
 MESSAGE assistant """constraints:
   - 'Ebola_Victims.Date_First_Suspected < Ebola_Victims.Date_Confirfmed'
   - 'Ebola_Victims.Date_Confirfmed < Ebola_Victims.Date_of_Death'"""
+
+
+MESSAGE user """Generate constraints for:
+types:
+  Students:
+    student_id: 'seq(1,15,1)'
+    cell_mobile_number: 'regex(''\+[0-9]{9,12}'')'
+    date_first_rental: 'dinterval(2022-9-1,2026-6-1)'
+    date_left_university: 'dinterval(2022-9-1,2026-6-1)'
+    other_student_details: 'str_len(10,100)'"""
+
+MESSAGE assistant """constraints:
+  - 'Students.date_first_rental <= Students.date_left_university'"""  
