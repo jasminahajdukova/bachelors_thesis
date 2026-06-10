@@ -141,6 +141,10 @@ TYPES RULES:
 - for columns like address, street, description, details, notes — use str_len(10,50) or string, NEVER invent dataset names
 - str_len parameters are ONLY two integers: str_len(min_length, max_length) — NEVER put regex or character classes inside str_len
 - if a column contains small integers (COUNT_DISTINCT <= 10) but values are numeric, use interval(MIN,MAX) not str_len
+- for columns like company_name, firm_name, organization_name — use str_len(10,50), NEVER use first_names_cs or last_names_cs
+- for text columns like name, title, description — ALWAYS use str_len([cC] x,y) with category [cC] to avoid special characters
+- The table name is ALWAYS the top-level key in the database samples JSON — ALWAYS use it as the type name
+- NEVER put column names directly under 'types:' — they must ALWAYS be nested under the table name
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
@@ -324,3 +328,23 @@ MESSAGE assistant """types:
     family_id: 'interval(501,507)'
     plant_details: 'str_len(50,255)'"""
 
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"Corporate_Customer": {"customer_id": {"is_pk": true, "seq": "seq(1, 25, 1)"}, "company_name": [["TechLogix s.r.o.", "Alpha Developer Group", "Zhradn Centrum Garden", 25], ["EuroTrade Slovakia a.s.", "Alpha Developer Group", "Zhradn Centrum Garden", 25], ["AutoServis Jn & synovia", "Alpha Developer Group", "Zhradn Centrum Garden", 25], ["Alpha Developer Group", "Alpha Developer Group", "Zhradn Centrum Garden", 25], ["BioFoods Distribution", "Alpha Developer Group", "Zhradn Centrum Garden", 25], ["StavbaTrend ilina", "Alpha Developer Group", "Zhradn Centrum Garden", 25]], "phone_number": [["+421905123456", "+421902112233", "+421948556677", 25], ["+421911234567", "+421902112233", "+421948556677", 25], ["+421948345678", "+421902112233", "+421948556677", 25], ["+421903456789", "+421902112233", "+421948556677", 25], ["+421915567890", "+421902112233", "+421948556677", 25], ["+421907678901", "+421902112233", "+421948556677", 25]], "credit_score": [[750, 410, 880, 25], [620, 410, 880, 25], [450, 410, 880, 25], [820, 410, 880, 25], [580, 410, 880, 25], [690, 410, 880, 25]], "date_credit_score_reviewed": [["2026-1-15", "2025-10-5", "2026-5-20", 25], ["2026-2-10", "2025-10-5", "2026-5-20", 25], ["2025-11-20", "2025-10-5", "2026-5-20", 25], ["2026-3-1", "2025-10-5", "2026-5-20", 25], ["2026-1-22", "2025-10-5", "2026-5-20", 25], ["2026-4-5", "2025-10-5", "2026-5-20", 25]], "date_credit_class_reviewed": [["2026-1-15", "2025-10-5", "2026-5-20", 25], ["2026-2-11", "2025-10-5", "2026-5-20", 25], ["2025-11-20", "2025-10-5", "2026-5-20", 25], ["2026-3-2", "2025-10-5", "2026-5-20", 25], ["2026-1-22", "2025-10-5", "2026-5-20", 25], ["2026-4-5", "2025-10-5", "2026-5-20", 25]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """types:
+  Corporate_Customer:
+    customer_id: 'seq(1,25,1)'
+    company_name: 'str_len([cC] 10,50)'
+    phone_number: regex(''\+421[0-9]{9}'')
+    credit_score: 'interval(410,880)'
+    date_credit_score_reviewed: 'dinterval(2025-10-5,2026-5-20)'
+    date_credit_class_reviewed: 'dinterval(2025-10-5,2026-5-20)'"""
