@@ -247,6 +247,10 @@ def filter_constraints(constraints_yaml) :
     filtered = []
     invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not', 'IS NOT', 'is null', 'IS NULL']
     for line in lines:
+        logger.info(f"Line = {line.split()}")
+        if (stripped_line := line.split()) and len(stripped_line) == 4 and stripped_line[1].strip("'") == stripped_line[3].strip("'"):
+            logger.info(f"Removing self-referencing contraint: {line.strip()}")
+            continue
         if any(op in line for op in invalid_operators):
             logger.debug(f"Removing invalid constraint: {line.strip()}")
             continue
@@ -291,15 +295,42 @@ def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
     
     return '\n'.join(result)
 
+
+def sort_tables_multi_level(fk_map):
+    remaining_tables = list(fk_map.keys())
+    sorted_tables = []  
+    while remaining_tables:
+        made_progress = False
+        for table in list(remaining_tables):
+            fk_details = fk_map[table]
+            parent_tables = [
+                parent_table for parent_table, _ in fk_details.values()
+            ]
+            if all(parent in sorted_tables for parent in parent_tables):
+                sorted_tables.append(table)
+                remaining_tables.remove(table)
+                made_progress = (
+                    True  
+                )
+
+        if not made_progress:
+            raise ValueError(
+                "Detekovaná cyklická závislosť alebo chýbajúca materská tabuľka!"
+            )
+    logger.info(f"Sorted tables = {sorted_tables}")
+    return sorted_tables
+
 def generate_yaml(samples, sql_server_type, fk_map, skip_fix=False):
-    types_content = generate_yaml_types(samples, sql_server_type)
+    sorted_table_names = sort_tables_multi_level(fk_map)
+    sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
+    types_content = generate_yaml_types(sorted_samples, sql_server_type)
     logger.info(f"types content:\n{types_content}")
     include_content = generate_yaml_include(types_content)
 
     with ThreadPoolExecutor() as executor:
         f_schema      = executor.submit(generate_yaml_schema, fk_map, types_content, sql_server_type)
         f_generate    = executor.submit(generate_yaml_generate, types_content, sql_server_type)
-        f_constraints = executor.submit(generate_yaml_constraints, types_content, samples, sql_server_type)
+        f_constraints = executor.submit(generate_yaml_constraints, types_content, sorted_samples, sql_server_type)
     
     schema_content      = f_schema.result()
     schema_content      = apply_fk_to_schema(schema_content, fk_map)
