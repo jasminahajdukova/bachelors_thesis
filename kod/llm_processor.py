@@ -86,7 +86,7 @@ def build_types_prompt(samples, sql_server_type):
     return prompt
 
 
-def build_schema_prompt(types_section: str, sql_server_type: str):
+def build_schema_prompt(fk_map, types_section: str, sql_server_type: str):
     prompt = f"""Generate ONLY the 'schema:' section for a Dataster YAML from a {sql_server_type} database.
     
     Here are the generated types:
@@ -163,20 +163,22 @@ def generate_yaml_generate(types_section, sql_server_type):
 
     response = ollama.generate(
         model="yaml-generator-generate",
-        prompt=prompt
+        prompt=prompt,
+        think=False
     )
     logger.debug(f"Generated YAML generate: {response.response}")
     generated_yaml = strip_markdown(response.response)
     return generated_yaml
 
 
-def generate_yaml_schema(types_section, sql_server_type):
+def generate_yaml_schema(fk_map, types_section, sql_server_type):
     logger.info("Generating YAML 'schema' section")
-    prompt = build_schema_prompt(types_section, sql_server_type)
+    prompt = build_schema_prompt(fk_map, types_section, sql_server_type)
 
     response = ollama.generate(
         model="yaml-generator-schema",
-        prompt=prompt
+        prompt=prompt,
+        think=False
     )
     logger.debug(f"Generated YAML schemas: {response.response}")
     generated_yaml = strip_markdown(response.response)
@@ -189,7 +191,8 @@ def generate_yaml_types(samples, sql_server_type):
     logger.info(f"PROMPT=\n{prompt}")
     response = ollama.generate(
         model="yaml-generator-types",
-        prompt=prompt
+        prompt=prompt,
+        think=False
     )
     
     logger.info(f"Generated YAML types: {response.response}")
@@ -215,7 +218,8 @@ def generate_yaml_constraints(types_content, samples, sql_server_type):
 
     response = ollama.generate(
         model="yaml-generator-constraints",
-        prompt=prompt
+        prompt=prompt,
+        think=False
     )
     logger.debug(f"Generated YAML constraints: {response.response}")
     generated_yaml = strip_markdown(response.response)
@@ -230,27 +234,78 @@ def generate_yaml_fix(full_yaml):
     """
     response = ollama.generate(
         model="yaml-generator-constraints",
-        prompt=prompt
+        prompt=prompt,
+        think=False
     )
     logger.debug(f"Generated YAML fix: {response.response}")
     generated_yaml = strip_markdown(response.response)
     return generated_yaml
 
 
+def filter_constraints(constraints_yaml) :
+    lines = constraints_yaml.split('\n')
+    filtered = []
+    invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not', 'IS NOT', 'is null', 'IS NULL']
+    for line in lines:
+        if any(op in line for op in invalid_operators):
+            logger.debug(f"Removing invalid constraint: {line.strip()}")
+            continue
+        filtered.append(line)
+    result = '\n'.join(filtered)
+    if result.strip() == 'constraints:':
+        return 'constraints: []'
+    return result
 
-def generate_yaml(samples, sql_server_type, skip_fix=False):
+
+def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
+    logger.info(f"apply_fk_to_schema called with fk_map: {fk_map}")
+    logger.info(f"schema_yaml repr:\n{repr(schema_yaml[:300])}")
+    lines = schema_yaml.split('\n')
+    result = []
+    current_table = None
+    
+    for line in lines:
+        stripped = line.strip()
+        
+
+        if stripped == 'schema:':
+            result.append(line)
+            continue
+
+        indent_count = len(line) - len(line.lstrip())
+        if stripped.endswith(':') and indent_count == 2 and not stripped.startswith('-'):
+            current_table = stripped[:-1]
+            result.append(line)
+            continue
+        
+
+        if current_table and ':' in stripped and indent_count == 4:
+            col_name = stripped.split(':')[0].strip()
+            if current_table in fk_map and col_name in fk_map[current_table]:
+                ref_table, ref_col = fk_map[current_table][col_name]
+                result.append(f"{' ' * indent_count}{col_name}: FROM {ref_table}.{ref_col}")
+                continue
+    
+        result.append(line)
+        
+    
+    return '\n'.join(result)
+
+def generate_yaml(samples, sql_server_type, fk_map, skip_fix=False):
     types_content = generate_yaml_types(samples, sql_server_type)
     logger.info(f"types content:\n{types_content}")
     include_content = generate_yaml_include(types_content)
 
     with ThreadPoolExecutor() as executor:
-        f_schema      = executor.submit(generate_yaml_schema, types_content, sql_server_type)
+        f_schema      = executor.submit(generate_yaml_schema, fk_map, types_content, sql_server_type)
         f_generate    = executor.submit(generate_yaml_generate, types_content, sql_server_type)
         f_constraints = executor.submit(generate_yaml_constraints, types_content, samples, sql_server_type)
     
     schema_content      = f_schema.result()
+    schema_content      = apply_fk_to_schema(schema_content, fk_map)
     generate_content    = f_generate.result()
     constraints_content = f_constraints.result()
+    constraints_content = filter_constraints(constraints_content)
     
     
     full_yaml = (
