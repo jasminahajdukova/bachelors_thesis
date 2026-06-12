@@ -35,7 +35,7 @@ def json_decimal(dec):
         return str(dec)
     if isinstance(dec, datetime.date):
         return f"{dec.year}-{dec.month}-{dec.day}"
-    return None
+    raise TypeError(f"Object of type {type(dec)} is not JSON serializable")
 
 # def build_yaml_prompt(samples, sql_server_type):
 #     json_data = json.dumps(samples, default=json_decimal)
@@ -233,7 +233,7 @@ def generate_yaml_fix(full_yaml):
     {full_yaml}
     """
     response = ollama.generate(
-        model="yaml-generator-constraints",
+        model="yaml-generator-fix",
         prompt=prompt,
         think=False
     )
