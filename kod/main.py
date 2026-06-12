@@ -86,14 +86,23 @@ def main():
         logger.info(f"Found {len(tables)} tables {tables} in {db_name}")
 
         samples = {}
+        fk_map = {}
         for table in tables:
             table_name = table[0]
             samples[table_name] = {}
             logger.info(f"Processing table: {table_name}")
             column_template = schema_extractor.mysql_query_templates(db_name, table_name, "columns")
             columns = schema_extractor.mysql_execute_sql(server, column_template)
-            logger.debug("Found columns in {table_name}: {[c[0] for c in columns]}")
 
+            fk_template = schema_extractor.mysql_query_templates(db_name, table_name, "foreign_keys")
+            fk_result = schema_extractor.mysql_execute_sql(server, fk_template)
+            fk_map[table_name] = {}
+            for row in fk_result:
+                local_col = row[0]
+                ref_table = row[1]
+                ref_col   = row[2]
+                fk_map[table_name][local_col] = (ref_table, ref_col)
+            logger.debug("Found columns in {table_name}: {[c[0] for c in columns]}")
             prime_keys = []
             logger.debug("Entering first column loop")
             for column in columns:
@@ -109,7 +118,9 @@ def main():
             for column in columns:
                 column_name = column[0]
                 template = data_sampler.data_samples_templates(table_name, column_name, limit)
+                
                 result = schema_extractor.mysql_execute_sql(server, template)
+                
                 if column_name in prime_keys:
                     logger.debug(f"2nd column loop: prime key: {column_name}")
                     min_val = result[0][1]
@@ -122,7 +133,7 @@ def main():
                     logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
 
         logger.info("Sending samples to LLM for YAML generation")
-        yaml_str = llm_processor.generate_yaml(samples, "MySQL", no_fix)
+        yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map,  no_fix)
         logger.debug(f"Generated YAML:\n{yaml_str}")
         yaml_generator.validate_yaml(yaml_str)
         disconnect(db_server, server)
