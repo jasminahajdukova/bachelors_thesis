@@ -27,7 +27,14 @@ ollama create yaml-generator-sql -f Modelfile-sql
 python3 main.py -d mysql --host 127.0.0.1 --user root --db testdb
 python3 main.py -d postgresql --host 127.0.0.1 --user postgres --db testdb
 
+
+--- TESTING ---
+
+*** single tables varying sizes ***
 testdb - testdb9
+
+*** 2 tables ***
+testdb10
 --- tvorenie novej db ---
 docker exec -it mysql-test mysql -u root -p
 
