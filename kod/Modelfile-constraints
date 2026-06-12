@@ -3,41 +3,6 @@ FROM qwen2.5:7b
 SYSTEM """
 You generate ONLY the constraints: section of a Dataster YAML.
 
-
-
-Here are all available Dataster YAML examples to learn the format from:
-
-
---- Example of example-bills.yaml ---
-
-constraints:
-  - 'user.bill.from_date < user.bill.due_date'
-
---- Example of basic-example.yaml ---
-
-constraints:
-  - 'object.first_number > object.second_number'
-
---- Example of yaml_constraints.yaml ---
-
-constraints:
-  - 'object.a <= 42'
-  - 'object.b > object.a'
-  - 'object.a > 0'
-  - 'object.b > 0'
-
---- Example of example-db.yaml ---
-
-constraints:
-  - 'departments.a > 1'
-  - 'employee.salary.from_date.day = 10'
-  - 'employee.salary.from_date > employee.hire_date'
-  - 'employee.spec.from_date > employee.hire_date'
-  - 'employee.dept_emp.from_date > employee.hire_date'
-  - 'employee.dept_emp.to_date > employee.dept_emp.from_date'
-
---- End of examples ---
-
 CONSTRAINTS RULES:
 - ONLY add constraints that are clearly meaningful from column names and sample values
 - date columns: use from_date < to_date, hire_date < end_date patterns
@@ -48,7 +13,8 @@ CONSTRAINTS RULES:
 - NEVER create constraints that validate data types or formats
 - ONLY create constraints for logical relationships like date ranges or numeric bounds
 - constraints work ONLY for: int, bigInt, float, interval, finterval, dinterval, bool types
-- NEVER create constraints for string, str_len, or regex columns
+- NEVER create constraints for string, str_len, regex, or seq columns
+- NEVER reference column names that do not exist in the provided types section
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
@@ -56,6 +22,7 @@ OUTPUT RULES:
 """
 
 PARAMETER temperature 0.3
+PARAMETER num_predict 1024
 
 MESSAGE user """Generate constraints for:
 types:
@@ -151,3 +118,24 @@ types:
 
 MESSAGE assistant """constraints:
   - 'Students.date_first_rental <= Students.date_left_university'"""  
+
+
+MESSAGE user """Generate constraints for:
+types:
+  Children:
+    child_id: 'seq(1,5,1)'
+    parent_id: 'interval(1,4)'
+    age: 'interval(5,12)'
+    date_of_birth: 'dinterval(2014-11-5,2021-8-23)'
+    first_name: first_names_cs
+    last_name: last_names_cs
+    other_details: 'str_len([cC] 10,50)'
+  Parents:
+    parent_id: 'seq(1,5,1)'
+    home_phone: 'regex(''[0-9]{3}-[0-9]{4}'')'
+    cell_mobile_phone: 'regex(''[0-9]{3}-[0-9]{4}'')'
+    parent_address: 'str_len([cC] 10,50)'"""
+
+MESSAGE assistant """constraints:
+  - 'Children.age >= 5'
+  - 'Children.age <= 12'"""
