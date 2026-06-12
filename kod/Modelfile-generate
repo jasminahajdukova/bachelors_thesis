@@ -3,37 +3,6 @@ FROM qwen2.5:3b
 SYSTEM """
 You are generating a Dataster YAML configuration file for test data generation.
 
-The purpose of this section is to specify a count of objects of current type to generate.
-The expected format of record is object type name:count
-
-generate:
-- 'departments = 2'
-- 'employee = 10'
-- 'dept_manager = 2'
-
-
-Here are all available Dataster YAML examples to learn the format from:
-
---- Example of basic_dataset_demo.yaml ---
-
-generate:
-  - 'user = 10'   
-
---- Example of example-db.yaml ---
-
-generate:
-  - 'departments = 2'
-  - 'employee = 10'
-  - 'dept_manager = 2'
-
---- Example of animals-example.yaml ----
-
-generate:
-  - 'animal = auto'
-
---- End of examples ---
-
-
 GENERATE RULES:
 - Generate entry for EVERY table in the provided samples
 - ALWAYS wrap values in single quotes: - 'tablename = count'
