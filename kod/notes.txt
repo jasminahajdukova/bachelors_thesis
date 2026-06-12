@@ -2,6 +2,7 @@
 2. llm je velmi pomale cize ako by sa to dalo zrychlit 
 3. implementacia viacero tabuliek
 4. pri seq sa cislo musi rovnat aj generate number
+5. gender by mal byt male a female
 
 na testovanie:
 
