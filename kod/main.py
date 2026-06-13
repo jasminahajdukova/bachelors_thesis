@@ -92,10 +92,12 @@ def main():
             samples[table_name] = {}
             logger.info(f"Processing table: {table_name}")
             column_template = schema_extractor.mysql_query_templates(db_name, table_name, "columns")
-            columns = schema_extractor.mysql_execute_sql(server, column_template)
+            column_sql_query =  llm_processor.generate_sql_query(column_template, db_server, db_name)
+            columns = schema_extractor.mysql_execute_sql(server, column_sql_query)
 
             fk_template = schema_extractor.mysql_query_templates(db_name, table_name, "foreign_keys")
-            fk_result = schema_extractor.mysql_execute_sql(server, fk_template)
+            fk_sql_query = llm_processor.generate_sql_query(fk_template, db_server, db_name)
+            fk_result = schema_extractor.mysql_execute_sql(server, fk_sql_query)
             fk_map[table_name] = {}
             for row in fk_result:
                 local_col = row[0]
@@ -118,7 +120,6 @@ def main():
             for column in columns:
                 column_name = column[0]
                 template = data_sampler.data_samples_templates(table_name, column_name, limit)
-                
                 result = schema_extractor.mysql_execute_sql(server, template)
                 
                 if column_name in prime_keys:
