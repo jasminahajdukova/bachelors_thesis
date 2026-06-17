@@ -55,18 +55,21 @@ def json_decimal(dec):
 
 
 # pridaj rozsirenie dalsich llm
-def generate_sql_query(template: str, sql_server_type: str, db_name: str,model: str = "yaml-generator-sql"):
+def generate_sql_query(template: str, sql_server_type: str, db_name: str, table_name: str | None, model: str = "yaml-generator-sql"):
     logger.info(f"Generating SQL query for {sql_server_type}")
-    prompt = f"""Generate a valid {sql_server_type} SQL query based on this template for database: {db_name}.
+    prompt = f"""Generate a valid {sql_server_type} SQL query based on this template.
+            Database name = {db_name}
+            Database server = {sql_server_type}
+            Table name = {table_name}
 
             Template:
             {template}
 
             SQL query:"""
-    
+    logger.info(f"Generate SQL qury prompt = {prompt}")
     response = ollama.generate(model=model,
                            prompt=prompt)
-    logger.debug(f"Generated SQL query: {response.response}")
+    logger.info(f"Generated SQL query: {response.response}")
     return response.response
 
 
@@ -245,7 +248,8 @@ def generate_yaml_fix(full_yaml):
 def filter_constraints(constraints_yaml) :
     lines = constraints_yaml.split('\n')
     filtered = []
-    invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not', 'IS NOT', 'is null', 'IS NULL']
+    invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not NULL', 'IS NOT NULL', 'is null', 'IS NULL']
+    logger.info("------------------------------------------------------------------------------------------------------------------------------")
     for line in lines:
         logger.info(f"Line = {line.split()}")
         if (stripped_line := line.split()) and len(stripped_line) == 4 and stripped_line[1].strip("'") == stripped_line[3].strip("'"):
@@ -256,6 +260,7 @@ def filter_constraints(constraints_yaml) :
             continue
         filtered.append(line)
     result = '\n'.join(filtered)
+    logger.info("-------------------------------------------------------------------------------------------------------------------------------")
     if result.strip() == 'constraints:':
         return 'constraints: []'
     return result
@@ -297,6 +302,7 @@ def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
 
 
 def sort_tables_multi_level(fk_map):
+    logger.info(f"FK_MAP = {fk_map}")
     remaining_tables = list(fk_map.keys())
     sorted_tables = []  
     while remaining_tables:
@@ -304,7 +310,7 @@ def sort_tables_multi_level(fk_map):
         for table in list(remaining_tables):
             fk_details = fk_map[table]
             parent_tables = [
-                parent_table for parent_table, _ in fk_details.values()
+                parent_table for parent_table, _ in fk_details.values() if parent_table is not None
             ]
             if all(parent in sorted_tables for parent in parent_tables):
                 sorted_tables.append(table)

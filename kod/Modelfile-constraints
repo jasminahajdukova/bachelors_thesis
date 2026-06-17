@@ -122,20 +122,27 @@ MESSAGE assistant """constraints:
 
 MESSAGE user """Generate constraints for:
 types:
+  Parents:
+    parent_id: 'seq(1,5,1)'
+    parent_name: 'str_len([cC] 10,50)'
+    gender: 'interval(1,2)'
+    parent_address: 'str_len(50,100)'
+    home_phone: regex(''555-[0-9]{4}'')
+    cell_mobile_phone: regex(''555-[0-9]{4}'')
+    other_details: 'str_len(10,100)'
   Children:
     child_id: 'seq(1,5,1)'
     parent_id: 'interval(1,4)'
+    gender: 'interval(1,2)'
+    first_name: 'str_len([cC] 10,50)'
+    last_name: 'str_len([cC] 10,50)'
     age: 'interval(5,12)'
     date_of_birth: 'dinterval(2014-11-5,2021-8-23)'
-    first_name: first_names_cs
-    last_name: last_names_cs
-    other_details: 'str_len([cC] 10,50)'
-  Parents:
-    parent_id: 'seq(1,5,1)'
-    home_phone: 'regex(''[0-9]{3}-[0-9]{4}'')'
-    cell_mobile_phone: 'regex(''[0-9]{3}-[0-9]{4}'')'
-    parent_address: 'str_len([cC] 10,50)'"""
+    other_details: 'str_len(10,100)''"""
 
 MESSAGE assistant """constraints:
   - 'Children.age >= 5'
   - 'Children.age <= 12'"""
+
+
+MESSAGE user """

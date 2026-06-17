@@ -24,24 +24,22 @@ def error_check(types: str, table_name: str) -> None:
         raise ValueError(f"Table name is need to search for columns/primary keys")
     
 
-def mysql_query_templates(db_name: str, table_name: str | None, types: str) -> str:
-    
-    error_check(types, table_name)
+def mysql_query_templates(types: str) -> str:
     
     templates_dict = {
-        "tables":  f"""SELECT table_name 
+        "tables":  """SELECT table_name 
                        FROM information_schema.tables 
                        WHERE table_schema = '{db_name}';""",
 
-        "columns": f"""SHOW COLUMNS 
+        "columns": """SHOW COLUMNS 
                        FROM {table_name} 
                        FROM {db_name};""",
 
-        "prime_keys":  f"""SHOW KEYS 
+        "prime_keys":  """SHOW KEYS 
                            FROM {table_name} 
                            WHERE Key_name = 'PRIMARY';""",
 
-        "foreign_keys": f"""SELECT column_name, referenced_table_name, referenced_column_name
+        "foreign_keys": """SELECT column_name, referenced_table_name, referenced_column_name
                             FROM information_schema.KEY_COLUMN_USAGE
                             WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL; """
     }

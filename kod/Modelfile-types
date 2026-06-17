@@ -242,3 +242,39 @@ MESSAGE assistant """types:
     credit_score: 'interval(410,880)'
     date_credit_score_reviewed: 'dinterval(2025-10-5,2026-5-20)'
     date_credit_class_reviewed: 'dinterval(2025-10-5,2026-5-20)'"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+      
+    Database samples:
+    {"Parents": {"parent_id": {"is_pk": true, "seq": "seq(1, 5, 1)"}, "parent_name": [["John Doe", "Emily Davis", "Robert Johnson", 5], ["Jane Smith", "Emily Davis", "Robert Johnson", 5], ["Robert Johnson", "Emily Davis", "Robert Johnson", 5], ["Emily Davis", "Emily Davis", "Robert Johnson", 5], ["Michael Brown", "Emily Davis", "Robert Johnson", 5]], "gender": [["Male", "Female", "Male", 2], ["Female", "Female", "Male", 2]], "parent_address": [["123 Maple St, Springfield", "123 Maple St, Springfield", "789 Pine Ave, Gotham", 5], ["456 Oak Rd, Metropolis", "123 Maple St, Springfield", "789 Pine Ave, Gotham", 5], ["789 Pine Ave, Gotham", "123 Maple St, Springfield", "789 Pine Ave, Gotham", 5], ["321 Elm Blvd, Star City", "123 Maple St, Springfield", "789 Pine Ave, Gotham", 5], ["654 Birch Ln, Central City", "123 Maple St, Springfield", "789 Pine Ave, Gotham", 5]], "home_phone": [["555-0192", "555-0111", "555-0192", 5], ["555-0143", "555-0111", "555-0192", 5], ["555-0177", "555-0111", "555-0192", 5], ["555-0155", "555-0111", "555-0192", 5], ["555-0111", "555-0111", "555-0192", 5]], "cell_mobile_phone": [["555-4321", "555-3456", "555-9812", 5], ["555-8765", "555-3456", "555-9812", 5], ["555-9812", "555-3456", "555-9812", 5], ["555-3456", "555-3456", "555-9812", 5], ["555-6543", "555-3456", "555-9812", 5]], "other_details": [["Prefers email updates", "Authorized for school pickup", "Speaks English and Spanish", 5], ["Emergency contact listed", "Authorized for school pickup", "Speaks English and Spanish", 5], ["No special requirements", "Authorized for school pickup", "Speaks English and Spanish", 5], ["Authorized for school pickup", "Authorized for school pickup", "Speaks English and Spanish", 5], ["Speaks English and Spanish", "Authorized for school pickup", "Speaks English and Spanish", 5]]}, "Children": {"child_id": {"is_pk": true, "seq": "seq(1, 5, 1)"}, "parent_id": [[1, 1, 4, 4], [2, 1, 4, 4], [3, 1, 4, 4], [4, 1, 4, 4]], "gender": [["Male", "Female", "Male", 2], ["Female", "Female", "Male", 2]], "first_name": [["Billy", "Billy", "Tommy", 5], ["Lily", "Billy", "Tommy", 5], ["Tommy", "Billy", "Tommy", 5], ["Sophia", "Billy", "Tommy", 5], ["Ethan", "Billy", "Tommy", 5]], "last_name": [["Doe", "Davis", "Smith", 4], ["Smith", "Davis", "Smith", 4], ["Johnson", "Davis", "Smith", 4], ["Davis", "Davis", "Smith", 4]], "age": [[8, 5, 12, 5], [5, 5, 12, 5], [10, 5, 12, 5], [12, 5, 12, 5], [6, 5, 12, 5]], "date_of_birth": [["2018-4-12", "2014-11-5", "2021-8-23", 5], ["2021-8-23", "2014-11-5", "2021-8-23", 5], ["2016-1-15", "2014-11-5", "2021-8-23", 5], ["2014-11-5", "2014-11-5", "2021-8-23", 5], ["2020-5-30", "2014-11-5", "2021-8-23", 5]], "other_details": [["Allergic to peanuts", "Allergic to peanuts", "Wears glasses", 5], ["Enrolled in soccer league", "Allergic to peanuts", "Wears glasses", 5], ["Wears glasses", "Allergic to peanuts", "Wears glasses", 5], ["Plays piano", "Allergic to peanuts", "Wears glasses", 5], ["Requires afternoon daycare bus", "Allergic to peanuts", "Wears glasses", 5]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """
+types:
+    Parents:
+        parent_id: seq(1,5,1)
+        parent_name: str_len([cC] 10,50)
+        gender:
+          - Male
+          - Female
+        parent_address: str_len(50,100)
+        home_phone: regex(''555-[0-9]{4}'')
+        cell_mobile_phone: regex(''555-[0-9]{4}'')
+        other_details: str_len(10,100)
+    Children:
+        child_id: seq(1,5,1)
+        parent_id: interval(1,4)
+        gender:
+          - Male
+          - Female
+        first_name: str_len([cC] 10,50)
+        last_name: str_len([cC] 10,50)
+        age: interval(5,12)
+        date_of_birth: dinterval(2014-11-5,2021-8-23)
+        other_details: str_len(10,100)
+"""

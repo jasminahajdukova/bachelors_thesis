@@ -73,9 +73,10 @@ def main():
         raise RuntimeError("Couldn't connect to server")
     
     if db_server in ("MySQL", "mysql"):
-        template = schema_extractor.mysql_query_templates(db_name, None, "tables")
+        schema_extractor.error_check("tables", None)
+        template = schema_extractor.mysql_query_templates("tables")
         logger.debug(f"SQL TEMPLATE: {template}")
-        sql_query = llm_processor.generate_sql_query(template, db_server, db_name)
+        sql_query = llm_processor.generate_sql_query(template, db_server, db_name, None)
         logger.debug(f"SQL QUERY: {sql_query}")
         logger.debug(f"Generated SQL query for tables: {sql_query}")
         tables = schema_extractor.mysql_execute_sql(server, sql_query)
@@ -91,20 +92,26 @@ def main():
             table_name = table[0]
             samples[table_name] = {}
             logger.info(f"Processing table: {table_name}")
-            column_template = schema_extractor.mysql_query_templates(db_name, table_name, "columns")
-            column_sql_query =  llm_processor.generate_sql_query(column_template, db_server, db_name)
+            schema_extractor.error_check("columns", table_name)
+            column_template = schema_extractor.mysql_query_templates("columns")
+            column_sql_query =  llm_processor.generate_sql_query(column_template, db_server, db_name, table_name)
             columns = schema_extractor.mysql_execute_sql(server, column_sql_query)
 
-            fk_template = schema_extractor.mysql_query_templates(db_name, table_name, "foreign_keys")
-            fk_sql_query = llm_processor.generate_sql_query(fk_template, db_server, db_name)
+            schema_extractor.error_check("foreign_keys", table_name)
+            fk_template = schema_extractor.mysql_query_templates("foreign_keys")
+            fk_sql_query = llm_processor.generate_sql_query(fk_template, db_server, db_name, table_name)
             fk_result = schema_extractor.mysql_execute_sql(server, fk_sql_query)
             fk_map[table_name] = {}
             for row in fk_result:
                 local_col = row[0]
                 ref_table = row[1]
                 ref_col   = row[2]
+
+                if ref_table is None:
+                    continue
+
                 fk_map[table_name][local_col] = (ref_table, ref_col)
-            logger.debug("Found columns in {table_name}: {[c[0] for c in columns]}")
+            logger.debug(f"Found columns in {table_name}: {[c[0] for c in columns]}")
             prime_keys = []
             logger.debug("Entering first column loop")
             for column in columns:

@@ -12,3 +12,36 @@ RULES:
 """
 
 PARAMETER temperature 0.1
+
+
+MESSAGE user """Generate a valid mysql SQL query based on this template.
+            Database name = testdb10
+            Database server = mysql
+            Table name = Children
+
+            Template:
+            SHOW COLUMNS 
+                       FROM {table_name} 
+                       FROM {db_name};
+
+            SQL query:
+"""
+
+MESSAGE assistant """SHOW COLUMNS FROM Children FROM testdb10;
+"""
+
+
+MESSAGE user """Generate a valid mysql SQL query based on this template.
+            Database name = testdb10
+            Database server = mysql
+            Table name = None
+
+            Template:
+            SELECT table_name
+                       FROM information_schema.tables
+                       WHERE table_schema = '{db_name}';
+
+            SQL query:
+"""
+
+MESSAGE assistant """SELECT table_name FROM information_schema.tables WHERE table_schema = 'testdb10';"""
