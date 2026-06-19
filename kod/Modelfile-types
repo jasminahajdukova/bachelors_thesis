@@ -1,4 +1,4 @@
-FROM qwen3:8b
+FROM qwen2.5:7b
 
 SYSTEM """
 You generate ONLY the types: section of a Dataster YAML.
