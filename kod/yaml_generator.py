@@ -19,9 +19,6 @@ logger.propagate = False
 includes = None
 types_ds = None
 
-# TO DO
-# POZOR CO AK INCLUDE NIE JE PRVE
-# POZOR CO AK TYPES NIE JE PRVE
 
 
 def validate_yaml(yaml_str: str):
