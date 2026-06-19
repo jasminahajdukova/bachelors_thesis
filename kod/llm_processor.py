@@ -67,8 +67,16 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str, table_
 
             SQL query:"""
     logger.info(f"Generate SQL qury prompt = {prompt}")
-    response = ollama.generate(model=model,
+    try:
+        response = ollama.generate(model=model,
                            prompt=prompt)
+    except ollama.ResponseError as exc:
+        logger.error(f"Ollama model error: {exc}")
+        raise RuntimeError(f"SQL query was not generated: {exc}") from exc
+    except ConnectionError as exc:
+        logger.error(f"Ollama is not running: {exc}")
+        raise RuntimeError(f"Ollama is not running: {exc}") from exc
+
     logger.info(f"Generated SQL query: {response.response}")
     return response.response
 
