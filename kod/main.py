@@ -73,80 +73,84 @@ def main():
         raise RuntimeError("Couldn't connect to server")
     
     if db_server in ("MySQL", "mysql"):
-        schema_extractor.error_check("tables", None)
-        template = schema_extractor.mysql_query_templates("tables")
-        logger.debug(f"SQL TEMPLATE: {template}")
-        sql_query = llm_processor.generate_sql_query(template, db_server, db_name, None)
-        logger.debug(f"SQL QUERY: {sql_query}")
-        logger.debug(f"Generated SQL query for tables: {sql_query}")
-        tables = schema_extractor.mysql_execute_sql(server, sql_query)
-        if len(tables) == 0:
-            logger.error("Db has no data. Cannot generate YAML.")
+        try:
+            schema_extractor.error_check("tables", None)
+            template = schema_extractor.mysql_query_templates("tables")
+            logger.debug(f"SQL TEMPLATE: {template}")
+            sql_query = llm_processor.generate_sql_query(template, db_server, db_name, None)
+            logger.debug(f"SQL QUERY: {sql_query}")
+            logger.debug(f"Generated SQL query for tables: {sql_query}")
+            tables = schema_extractor.mysql_execute_sql(server, sql_query)
+            if len(tables) == 0:
+                logger.error("Db has no data. Cannot generate YAML.")
+                disconnect(db_server, server)
+                return
+            logger.info(f"Found {len(tables)} tables {tables} in {db_name}")
+
+            samples = {}
+            fk_map = {}
+            for table in tables:
+                table_name = table[0]
+                samples[table_name] = {}
+                logger.info(f"Processing table: {table_name}")
+                schema_extractor.error_check("columns", table_name)
+                column_template = schema_extractor.mysql_query_templates("columns")
+                column_sql_query =  llm_processor.generate_sql_query(column_template, db_server, db_name, table_name)
+                columns = schema_extractor.mysql_execute_sql(server, column_sql_query)
+
+                schema_extractor.error_check("foreign_keys", table_name)
+                fk_template = schema_extractor.mysql_query_templates("foreign_keys")
+                fk_sql_query = llm_processor.generate_sql_query(fk_template, db_server, db_name, table_name)
+                fk_result = schema_extractor.mysql_execute_sql(server, fk_sql_query)
+                fk_map[table_name] = {}
+                for row in fk_result:
+                    local_col = row[0]
+                    ref_table = row[1]
+                    ref_col   = row[2]
+
+                    if ref_table is None:
+                        continue
+
+                    fk_map[table_name][local_col] = (ref_table, ref_col)
+                logger.debug(f"Found columns in {table_name}: {[c[0] for c in columns]}")
+                prime_keys = []
+                logger.debug("Entering first column loop")
+                for column in columns:
+                    column_name = column[0]
+                    if column[3] == "PRI":
+                        prime_keys.append(column_name)
+
+                count_result = schema_extractor.mysql_execute_sql(server, f"SELECT COUNT(*) FROM {table_name};")
+                row_count = count_result[0][0]
+                limit = data_sampler.calculate_limit(row_count)
+                logger.info(f"Table {table_name}: {row_count} rows, LIMIT {limit}")
+                logger.debug("Entering second column loop")
+                for column in columns:
+                    column_name = column[0]
+                    template = data_sampler.data_samples_templates(table_name, column_name, limit)
+                    result = schema_extractor.mysql_execute_sql(server, template)
+                    
+                    if column_name in prime_keys:
+                        logger.debug(f"2nd column loop: prime key: {column_name}")
+                        min_val = result[0][1]
+                        max_val = result[0][2]
+                        samples[table_name][column_name] = {"is_pk": True, "seq": f"seq({min_val}, {max_val}, 1)"}
+                        logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
+                    else:    
+                        logger.debug(f"2nd column loop: NOT prime key: {column_name}")
+                        samples[table_name][column_name] = result
+                        logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
+
+            logger.info("Sending samples to LLM for YAML generation")
+            yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map,  no_fix)
+            logger.debug(f"Generated YAML:\n{yaml_str}")
+            yaml_generator.validate_yaml(yaml_str)
+            
+        except RuntimeError as exc:
+            logger.error(f"Error: {exc}")
+            
+        finally:
             disconnect(db_server, server)
-            return
-        logger.info(f"Found {len(tables)} tables {tables} in {db_name}")
-
-        samples = {}
-        fk_map = {}
-        for table in tables:
-            table_name = table[0]
-            samples[table_name] = {}
-            logger.info(f"Processing table: {table_name}")
-            schema_extractor.error_check("columns", table_name)
-            column_template = schema_extractor.mysql_query_templates("columns")
-            column_sql_query =  llm_processor.generate_sql_query(column_template, db_server, db_name, table_name)
-            columns = schema_extractor.mysql_execute_sql(server, column_sql_query)
-
-            schema_extractor.error_check("foreign_keys", table_name)
-            fk_template = schema_extractor.mysql_query_templates("foreign_keys")
-            fk_sql_query = llm_processor.generate_sql_query(fk_template, db_server, db_name, table_name)
-            fk_result = schema_extractor.mysql_execute_sql(server, fk_sql_query)
-            fk_map[table_name] = {}
-            for row in fk_result:
-                local_col = row[0]
-                ref_table = row[1]
-                ref_col   = row[2]
-
-                if ref_table is None:
-                    continue
-
-                fk_map[table_name][local_col] = (ref_table, ref_col)
-            logger.debug(f"Found columns in {table_name}: {[c[0] for c in columns]}")
-            prime_keys = []
-            logger.debug("Entering first column loop")
-            for column in columns:
-                column_name = column[0]
-                if column[3] == "PRI":
-                    prime_keys.append(column_name)
-
-            count_result = schema_extractor.mysql_execute_sql(server, f"SELECT COUNT(*) FROM {table_name};")
-            row_count = count_result[0][0]
-            limit = data_sampler.calculate_limit(row_count)
-            logger.info(f"Table {table_name}: {row_count} rows, LIMIT {limit}")
-            logger.debug("Entering second column loop")
-            for column in columns:
-                column_name = column[0]
-                template = data_sampler.data_samples_templates(table_name, column_name, limit)
-                result = schema_extractor.mysql_execute_sql(server, template)
-                
-                if column_name in prime_keys:
-                    logger.debug(f"2nd column loop: prime key: {column_name}")
-                    min_val = result[0][1]
-                    max_val = result[0][2]
-                    samples[table_name][column_name] = {"is_pk": True, "seq": f"seq({min_val}, {max_val}, 1)"}
-                    logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
-                else:    
-                    logger.debug(f"2nd column loop: NOT prime key: {column_name}")
-                    samples[table_name][column_name] = result
-                    logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
-
-        logger.info("Sending samples to LLM for YAML generation")
-        yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map,  no_fix)
-        logger.debug(f"Generated YAML:\n{yaml_str}")
-        yaml_generator.validate_yaml(yaml_str)
-        disconnect(db_server, server)
-        
-
     # elif db_server in ("PostgreSQL", "postgresql"):
     #     template = schema_extractor.postgresql_query_template(db_name, None, "tables")
     #     sql_query = llm_processor.generate_sql_query(template, db_server, db_name)
