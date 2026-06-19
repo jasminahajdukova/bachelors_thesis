@@ -43,29 +43,35 @@ def validate_yaml(yaml_str: str):
 
         logger.debug(f"YAML STR: \n {yaml_str}")
 
-        global includes, types_ds
+        global includes, types_ds # prepisat na lokalne premmene + odovzdanie do funkcie
         stream = yaml.safe_load(yaml_str)
         stream_keys: list[str] = list(stream.keys())
 
         if not all(key in stream_keys for key in ["types", "schema", "generate"]):
             logger.error(f"Schema containes invalid parts")
-        for key in stream_keys:
-            if key == "include":
-                validate_include(stream[key])   
-                includes = stream[key]
-            elif key == "types":
-                iterate_types(stream[key])
-                types_ds = stream[key]
-            elif key == "schema":
-                iterate_schemas(stream[key])
-            elif key == "generate":
-                validate_generate(stream[key])
-            elif key == "constraints":
-                validate_constrains(stream[key])
-            else:
-                logger.error(f"1. Uknown type {key}")
+            raise TypeError("YAML contais invalid parts")
+        
+        if "include" in stream_keys:
+            validate_include(stream["include"])   
+            includes = stream["include"]
+
+        if "types" in stream_keys:
+            iterate_types(stream["types"])
+            types_ds = stream["types"]
+
+        if "schema" in stream_keys:
+            iterate_schemas(stream["schema"])
+        
+        if "generate" in stream_keys:
+            validate_generate(stream["generate"])
+
+        if "constraints" in stream_keys:
+            validate_constrains(stream["constraints"])
+        
         save_yaml(stream)
     except yaml.YAMLError as exc:
+        logger.error(f"Error: {exc}")
+    except TypeError as exc:
         logger.error(f"Error: {exc}")
     
     
