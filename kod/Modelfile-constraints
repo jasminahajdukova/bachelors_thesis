@@ -144,5 +144,3 @@ MESSAGE assistant """constraints:
   - 'Children.age >= 5'
   - 'Children.age <= 12'"""
 
-
-MESSAGE user """
