@@ -91,7 +91,7 @@ def mysql_execute_sql(db_name: MySQLConnection, query):
 
         myresult = mycursor.fetchall()
 
-        logger.debug("MY RESULT", myresult)
+        logger.debug(f"MY RESULT {myresult}")
         
         logger.debug(f"Query returned {len(myresult)} rows")
         return myresult
