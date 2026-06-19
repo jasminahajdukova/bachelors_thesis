@@ -12,6 +12,9 @@ na testovanie:
 4. db s viacerymi tabulkami 
 
 
+na analyzu:
+1. kolko % je spravne syntakticky a semanticky - mohol by byt k tomu aj pekny graf
+
 
 spustenie 
 ollama create yaml-generator-llm -f Modelfile
@@ -25,7 +28,6 @@ ollama create yaml-generator-generate -f Modelfile-generate
 ollama create yaml-generator-constraints -f Modelfile-constraints
 ollama create yaml-generator-fix -f Modelfile-fix
 ollama create yaml-generator-sql -f Modelfile-sql
-python3 main.py -d mysql --host 127.0.0.1 --user root --db testdb
 python3 main.py -d postgresql --host 127.0.0.1 --user postgres --db testdb
 
 
@@ -35,7 +37,11 @@ python3 main.py -d postgresql --host 127.0.0.1 --user postgres --db testdb
 testdb - testdb9
 
 *** 2 tables ***
-testdb10
+testdb10 - testdb14
+
+*** 3 tables ***
+testdb15 - testdb17
+
 --- tvorenie novej db ---
 docker exec -it mysql-test mysql -u root -p
 
