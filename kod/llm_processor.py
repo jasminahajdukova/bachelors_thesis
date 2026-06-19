@@ -172,11 +172,19 @@ def generate_yaml_generate(types_section, sql_server_type):
     logger.info("Generating YAML 'generate' section")
     prompt = build_generate_prompt(types_section, sql_server_type)
 
-    response = ollama.generate(
-        model="yaml-generator-generate",
-        prompt=prompt,
-        think=False
-    )
+
+    try:
+        response = ollama.generate(
+            model="yaml-generator-generate",
+            prompt=prompt,
+            think=False
+        )
+    except ollama.ResponseError as exc:
+        logger.error(f"Ollama model error: {exc}")
+        raise RuntimeError(f"YAML was not generated {exc}") from exc
+    except ConnectionError as exc:
+        logger.error(f"Ollama is not running: {exc}")
+        raise RuntimeError(f"Ollama is not running: {exc}") from exc
     logger.debug(f"Generated YAML generate: {response.response}")
     generated_yaml = strip_markdown(response.response)
     return generated_yaml
@@ -186,11 +194,19 @@ def generate_yaml_schema(fk_map, types_section, sql_server_type):
     logger.info("Generating YAML 'schema' section")
     prompt = build_schema_prompt(fk_map, types_section, sql_server_type)
 
-    response = ollama.generate(
-        model="yaml-generator-schema",
-        prompt=prompt,
-        think=False
-    )
+    try:
+        response = ollama.generate(
+            model="yaml-generator-schema",
+            prompt=prompt,
+            think=False
+        )
+    except ollama.ResponseError as exc:
+        logger.error(f"Ollama model error: {exc}")
+        raise RuntimeError(f"YAML schema was not generated: {exc}") from exc
+    except ConnectionError as exc:
+        logger.error(f"Ollama is not running: {exc}")
+        raise RuntimeError(f"Ollama is not running: {exc}") from exc
+    
     logger.debug(f"Generated YAML schemas: {response.response}")
     generated_yaml = strip_markdown(response.response)
     return generated_yaml
@@ -200,11 +216,19 @@ def generate_yaml_types(samples, sql_server_type):
     logger.info("Generating YAML 'types' section")
     prompt = build_types_prompt(samples,sql_server_type)
     logger.info(f"PROMPT=\n{prompt}")
-    response = ollama.generate(
-        model="yaml-generator-types",
-        prompt=prompt,
-        think=False
-    )
+
+    try:
+        response = ollama.generate(
+            model="yaml-generator-types",
+            prompt=prompt,
+            think=False
+        )
+    except ollama.ResponseError as exc:
+        logger.error(f"Ollama model error: {exc}")
+        raise RuntimeError(f"YAML types was not generated {exc}") from exc
+    except ConnectionError as exc:
+        logger.error(f"Ollama is not running: {exc}")
+        raise RuntimeError(f"Ollama is not running: {exc}") from exc
     
     logger.info(f"Generated YAML types: {response.response}")
     generated_yaml = strip_markdown(response.response)
@@ -227,11 +251,19 @@ def generate_yaml_constraints(types_content, samples, sql_server_type):
     logger.info("Generating YAML 'constraints' section")
     prompt = build_contraints_prompt(types_content, samples, sql_server_type)
 
-    response = ollama.generate(
-        model="yaml-generator-constraints",
-        prompt=prompt,
-        think=False
-    )
+    try:
+        response = ollama.generate(
+            model="yaml-generator-constraints",
+            prompt=prompt,
+            think=False
+        )
+    except ollama.ResponseError as exc:
+        logger.error(f"Ollama model error: {exc}")
+        raise RuntimeError(f"YAML constraints was not generated {exc}") from exc
+    except ConnectionError as exc:
+        logger.error(f"Ollama is not running: {exc}")
+        raise RuntimeError(f"Ollama is not running: {exc}") from exc
+    
     logger.debug(f"Generated YAML constraints: {response.response}")
     generated_yaml = strip_markdown(response.response)
     return generated_yaml
@@ -243,11 +275,20 @@ def generate_yaml_fix(full_yaml):
 
     {full_yaml}
     """
-    response = ollama.generate(
-        model="yaml-generator-fix",
-        prompt=prompt,
-        think=False
-    )
+
+    try:
+        response = ollama.generate(
+            model="yaml-generator-fix",
+            prompt=prompt,
+            think=False
+        )
+    except ollama.ResponseError as exc:
+        logger.error(f"Ollama model error: {exc}")
+        raise RuntimeError(f"YAML fix was not generated: {exc}") from exc
+    except ConnectionError as exc:
+        logger.error(f"Ollama is not running: {exc}")
+        raise RuntimeError(f"Ollama is not running: {exc}") from exc
+    
     logger.debug(f"Generated YAML fix: {response.response}")
     generated_yaml = strip_markdown(response.response)
     return generated_yaml
