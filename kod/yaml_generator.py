@@ -71,7 +71,16 @@ def validate_yaml(yaml_str: str):
     except TypeError as exc:
         logger.error(f"Error: {exc}")
     
-    
+def check_param(value):
+    value_split = re.split(r"\s*[\(\),]\s*", value)
+    logger.info(f"   VALUE SPLIT = {value_split}")
+
+    #  POKRACUJ
+    try:
+        if value_split[0] == "interval" and ("." in value_split[1] or "." in value_split[2]):
+            raise TypeError("Interval expects int values")
+    except TypeError as e:
+        logger.error(f"{e}")
 
 def validate_types(each_type: str):
     basic_types: list[str] = ["int", "bool", "string", "float", "bigInt"]
@@ -81,6 +90,7 @@ def validate_types(each_type: str):
     if isinstance(each_type, str): # tohto sa musim zbavit
         return
     for value in list(each_type.values()):
+        logger.info(f"VALUE = {value}")
         if value is None:
             logger.error(f"Column has null type")
             continue
@@ -91,6 +101,7 @@ def validate_types(each_type: str):
         if value in basic_types:
             continue
         elif any(value.startswith(whatever) for whatever in param_types):
+            check_param(value)
             continue
         elif dataset_types is not None and value in dataset_types:
             continue
