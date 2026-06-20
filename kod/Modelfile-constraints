@@ -23,6 +23,9 @@ OUTPUT RULES:
 
 PARAMETER temperature 0.3
 PARAMETER num_predict 1024
+PARAMETER top_k 40
+PARAMETER repeat_penalty 1.1
+PARAMETER top_p 0.1
 
 MESSAGE user """Generate constraints for:
 types:
