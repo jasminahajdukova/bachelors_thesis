@@ -4,6 +4,12 @@
 4. pri seq sa cislo musi rovnat aj generate number
 5. gender by mal byt male a female
 
+na zamyslenie:
+1. bolo by dobre keby sa llm pozrelo aj na kontext nejakych txt informacii
+2. ked su tabulky roznymi vztahmi ako to spravit ? da sa to vobec riesit ? ako napr ze dieta moze mat jedneho rodica ale rodic moze mat viac deti 
+3. pri types by sa zisla ja valdacia ze napr finterval ma len float a ze arg interval min value < max value
+4. nie je lepsie predat opravaju yaml z llm_processor do yaml_generate + yaml generate by namiesto nahlasenia chyby ich mohol opravit (ak su opravitelne)
+
 na testovanie:
 
 1. db bez tabuliek
