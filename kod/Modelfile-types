@@ -58,7 +58,8 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
     Return ONLY the types section starting with 'types:', nothing else.
 """
 
-MESSAGE assistant """types:
+MESSAGE assistant """
+types:
   users:
     email:
       format: '{}.{}@test.com'
@@ -100,7 +101,8 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
     Return ONLY the types section starting with 'types:', nothing else.
 """
 
-MESSAGE assistant """types:
+MESSAGE assistant """
+types:
   car_models:
     model_code: 'seq(1,10,1)'
     manufacturer_code:
@@ -132,7 +134,8 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
     Return ONLY the types section starting with 'types:', nothing else."""
 
 
-MESSAGE assistant """types:
+MESSAGE assistant """
+types:
   Customer_Payments:
     customer_Payment_ID: 'seq(1,15,1)'
     car_Sold_ID: 'seq(101,115,1)'
@@ -156,7 +159,8 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
     
     Return ONLY the types section starting with 'types:', nothing else."""
 
-MESSAGE assistant """types:
+MESSAGE assistant """
+types:
   patients:
     patient_id: 'seq(1,20,1)'
     first_name: first_names_cs
@@ -179,7 +183,8 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
     
     Return ONLY the types section starting with 'types:', nothing else."""
 
-MESSAGE assistant """types:
+MESSAGE assistant """
+types:
   contacts:
     contact_id: 'seq(1,10,1)'
     phone_number: 'regex(''\+[0-9]{9,12}'')'
@@ -196,7 +201,8 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
     
     Return ONLY the types section starting with 'types:', nothing else."""
 
-MESSAGE assistant """types:
+MESSAGE assistant """
+types:
   Students:
     student_id: 'seq(1,15,1)'
     first_name: first_names_cs
@@ -215,7 +221,8 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
     
     Return ONLY the types section starting with 'types:', nothing else."""
 
-MESSAGE assistant """types:
+MESSAGE assistant """
+types:
   Plants:
     plant_id: 'seq(1,60,1)'
     plant_hierarchy_id: 'interval(101,107)'
@@ -234,7 +241,8 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
     
     Return ONLY the types section starting with 'types:', nothing else."""
 
-MESSAGE assistant """types:
+MESSAGE assistant """
+types:
   Corporate_Customer:
     customer_id: 'seq(1,25,1)'
     company_name: 'str_len([cC] 10,50)'
@@ -257,24 +265,39 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
 MESSAGE assistant """
 types:
   Parents:
-      parent_id: seq(1,5,1)
-      parent_name: str_len([cC] 10,50)
-      gender:
-        - Male
-        - Female
-      parent_address: str_len(50,100)
-      home_phone: regex(''555-[0-9]{4}'')
-      cell_mobile_phone: regex(''555-[0-9]{4}'')
-      other_details: str_len(10,100)
+    parent_id: seq(1,5,1)
+    parent_name: str_len([cC] 10,50)
+    gender:
+      - Male
+      - Female
+    parent_address: str_len(50,100)
+    home_phone: regex(''555-[0-9]{4}'')
+    cell_mobile_phone: regex(''555-[0-9]{4}'')
+    other_details: str_len(10,100)
   Children:
-      child_id: seq(1,5,1)
-      parent_id: interval(1,4)
-      gender:
-        - Male
-        - Female
-      first_name: str_len([cC] 10,50)
-      last_name: str_len([cC] 10,50)
-      age: interval(5,12)
-      date_of_birth: dinterval(2014-11-5,2021-8-23)
-      other_details: str_len(10,100)
+    child_id: seq(1,5,1)
+    parent_id: interval(1,4)
+    gender:
+      - Male
+      - Female
+    first_name: str_len([cC] 10,50)
+    last_name: str_len([cC] 10,50)
+    age: interval(5,12)
+    date_of_birth: dinterval(2014-11-5,2021-8-23)
+    other_details: str_len(10,100)
 """
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"Product_Categories": {"Cost_per_1_lb": [["0.90", "0.90", "6.00", 5], ["2.50", "0.90", "6.00", 5], ["1.20", "0.90", "6.00", 5], ["6.00", "0.90", "6.00", 5], ["1.80", "0.90", "6.00", 5]]}}
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """
+types:
+  Product_Categories:
+    Cost_per_1_lb: finterval(0.90, 6.00)"""
