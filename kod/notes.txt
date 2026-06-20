@@ -21,6 +21,9 @@ ollama create yaml-generator-llm -f Modelfile
 ollama list
 ollama show yaml-generator-llm --modelfile
 
+-- ked nejde dataster ---
+thisisunsafe
+
 
 ollama create yaml-generator-types -f Modelfile-types
 ollama create yaml-generator-schema -f Modelfile-schema
@@ -28,6 +31,7 @@ ollama create yaml-generator-generate -f Modelfile-generate
 ollama create yaml-generator-constraints -f Modelfile-constraints
 ollama create yaml-generator-fix -f Modelfile-fix
 ollama create yaml-generator-sql -f Modelfile-sql
+python3 main.py -d mysql --host 127.0.0.1 --user root --db testdb --no-fix
 python3 main.py -d postgresql --host 127.0.0.1 --user postgres --db testdb
 
 
@@ -40,7 +44,7 @@ testdb - testdb9
 testdb10 - testdb14
 
 *** 3 tables ***
-testdb15 - testdb17
+testdb15 - testdb18
 
 --- tvorenie novej db ---
 docker exec -it mysql-test mysql -u root -p

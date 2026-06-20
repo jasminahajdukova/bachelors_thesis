@@ -134,8 +134,14 @@ def main():
                         logger.debug(f"2nd column loop: prime key: {column_name}")
                         min_val = result[0][1]
                         max_val = result[0][2]
-                        samples[table_name][column_name] = {"is_pk": True, "seq": f"seq({min_val}, {max_val}, 1)"}
-                        logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
+                        try:
+                            float(min_val)
+                            float(max_val)
+                            samples[table_name][column_name] = {"is_pk": True, "seq": f"seq({min_val}, {max_val}, 1)"}
+                            logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
+                        except (ValueError, TypeError):
+                            samples[table_name][column_name] = result
+                            
                     else:    
                         logger.debug(f"2nd column loop: NOT prime key: {column_name}")
                         samples[table_name][column_name] = result
