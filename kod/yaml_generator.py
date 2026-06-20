@@ -81,6 +81,9 @@ def validate_types(each_type: str):
     if isinstance(each_type, str): # tohto sa musim zbavit
         return
     for value in list(each_type.values()):
+        if value is None:
+            logger.error(f"Column has null type")
+            continue
         if isinstance(value, list):
             continue
         if isinstance(value,dict):
