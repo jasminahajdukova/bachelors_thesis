@@ -238,6 +238,7 @@ def generate_yaml_fix(full_yaml):
 def filter_constraints(constraints_yaml) :
     lines = constraints_yaml.split('\n')
     filtered = []
+    # in the future check in/IN
     invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not NULL', 'IS NOT NULL', 'is null', 'IS NULL', ' in ', ' IN ']
     logger.info("------------------------------------------------------------------------------------------------------------------------------")
     for line in lines:
