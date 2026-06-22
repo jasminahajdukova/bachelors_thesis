@@ -139,7 +139,6 @@ def main():
                     fk_map[table_name][local_col] = (ref_table, ref_col)
                 logger.debug(f"Found columns in {table_name}: {[c[0] for c in columns]}")
                 prime_keys = []
-                logger.debug("Entering first column loop")
 
                 count_result = schema_extractor.execute_sql(server, f"SELECT COUNT(*) FROM {table_name};")
                 prime_key_template = schema_extractor.mysql_query_templates("prime_keys")
