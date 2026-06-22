@@ -69,7 +69,7 @@ def check_ollama_models():
 
     missing_models = [ model for model in required_models if model not in found_models]
     if missing_models:
-        logger.error(f"Ollama is missing one of reqeuired models: {missing_models}")
+        logger.error(f"Ollama is missing one of required models: {missing_models}")
         return False
     
     logger.info("Ollama is running with all required models")
