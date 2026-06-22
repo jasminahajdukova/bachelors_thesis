@@ -1,0 +1,7 @@
+- databaza: testdb1
+
+- vygenerovany yaml:
+
+- log:
+
+- vysledok dataster:
