@@ -1,0 +1,307 @@
+- databaza: testdb17
+
+
+FIX
+
+- vygenerovany yaml:
+include: []
+types:
+    Star_Ratings:
+        Star_Rating_Code: str_len([cC] 10,20)
+        Star_Rating_Image: string
+    Hotels:
+        Hotel_ID: seq(1,50,1)
+        ISO_Country_Code: str_len([cC] 3,3)
+        Star_Rating_Code: str_len([cC] 10,20)
+        Hotel_Name: str_len([cC] 10,50)
+        Other_Details: str_len(10,100)
+    Rooms:
+        Room_Nr: seq(101,902,1)
+        Hotel_ID: seq(1,35,1)
+        Room_Type_Code: str_len([cC] 10,20)
+        Other_Details: str_len(10,100)
+schema:
+    Star_Ratings:
+        Star_Rating_Code: Star_Ratings.Star_Rating_Code
+        Star_Rating_Image: Star_Ratings.Star_Rating_Image
+    Hotels:
+        Hotel_ID: Hotels.Hotel_ID
+        ISO_Country_Code: Hotels.ISO_Country_Code
+        Star_Rating_Code: FROM Star_Ratings.Star_Rating_Code
+        Hotel_Name: Hotels.Hotel_Name
+        Other_Details: Hotels.Other_Details
+    Rooms:
+        Room_Nr: Rooms.Room_Nr
+        Hotel_ID: FROM Hotels.Hotel_ID
+        Room_Type_Code: Rooms.Room_Type_Code
+        Other_Details: Rooms.Other_Details
+generate:
+- Star_Ratings = 50
+- Hotels = 50
+- Rooms = 35
+constraints: []
+
+- log:
+
+
+2026-06-23 00:29:56  INFO: DB_CONNECTOR:Connection to MySQL successful
+2026-06-23 00:29:56  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-23 00:29:56  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb17
+            Database server = mysql
+            Table name = None
+
+            Template:
+            SELECT table_name 
+                       FROM information_schema.tables 
+                       WHERE table_schema = '{db_name}';
+
+            SQL query:
+2026-06-23 00:30:04  INFO: LLM_PROCESSOR:Generated SQL query: SELECT table_name FROM information_schema.tables WHERE table_schema = 'testdb17';
+2026-06-23 00:30:04  INFO: MAIN: Found 3 tables [('Hotels',), ('Rooms',), ('Star_Ratings',)] in testdb17
+2026-06-23 00:30:04  INFO: MAIN: Processing table: Hotels
+2026-06-23 00:30:04  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-23 00:30:04  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb17
+            Database server = mysql
+            Table name = Hotels
+
+            Template:
+            SHOW COLUMNS 
+                       FROM {table_name} 
+                       FROM {db_name};
+
+            SQL query:
+2026-06-23 00:30:05  INFO: LLM_PROCESSOR:Generated SQL query: SHOW COLUMNS FROM Hotels FROM testdb17;
+2026-06-23 00:30:05  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-23 00:30:05  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb17
+            Database server = mysql
+            Table name = Hotels
+
+            Template:
+            SELECT column_name, referenced_table_name, referenced_column_name
+                            FROM information_schema.KEY_COLUMN_USAGE
+                            WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL; 
+
+            SQL query:
+2026-06-23 00:30:08  INFO: LLM_PROCESSOR:Generated SQL query: SELECT column_name, referenced_table_name, referenced_column_name FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema = 'testdb17' AND table_name = 'Hotels';
+2026-06-23 00:30:08  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-23 00:30:08  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb17
+            Database server = mysql
+            Table name = Hotels
+
+            Template:
+            SHOW KEYS 
+                           FROM {table_name} 
+                           WHERE Key_name = 'PRIMARY';
+
+            SQL query:
+2026-06-23 00:30:10  INFO: LLM_PROCESSOR:Generated SQL query: SHOW KEYS FROM Hotels WHERE Key_name = 'PRIMARY';
+2026-06-23 00:30:10  INFO: MAIN: Table Hotels: 50 rows, LIMIT 12
+2026-06-23 00:30:10  INFO: MAIN: Processing table: Rooms
+2026-06-23 00:30:10  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-23 00:30:10  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb17
+            Database server = mysql
+            Table name = Rooms
+
+            Template:
+            SHOW COLUMNS 
+                       FROM {table_name} 
+                       FROM {db_name};
+
+            SQL query:
+2026-06-23 00:30:11  INFO: LLM_PROCESSOR:Generated SQL query: SHOW COLUMNS FROM Rooms FROM testdb17;
+2026-06-23 00:30:11  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-23 00:30:11  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb17
+            Database server = mysql
+            Table name = Rooms
+
+            Template:
+            SELECT column_name, referenced_table_name, referenced_column_name
+                            FROM information_schema.KEY_COLUMN_USAGE
+                            WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL; 
+
+            SQL query:
+2026-06-23 00:30:12  INFO: LLM_PROCESSOR:Generated SQL query: SELECT column_name, referenced_table_name, referenced_column_name FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema = 'testdb17' AND table_name = 'Rooms';
+2026-06-23 00:30:12  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-23 00:30:12  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb17
+            Database server = mysql
+            Table name = Rooms
+
+            Template:
+            SHOW KEYS 
+                           FROM {table_name} 
+                           WHERE Key_name = 'PRIMARY';
+
+            SQL query:
+2026-06-23 00:30:12  INFO: LLM_PROCESSOR:Generated SQL query: SHOW KEYS FROM Rooms WHERE Key_name = 'PRIMARY';
+2026-06-23 00:30:12  INFO: MAIN: Table Rooms: 50 rows, LIMIT 12
+2026-06-23 00:30:12  INFO: MAIN: Processing table: Star_Ratings
+2026-06-23 00:30:12  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-23 00:30:12  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb17
+            Database server = mysql
+            Table name = Star_Ratings
+
+            Template:
+            SHOW COLUMNS 
+                       FROM {table_name} 
+                       FROM {db_name};
+
+            SQL query:
+2026-06-23 00:30:13  INFO: LLM_PROCESSOR:Generated SQL query: SHOW COLUMNS FROM Star_Ratings FROM testdb17;
+2026-06-23 00:30:13  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-23 00:30:13  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb17
+            Database server = mysql
+            Table name = Star_Ratings
+
+            Template:
+            SELECT column_name, referenced_table_name, referenced_column_name
+                            FROM information_schema.KEY_COLUMN_USAGE
+                            WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL; 
+
+            SQL query:
+2026-06-23 00:30:15  INFO: LLM_PROCESSOR:Generated SQL query: SELECT column_name, referenced_table_name, referenced_column_name FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema = 'testdb17' AND table_name = 'Star_Ratings';
+2026-06-23 00:30:15  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-23 00:30:15  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb17
+            Database server = mysql
+            Table name = Star_Ratings
+
+            Template:
+            SHOW KEYS 
+                           FROM {table_name} 
+                           WHERE Key_name = 'PRIMARY';
+
+            SQL query:
+2026-06-23 00:30:15  INFO: LLM_PROCESSOR:Generated SQL query: SHOW KEYS FROM Star_Ratings WHERE Key_name = 'PRIMARY';
+2026-06-23 00:30:15  INFO: MAIN: Table Star_Ratings: 5 rows, LIMIT 5
+2026-06-23 00:30:15  INFO: MAIN: Sending samples to LLM for YAML generation
+2026-06-23 00:30:15  INFO: LLM_PROCESSOR:FK_MAP = {'Hotels': {'Star_Rating_Code': ('Star_Ratings', 'Star_Rating_Code')}, 'Rooms': {'Hotel_ID': ('Hotels', 'Hotel_ID')}, 'Star_Ratings': {}}
+2026-06-23 00:30:15  INFO: LLM_PROCESSOR:Sorted tables = ['Star_Ratings', 'Hotels', 'Rooms']
+2026-06-23 00:30:15  INFO: LLM_PROCESSOR:Generating YAML 'types' section
+2026-06-23 00:30:15  INFO: LLM_PROCESSOR:PROMPT=
+Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+      
+    Database samples:
+    {"Star_Ratings": {"Star_Rating_Code": [["1_STAR", "1_STAR", "5_STAR", 5], ["2_STAR", "1_STAR", "5_STAR", 5], ["3_STAR", "1_STAR", "5_STAR", 5], ["4_STAR", "1_STAR", "5_STAR", 5], ["5_STAR", "1_STAR", "5_STAR", 5]], "Star_Rating_Image": [["star_1.png", "star_1.png", "star_5.png", 5], ["star_2.png", "star_1.png", "star_5.png", 5], ["star_3.png", "star_1.png", "star_5.png", 5], ["star_4.png", "star_1.png", "star_5.png", 5], ["star_5.png", "star_1.png", "star_5.png", 5]]}, "Hotels": {"Hotel_ID": {"is_pk": true, "seq": "seq(1, 50, 1)"}, "ISO_Country_Code": [["USA", "ARE", "ZAF", 42], ["CAN", "ARE", "ZAF", 42], ["GBR", "ARE", "ZAF", 42], ["FRA", "ARE", "ZAF", 42], ["DEU", "ARE", "ZAF", 42], ["AUS", "ARE", "ZAF", 42], ["JPN", "ARE", "ZAF", 42], ["BRA", "ARE", "ZAF", 42], ["ESP", "ARE", "ZAF", 42], ["ITA", "ARE", "ZAF", 42], ["ZAF", "ARE", "ZAF", 42], ["ARE", "ARE", "ZAF", 42]], "Star_Rating_Code": [["3_STAR", "3_STAR", "5_STAR", 3], ["4_STAR", "3_STAR", "5_STAR", 3], ["5_STAR", "3_STAR", "5_STAR", 3]], "Hotel_Name": [["The Grand Plaza", "Alps View Chalet", "Vienna Opera Manor", 50], ["Urban Stay Suites", "Alps View Chalet", "Vienna Opera Manor", 50], ["Metro Inn & Suites", "Alps View Chalet", "Vienna Opera Manor", 50], ["Maple Leaf Resort", "Alps View Chalet", "Vienna Opera Manor", 50], ["Bayside Lodge", "Alps View Chalet", "Vienna Opera Manor", 50], ["Royal Crown Hotel", "Alps View Chalet", "Vienna Opera Manor", 50], ["Thames Comfort Inn", "Alps View Chalet", "Vienna Opera Manor", 50], ["Luxe Parisian Resort", "Alps View Chalet", "Vienna Opera Manor", 50], ["Hotel de Lumiere", "Alps View Chalet", "Vienna Opera Manor", 50], ["Berlin Central Hub", "Alps View Chalet", "Vienna Opera Manor", 50], ["Alps View Chalet", "Alps View Chalet", "Vienna Opera Manor", 50], ["Sydney Harbour Heights", "Alps View Chalet", "Vienna Opera Manor", 50]], "Other_Details": [["Luxury downtown property", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Boutique hotel near transit", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Business class amenities", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Alpine ski lodge layout", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Waterfront tourist property", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Historic boutique property", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Budget corporate accommodation", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Champs-lyses luxury standard", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Charming historical district", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Modern convention center hotel", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Seasonal tourist basecamp", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50], ["Iconic waterfront view hotel", "Adriatic sea views inside fortress", "Wildlife reserve lodging", 50]]}, "Rooms": {"Room_Nr": {"is_pk": true, "seq": "seq(101, 902, 1)"}, "Hotel_ID": {"is_pk": true, "seq": "seq(1, 35, 1)"}, "Room_Type_Code": [["DELUXE_KING", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["DELUXE_QUEEN", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["SUITE_PRES", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["STANDARD_KING", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["STANDARD_TWIN", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["STUDIO_QUEEN", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["COMPACT_DOUBLE", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["ALPINE_SUITE", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["CHALET_TWIN", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["CABIN_KING", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["CABIN_FAMILY", "ALL_INC_FAMILY", "TOWER_SUITE", 49], ["HERITAGE_QUEEN", "ALL_INC_FAMILY", "TOWER_SUITE", 49]], "Other_Details": [["Ocean view balcony, mini bar access", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["Double queen layout, pool view", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["Penthouse tier, private hot tub", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["Courtyard view, workspace desk", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["Two twin beds, street side view", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["Kitchenette included, long stay option", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["Economy business traveler layout", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["High floor, complimentary WiFi", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["Fireplace, mountain ridge view", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["Ski-in ski-out locker access room", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["Waterfront porch, rustic logs", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50], ["Bunk beds, lakeside beach access", "Antique furniture restoration styling", "Waterfront porch, rustic logs", 50]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else.
+    
+2026-06-23 00:33:09  INFO: LLM_PROCESSOR:Generated YAML types: types:
+  Star_Ratings:
+    Star_Rating_Code: str_len([cC] 10,20)
+    Star_Rating_Image: string
+  Hotels:
+    Hotel_ID: 'seq(1,50,1)'
+    ISO_Country_Code: str_len([cC] 3,3)
+    Star_Rating_Code: str_len([cC] 10,20)
+    Hotel_Name: str_len([cC] 10,50)
+    Other_Details: str_len(10,100)
+  Rooms:
+    Room_Nr: 'seq(101,902,1)'
+    Hotel_ID: 'seq(1,35,1)'
+    Room_Type_Code: str_len([cC] 10,20)
+    Other_Details: str_len(10,100)
+2026-06-23 00:33:09  INFO: LLM_PROCESSOR:types content:
+types:
+  Star_Ratings:
+    Star_Rating_Code: str_len([cC] 10,20)
+    Star_Rating_Image: string
+  Hotels:
+    Hotel_ID: 'seq(1,50,1)'
+    ISO_Country_Code: str_len([cC] 3,3)
+    Star_Rating_Code: str_len([cC] 10,20)
+    Hotel_Name: str_len([cC] 10,50)
+    Other_Details: str_len(10,100)
+  Rooms:
+    Room_Nr: 'seq(101,902,1)'
+    Hotel_ID: 'seq(1,35,1)'
+    Room_Type_Code: str_len([cC] 10,20)
+    Other_Details: str_len(10,100)
+2026-06-23 00:33:09  INFO: LLM_PROCESSOR:Generating YAML 'schema' section
+2026-06-23 00:33:09  INFO: LLM_PROCESSOR:Generating YAML 'generate' section
+2026-06-23 00:33:09  INFO: LLM_PROCESSOR:Generating YAML 'constraints' section
+2026-06-23 00:36:25  INFO: LLM_PROCESSOR:apply_fk_to_schema called with fk_map: {'Hotels': {'Star_Rating_Code': ('Star_Ratings', 'Star_Rating_Code')}, 'Rooms': {'Hotel_ID': ('Hotels', 'Hotel_ID')}, 'Star_Ratings': {}}
+2026-06-23 00:36:25  INFO: LLM_PROCESSOR:schema_yaml repr:
+'schema:\n  Star_Ratings:\n    Star_Rating_Code: Star_Ratings.Star_Rating_Code\n    Star_Rating_Image: Star_Ratings.Star_Rating_Image\n  Hotels:\n    Hotel_ID: Hotels.Hotel_ID\n    ISO_Country_Code: Hotels.ISO_Country_Code\n    Star_Rating_Code: Hotels.Star_Rating_Code\n    Hotel_Name: Hotels.Hotel_Name\n    '
+2026-06-23 00:36:25  INFO: LLM_PROCESSOR:------------------------------------------------------------------------------------------------------------------------------
+2026-06-23 00:36:25  INFO: LLM_PROCESSOR:Line = ['constraints:']
+2026-06-23 00:36:25  INFO: LLM_PROCESSOR:Line = ['-', "'Hotels.ISO_Country_Code", 'IN', '(SELECT', 'Star_Rating_Code', 'FROM', "Star_Ratings)'"]
+2026-06-23 00:36:25  INFO: LLM_PROCESSOR:Line = ['-', "'Rooms.Room_Type_Code", 'IN', '(SELECT', 'Star_Rating_Code', 'FROM', "Star_Ratings)'"]
+2026-06-23 00:36:25  INFO: LLM_PROCESSOR:-------------------------------------------------------------------------------------------------------------------------------
+2026-06-23 00:36:25  INFO: LLM_PROCESSOR:Sending yaml to fix. Original YAML = include: []
+
+types:
+  Star_Ratings:
+    Star_Rating_Code: str_len([cC] 10,20)
+    Star_Rating_Image: string
+  Hotels:
+    Hotel_ID: 'seq(1,50,1)'
+    ISO_Country_Code: str_len([cC] 3,3)
+    Star_Rating_Code: str_len([cC] 10,20)
+    Hotel_Name: str_len([cC] 10,50)
+    Other_Details: str_len(10,100)
+  Rooms:
+    Room_Nr: 'seq(101,902,1)'
+    Hotel_ID: 'seq(1,35,1)'
+    Room_Type_Code: str_len([cC] 10,20)
+    Other_Details: str_len(10,100)
+
+schema:
+  Star_Ratings:
+    Star_Rating_Code: Star_Ratings.Star_Rating_Code
+    Star_Rating_Image: Star_Ratings.Star_Rating_Image
+  Hotels:
+    Hotel_ID: Hotels.Hotel_ID
+    ISO_Country_Code: Hotels.ISO_Country_Code
+    Star_Rating_Code: FROM Star_Ratings.Star_Rating_Code
+    Hotel_Name: Hotels.Hotel_Name
+    Other_Details: Hotels.Other_Details
+  Rooms:
+    Room_Nr: Rooms.Room_Nr
+    Hotel_ID: FROM Hotels.Hotel_ID
+    Room_Type_Code: Rooms.Room_Type_Code
+    Other_Details: Rooms.Other_Details
+
+generate:
+ - 'Star_Ratings = 50'
+ - 'Hotels = 50'
+ - 'Rooms = 35'
+
+constraints: []
+
+2026-06-23 00:36:25  INFO: LLM_PROCESSOR:Generating YAML fix
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = str_len([cC] 10,20)
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:   VALUE SPLIT = ['str_len', '[cC] 10', '20', '']
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = string
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = seq(1,50,1)
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:   VALUE SPLIT = ['seq', '1', '50', '1', '']
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = str_len([cC] 3,3)
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:   VALUE SPLIT = ['str_len', '[cC] 3', '3', '']
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = str_len([cC] 10,20)
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:   VALUE SPLIT = ['str_len', '[cC] 10', '20', '']
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = str_len([cC] 10,50)
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:   VALUE SPLIT = ['str_len', '[cC] 10', '50', '']
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = str_len(10,100)
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:   VALUE SPLIT = ['str_len', '10', '100', '']
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = seq(101,902,1)
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:   VALUE SPLIT = ['seq', '101', '902', '1', '']
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = seq(1,35,1)
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:   VALUE SPLIT = ['seq', '1', '35', '1', '']
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = str_len([cC] 10,20)
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:   VALUE SPLIT = ['str_len', '[cC] 10', '20', '']
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:VALUE = str_len(10,100)
+2026-06-23 00:38:51  INFO: YAML_GENERATOR:   VALUE SPLIT = ['str_len', '10', '100', '']
+2026-06-23 00:38:51  INFO: DB_CONNECTOR:Connection to MySQL closed
+2026-06-23 00:38:51  INFO: MAIN: Total execution time: 8m 57s
+2026-06-23 00:38:51  INFO: MAIN: Done
