@@ -80,7 +80,7 @@ def check_param(value):
 
 
 def validate_types(each_type: str, includes):
-    basic_types: list[str] = ["int", "bool", "string", "float", "bigInt"]
+    basic_types: list[str] = ["int", "bool", "string", "float", "bigint"]
     param_types: list[str] = ["seq", "interval", "dinterval", "finterval", "str_len", "regex"]
     dataset_types: list[str] = includes
 
