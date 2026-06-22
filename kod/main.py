@@ -1,5 +1,5 @@
-import argparse, getpass,db_connector, data_sampler, llm_processor, schema_extractor, yaml_generator,logging, colorlog
-import time
+import argparse, getpass,db_connector, data_sampler, llm_processor, schema_extractor, yaml_generator,logging, colorlog, ollama
+import time, httpx
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
@@ -52,8 +52,33 @@ def disconnect(db_server,server):
     elif db_server in ("PostgreSQL", "postgresql"):
         return db_connector.disconnect_from_postgresql(server)
 
+
+def check_ollama_models():
+    try:
+        response = ollama.list()        
+    except (httpx.ConnectError, httpx.ConnectTimeout) as err:
+        logger.error(f"{err}")
+        return False
+    if not hasattr(response, "models") or not response.models:
+        logger.error("Ollama has no models")
+        return False
+
+    found_models = [(model.model).split(":")[0] for model in response.models]
+
+    required_models = ["tvojaa_mama", "yaml-generator-types", "yaml-generator-constraints", "yaml-generator-schema", "yaml-generator-fix", "yaml-generator-generate", "yaml-generator-sql"]
+
+    missing_models = [ model for model in required_models if model not in found_models]
+    if missing_models:
+        logger.error(f"Ollama is missing one of reqeuired models: {missing_models}")
+        return False
+    
+    logger.info("Ollama is running with all required models")
+    return True 
+
 def main():
 
+    if not check_ollama_models():
+        return
     start_time  = time.time()
     args        = parse_arguments()
     db_server   = args.db_server
@@ -115,12 +140,13 @@ def main():
                 logger.debug(f"Found columns in {table_name}: {[c[0] for c in columns]}")
                 prime_keys = []
                 logger.debug("Entering first column loop")
-                for column in columns:
-                    column_name = column[0]
-                    if column[3] == "PRI":
-                        prime_keys.append(column_name)
 
                 count_result = schema_extractor.mysql_execute_sql(server, f"SELECT COUNT(*) FROM {table_name};")
+                prime_key_template = schema_extractor.mysql_query_templates("prime_keys")
+                prime_key_query = llm_processor.generate_sql_query(prime_key_template, db_server, db_name, table_name)
+                prime_key = schema_extractor.mysql_execute_sql(server, prime_key_query)
+                for pk in prime_key:
+                    prime_keys.append(pk[4])
                 row_count = count_result[0][0]
                 limit = data_sampler.calculate_limit(row_count)
                 logger.info(f"Table {table_name}: {row_count} rows, LIMIT {limit}")
