@@ -65,7 +65,7 @@ def check_ollama_models():
 
     found_models = [(model.model).split(":")[0] for model in response.models]
 
-    required_models = ["tvojaa_mama", "yaml-generator-types", "yaml-generator-constraints", "yaml-generator-schema", "yaml-generator-fix", "yaml-generator-generate", "yaml-generator-sql"]
+    required_models = ["yaml-generator-types", "yaml-generator-constraints", "yaml-generator-schema", "yaml-generator-fix", "yaml-generator-generate", "yaml-generator-sql"]
 
     missing_models = [ model for model in required_models if model not in found_models]
     if missing_models:
