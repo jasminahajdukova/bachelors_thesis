@@ -1,3 +1,5 @@
+import re
+
 import ollama, httpx
 import logging, colorlog, json, datetime
 from decimal import Decimal
@@ -249,6 +251,11 @@ def filter_constraints(constraints_yaml) :
         if any(op in line for op in invalid_operators):
             logger.debug(f"Removing invalid constraint: {line.strip()}")
             continue
+        right_side = " ".join(stripped_line[3:])
+        right_side = right_side.strip("'\"")
+        if not re.match(r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)', right_side) and '.' not in right_side and len(stripped_line) >= 4:
+            logger.info(f"Removing invalid constraint: {line.strip()}")
+            continue
         filtered.append(line)
     result = '\n'.join(filtered)
     logger.info("-------------------------------------------------------------------------------------------------------------------------------")
@@ -321,6 +328,7 @@ def generate_yaml(samples, sql_server_type, fk_map, skip_fix=False):
     sorted_table_names = sort_tables_multi_level(fk_map)
     sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
     types_content = generate_yaml_types(sorted_samples, sql_server_type)
+    
     logger.info(f"types content:\n{types_content}")
     include_content = generate_yaml_include(types_content)
 
