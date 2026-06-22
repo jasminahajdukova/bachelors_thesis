@@ -82,7 +82,7 @@ def postgresql_query_template(db_name: str, table_name: str | None, types: str) 
     return templates_dict[types]
 
 
-def mysql_execute_sql(db_name: MySQLConnection, query):
+def execute_sql(db_name: MySQLConnection, query):
     try:
         logger.debug(query)
         mycursor = db_name.cursor()
@@ -100,17 +100,3 @@ def mysql_execute_sql(db_name: MySQLConnection, query):
         raise Exception("Failed to execute query.") from e
 
 
-def postgre_execute_sql(db_name: psycopg2.extensions.connection, query: str):
-    try:
-        mycursor = db_name.cursor()
-
-        mycursor.execute(query)
-
-        myresults = mycursor.fetchall()
-
-        logger.debug(f"Query returned {len(myresults)} rows")
-        return myresults
-    except Exception as e:
-        logger.error(f"Failed to execute query: {e}") 
-        raise Exception("Failed to execute query.") from e
-    
