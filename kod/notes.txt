@@ -97,7 +97,7 @@ Value can be a supported data type, name of a dataset included in include sectio
 
 Supported data types
 Integer - represents a pseudorandom whole number in 32 bits. In the recipe it is referred to as int.
-Big integer - represents a pseudorandom whole number in 64 bits. In the recipe it is referred to as bigInt.
+Big integer - represents a pseudorandom whole number in 64 bits. In the recipe it is referred to as bigint.
 Float - represents a pseudorandom floating-point number. In the recipe it is referred to as float.
 Interval - represents a pseudorandom whole number from the current range. In the recipe it is referred to as interval(x,y).
   x - minimum value
@@ -150,7 +150,7 @@ Sequence - mostly used to generate an id of the record. In the recipe it is refe
 
 user_manual:
 integer: int
-bigInteger: bigInt
+bigInteger: bigint
 floatingPointNumber: float
 interval: 'interval(1,42)'
 floatInterval: 'finterval(1.9,4.2)'
