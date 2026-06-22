@@ -23,6 +23,7 @@ OUTPUT RULES:
 """
 
 PARAMETER temperature 0.3
+PARAMETER num_predict 512
 
 
 MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.

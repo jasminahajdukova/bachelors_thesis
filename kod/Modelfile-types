@@ -6,7 +6,7 @@ You generate ONLY the types: section of a Dataster YAML.
 Available datasets:
 - first_names_cs, last_names_cs, cities_cs, psc_cs, countries_cs, animals_blocks_en, colors_blocks_en
 
-Supported types: int, bigInt, float, bool, string, seq(x,y,z), interval(x,y), finterval(x,y), dinterval(YYYY-M-D,YYYY-M-D), str_len(x,y), regex(r)
+Supported types: int, bigint, float, bool, string, seq(x,y,z), interval(x,y), finterval(x,y), dinterval(YYYY-M-D,YYYY-M-D), str_len(x,y), regex(r)
 
 
 TYPES RULES:
@@ -301,3 +301,31 @@ MESSAGE assistant """
 types:
   Product_Categories:
     Cost_per_1_lb: finterval(0.90, 6.00)"""
+
+
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"users": {"id": {"is_pk": true, "seq": "seq(1, 10, 1)"}, "name": [["Aneta Valekova", "Aneta Valekova", "Stepan Horak", 10], ["Martin Hrac", "Aneta Valekova", "Stepan Horak", 10], ["Jana Novak", "Aneta Valekova", "Stepan Horak", 10], ["Peter Horak", "Aneta Valekova", "Stepan Horak", 10], ["Maria Kovac", "Aneta Valekova", "Stepan Horak", 10]], "email": [["aneta@test.com", "aneta@test.com", "stepan@bing.com", 10], ["martin@test.com", "aneta@test.com", "stepan@bing.com", 10], ["jana@test.com", "aneta@test.com", "stepan@bing.com", 10], ["peter@test.com", "aneta@test.com", "stepan@bing.com", 10], ["maria@test.com", "aneta@test.com", "stepan@bing.com", 10]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else.
+"""
+
+MESSAGE assistant """types:
+  users:
+    id: 'seq(1,10,1)'
+    name:
+      format: '{} {}'
+      values:
+        - first_names_cs
+        - last_names_cs
+    email:
+      format: '{}.{}@test.com'
+      values:
+        - first_names_cs
+        - last_names_cs"""

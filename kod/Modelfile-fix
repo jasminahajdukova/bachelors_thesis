@@ -1,7 +1,6 @@
 FROM qwen2.5:7b
 
-SYSTEM """
-"Here is a generated Dataster YAML. Fix any syntax errors and ensure it follows the format correctly. Return ONLY the corrected YAML."
+SYSTEM """Here is a generated Dataster YAML. Fix any syntax errors and ensure it follows the format correctly. Return ONLY the corrected YAML.
 
 Available datasets for include:
 - first_names_cs
@@ -31,7 +30,7 @@ CONSTRAINTS RULES:
 - Return ONLY the constraints section, nothing else
 - NEVER create constraints that validate data types or formats
 - ONLY create constraints for logical relationships like date ranges or numeric bounds
-- constraints work ONLY for: int, bigInt, float, interval, finterval, dinterval, bool types
+- constraints work ONLY for: int, bigint, float, interval, finterval, dinterval, bool types
 - NEVER create constraints for string, str_len, regex, or seq columns
 - NEVER reference column names that do not exist in the provided types section
 
@@ -90,7 +89,7 @@ constraints: []
 """
 
 PARAMETER temperature 0.1
-PARAMETER num_predict 1024
+PARAMETER num_predict 2048
 
 
 
@@ -140,61 +139,6 @@ generate:
   - 'users = 100'
 constraints: []
 """
-
-
-MESSAGE user """Fix this Dataster YAML. Return ONLY the corrected YAML:
-
-include: []
-types:
-  car_models:
-    model_code: 'seq(1,10,1)'
-    manufacturer_code: 'FROM manufacturers.manufacturer_code'
-    model_name: 'str_len([cC] 3,50)'
-schema:
-  car_models:
-    model_code: car_models.model_code
-    manufacturer_code: manufacturers.manufacturer_code
-    model_name: car_models.model_name
-generate:
-  - 'car_models = 100'
-"""
-
-
-MESSAGE assistant """
-include: []
-
-types:
-  car_models:
-    model_code: 'seq(1,10,1)'
-    manufacturer_code:
-      - SKODA
-      - VW
-      - BMW
-      - AUDI
-      - TOYOTA
-    model_name:
-      - Octavia
-      - Superb
-      - Golf
-      - Passat
-      - Rad 3
-      - A4
-      - A6
-      - Tiguan
-      - Corolla
-
-schema:
-  car_models:
-    model_code: car_models.model_code
-    manufacturer_code: car_models.manufacturer_code
-    model_name: car_models.model_name
-
-generate:
-  - 'car_models = 10'
-
-constraints: []
-"""
-
 
 
 MESSAGE user """Fix this Dataster YAML. Return ONLY the corrected YAML:
@@ -281,3 +225,34 @@ types:
   contacts:
     id: 'seq(1,10,1)'
     phone: regex(''\+421[0-9]{9}'')"""
+
+
+
+MESSAGE user """Fix this Dataster YAML. Return ONLY the corrected YAML:
+
+include: []
+types:
+  users:
+    id: seq(1,10,1)
+    name: str_len(c 5,10)
+schema:
+  users:
+    id: users.id
+    name: users.name
+generate:
+- users = 100
+constraints: []"""
+
+MESSAGE assistant """include: []
+types:
+  users:
+    id: seq(1,10,1)
+    name: str_len([cC] 5,10)
+schema:
+  users:
+    id: users.id
+    name: users.name
+
+generate:
+- users = 100
+constraints: []"""

@@ -12,9 +12,10 @@ CONSTRAINTS RULES:
 - Return ONLY the constraints section, nothing else
 - NEVER create constraints that validate data types or formats
 - ONLY create constraints for logical relationships like date ranges or numeric bounds
-- constraints work ONLY for: int, bigInt, float, interval, finterval, dinterval, bool types
+- constraints work ONLY for: int, bigint, float, interval, finterval, dinterval, bool types
 - NEVER create constraints for string, str_len, regex, or seq columns
 - NEVER reference column names that do not exist in the provided types section
+- NEVER create constraints for format, dataset (first_names_cs etc.), or enum list columns
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
@@ -101,13 +102,13 @@ types:
     First_Name: first_names_cs
     Last_Name: last_names_cs
     Date_First_Suspected: 'dinterval(2025-12-20,2026-5-15)'
-    Date_Confirfmed: 'dinterval(2025-12-22,2026-4-11)'
+    Date_Confirmed: 'dinterval(2025-12-22,2026-4-11)'
     Date_of_Death: 'dinterval(2026-1-20,2026-3-27)'
     Other_Details: 'str_len(10,100)'"""
 
 MESSAGE assistant """constraints:
-  - 'Ebola_Victims.Date_First_Suspected < Ebola_Victims.Date_Confirfmed'
-  - 'Ebola_Victims.Date_Confirfmed < Ebola_Victims.Date_of_Death'"""
+  - 'Ebola_Victims.Date_First_Suspected < Ebola_Victims.Date_Confirmed'
+  - 'Ebola_Victims.Date_Confirmed < Ebola_Victims.Date_of_Death'"""
 
 
 MESSAGE user """Generate constraints for:
@@ -128,7 +129,9 @@ types:
   Parents:
     parent_id: 'seq(1,5,1)'
     parent_name: 'str_len([cC] 10,50)'
-    gender: 'interval(1,2)'
+    gender: 
+      - Male
+      - Female 
     parent_address: 'str_len(50,100)'
     home_phone: regex(''555-[0-9]{4}'')
     cell_mobile_phone: regex(''555-[0-9]{4}'')
@@ -136,14 +139,29 @@ types:
   Children:
     child_id: 'seq(1,5,1)'
     parent_id: 'interval(1,4)'
-    gender: 'interval(1,2)'
+    gender: 
+      - Male
+      - Female 
     first_name: 'str_len([cC] 10,50)'
     last_name: 'str_len([cC] 10,50)'
     age: 'interval(5,12)'
     date_of_birth: 'dinterval(2014-11-5,2021-8-23)'
-    other_details: 'str_len(10,100)''"""
+    other_details: 'str_len(10,100)'"""
 
-MESSAGE assistant """constraints:
-  - 'Children.age >= 5'
-  - 'Children.age <= 12'"""
+MESSAGE assistant """constraints: []"""
 
+MESSAGE user """Generate constraints for:
+types:
+  users:
+    id: seq(1,10,1)
+    name:
+      format: '{} {}'
+      values:
+        - first_names_cs
+        - last_names_cs
+    email:
+      format: '{}@test.com'
+      values:
+        - first_names_cs"""
+
+MESSAGE assistant """constraints: []""" 
