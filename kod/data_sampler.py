@@ -38,7 +38,7 @@ def data_samples_templates_postgresql(table_name: str | None, column_name: str |
     logger.debug(f"Creating SQL query: {template}")
     return template
 
-def mysql_execute_sql(db_name: MySQLConnection, query):
+def execute_sql(db_name: MySQLConnection, query):
     try:
         mycursor = db_name.cursor()
 
@@ -53,7 +53,7 @@ def mysql_execute_sql(db_name: MySQLConnection, query):
         raise Exception("Failed to execute query.") from e
 
 
-def postgre_execute_sql(db_name: psycopg2.extensions.connection, query: str):
+def execute_sql(db_name: psycopg2.extensions.connection, query: str):
     try:
         mycursor = db_name.cursor()
 
