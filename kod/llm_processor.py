@@ -1,4 +1,4 @@
-import ollama
+import ollama, httpx
 import logging, colorlog, json, datetime
 from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor
@@ -60,7 +60,7 @@ def check_ollama(type: str, prompt: str, model: str, thinking: bool = False):
     except ollama.ResponseError as exc:
         logger.error(f"Ollama model error: {exc}")
         raise RuntimeError(f"{type} was not generated: {exc}") from exc
-    except ConnectionError as exc:
+    except httpx.ConnectError as exc:
         logger.error(f"Ollama is not running: {exc}")
         raise RuntimeError(f"Ollama is not running: {exc}") from exc
     return response
@@ -78,7 +78,7 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str, table_
 
             SQL query:"""
     logger.info(f"Generate SQL query prompt = {prompt}")
-    response = check_ollama("SQL qqury", prompt, model)
+    response = check_ollama("SQL query", prompt, model)
     logger.info(f"Generated SQL query: {response.response}")
     return response.response
 
@@ -99,7 +99,7 @@ def build_types_prompt(samples, sql_server_type):
     return prompt
 
 
-def build_schema_prompt(fk_map, types_section: str, sql_server_type: str):
+def build_schema_prompt(types_section: str, sql_server_type: str):
     prompt = f"""Generate ONLY the 'schema:' section for a Dataster YAML from a {sql_server_type} database.
     
     Here are the generated types:
@@ -180,9 +180,9 @@ def generate_yaml_generate(types_section, sql_server_type):
     return generated_yaml
 
 
-def generate_yaml_schema(fk_map, types_section, sql_server_type):
+def generate_yaml_schema(types_section, sql_server_type):
     logger.info("Generating YAML 'schema' section")
-    prompt = build_schema_prompt(fk_map, types_section, sql_server_type)
+    prompt = build_schema_prompt(types_section, sql_server_type)
 
     response = check_ollama("YAML schema", prompt, "yaml-generator-schema")
     logger.debug(f"Generated YAML schemas: {response.response}")
@@ -325,7 +325,7 @@ def generate_yaml(samples, sql_server_type, fk_map, skip_fix=False):
     include_content = generate_yaml_include(types_content)
 
     with ThreadPoolExecutor() as executor:
-        f_schema      = executor.submit(generate_yaml_schema, fk_map, types_content, sql_server_type)
+        f_schema      = executor.submit(generate_yaml_schema, types_content, sql_server_type)
         f_generate    = executor.submit(generate_yaml_generate, types_content, sql_server_type)
         f_constraints = executor.submit(generate_yaml_constraints, types_content, sorted_samples, sql_server_type)
     
