@@ -1,0 +1,146 @@
+- databaza: testdb1
+
+- vygenerovany yaml:
+include: []
+types:
+    users:
+        id: seq(1,10,1)
+        name: str_len(c 5,10)
+        email: regex('\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
+schema:
+    users:
+        id: users.id
+        name: users.name
+        email: users.email
+generate:
+- users = 100
+constraints: []
+
+- log:
+2026-06-22 21:27:25  INFO: MAIN: Ollama is running with all required models
+Enter password: 
+2026-06-22 21:27:27  INFO: DB_CONNECTOR:Connection to MySQL successful
+2026-06-22 21:27:27  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-22 21:27:27  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb
+            Database server = mysql
+            Table name = None
+
+            Template:
+            SELECT table_name 
+                       FROM information_schema.tables 
+                       WHERE table_schema = '{db_name}';
+
+            SQL query:
+2026-06-22 21:27:31  INFO: LLM_PROCESSOR:Generated SQL query: SELECT table_name FROM information_schema.tables WHERE table_schema = 'testdb';
+2026-06-22 21:27:31  INFO: MAIN: Found 1 tables [('users',)] in testdb
+2026-06-22 21:27:31  INFO: MAIN: Processing table: users
+2026-06-22 21:27:31  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-22 21:27:31  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb
+            Database server = mysql
+            Table name = users
+
+            Template:
+            SHOW COLUMNS 
+                       FROM {table_name} 
+                       FROM {db_name};
+
+            SQL query:
+2026-06-22 21:27:32  INFO: LLM_PROCESSOR:Generated SQL query: SHOW COLUMNS FROM users FROM testdb;
+2026-06-22 21:27:32  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-22 21:27:32  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb
+            Database server = mysql
+            Table name = users
+
+            Template:
+            SELECT column_name, referenced_table_name, referenced_column_name
+                            FROM information_schema.KEY_COLUMN_USAGE
+                            WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL; 
+
+            SQL query:
+2026-06-22 21:27:33  INFO: LLM_PROCESSOR:Generated SQL query: SELECT column_name, referenced_table_name, referenced_column_name FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema = 'testdb' AND table_name = 'users';
+2026-06-22 21:27:33  INFO: LLM_PROCESSOR:Generating SQL query for mysql
+2026-06-22 21:27:33  INFO: LLM_PROCESSOR:Generate SQL query prompt = Generate a valid mysql SQL query based on this template.
+            Database name = testdb
+            Database server = mysql
+            Table name = users
+
+            Template:
+            SHOW KEYS 
+                           FROM {table_name} 
+                           WHERE Key_name = 'PRIMARY';
+
+            SQL query:
+2026-06-22 21:27:33  INFO: LLM_PROCESSOR:Generated SQL query: SHOW KEYS FROM users WHERE Key_name = 'PRIMARY';
+2026-06-22 21:27:33  INFO: MAIN: Table users: 10 rows, LIMIT 5
+2026-06-22 21:27:33  INFO: MAIN: Sending samples to LLM for YAML generation
+2026-06-22 21:27:33  INFO: LLM_PROCESSOR:FK_MAP = {'users': {}}
+2026-06-22 21:27:33  INFO: LLM_PROCESSOR:Sorted tables = ['users']
+2026-06-22 21:27:33  INFO: LLM_PROCESSOR:Generating YAML 'types' section
+2026-06-22 21:27:33  INFO: LLM_PROCESSOR:PROMPT=
+Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+      
+    Database samples:
+    {"users": {"id": {"is_pk": true, "seq": "seq(1, 10, 1)"}, "name": [["Aneta Valekova", "Aneta Valekova", "Stepan Horak", 10], ["Martin Hrac", "Aneta Valekova", "Stepan Horak", 10], ["Jana Novak", "Aneta Valekova", "Stepan Horak", 10], ["Peter Horak", "Aneta Valekova", "Stepan Horak", 10], ["Maria Kovac", "Aneta Valekova", "Stepan Horak", 10]], "email": [["aneta@test.com", "aneta@test.com", "stepan@bing.com", 10], ["martin@test.com", "aneta@test.com", "stepan@bing.com", 10], ["jana@test.com", "aneta@test.com", "stepan@bing.com", 10], ["peter@test.com", "aneta@test.com", "stepan@bing.com", 10], ["maria@test.com", "aneta@test.com", "stepan@bing.com", 10]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else.
+    
+2026-06-22 21:29:47  INFO: LLM_PROCESSOR:Generated YAML types: 
+types:
+  users:
+    id: seq(1,10,1)
+    name: str_len([cC] 5,10)
+    email: regex(''\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"')
+2026-06-22 21:29:47  INFO: LLM_PROCESSOR:types content:
+types:
+  users:
+    id: seq(1,10,1)
+    name: str_len([cC] 5,10)
+    email: regex(''\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"')
+2026-06-22 21:29:47  INFO: LLM_PROCESSOR:Generating YAML 'schema' section
+2026-06-22 21:29:47  INFO: LLM_PROCESSOR:Generating YAML 'generate' section
+2026-06-22 21:29:47  INFO: LLM_PROCESSOR:Generating YAML 'constraints' section
+2026-06-22 21:31:25  INFO: LLM_PROCESSOR:apply_fk_to_schema called with fk_map: {'users': {}}
+2026-06-22 21:31:25  INFO: LLM_PROCESSOR:schema_yaml repr:
+'schema:\n  users:\n    id: users.id\n    name: users.name\n    email: users.email'
+2026-06-22 21:31:25  INFO: LLM_PROCESSOR:------------------------------------------------------------------------------------------------------------------------------
+2026-06-22 21:31:25  INFO: LLM_PROCESSOR:Line = ['constraints:']
+2026-06-22 21:31:25  INFO: LLM_PROCESSOR:Line = ['-', "'users.name", '!=', '"Aneta', 'Valekova"\'']
+2026-06-22 21:31:25  INFO: LLM_PROCESSOR:Removing invalid constraint: - 'users.name != "Aneta Valekova"'
+2026-06-22 21:31:25  INFO: LLM_PROCESSOR:-------------------------------------------------------------------------------------------------------------------------------
+2026-06-22 21:31:25  INFO: LLM_PROCESSOR:Sending yaml to fix. Original YAML = include: []
+
+types:
+  users:
+    id: seq(1,10,1)
+    name: str_len([cC] 5,10)
+    email: regex(''\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"')
+
+schema:
+  users:
+    id: users.id
+    name: users.name
+    email: users.email
+
+generate:
+ - 'users = 100'
+
+constraints: []
+
+2026-06-22 21:31:25  INFO: LLM_PROCESSOR:Generating YAML fix
+2026-06-22 21:33:06  INFO: YAML_GENERATOR:VALUE = seq(1,10,1)
+2026-06-22 21:33:06  INFO: YAML_GENERATOR:   VALUE SPLIT = ['seq', '1', '10', '1', '']
+2026-06-22 21:33:06  INFO: YAML_GENERATOR:VALUE = str_len(c 5,10)
+2026-06-22 21:33:06  INFO: YAML_GENERATOR:   VALUE SPLIT = ['str_len', 'c 5', '10', '']
+2026-06-22 21:33:06  INFO: YAML_GENERATOR:VALUE = regex('\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
+2026-06-22 21:33:06  INFO: YAML_GENERATOR:   VALUE SPLIT = ['regex', "'\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2", "}\\b'", '']
+2026-06-22 21:33:06  INFO: DB_CONNECTOR:Connection to MySQL closed
+2026-06-22 21:33:06  INFO: MAIN: Total execution time: 5m 41s
+2026-06-22 21:33:06  INFO: MAIN: Done
+- vysledok dataster:
+skip
