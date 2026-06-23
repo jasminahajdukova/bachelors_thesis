@@ -71,13 +71,46 @@ def validate_yaml(yaml_str: str):
         logger.error(f"Error: {exc}")
     
 def check_param(value):
+    # dopln dinterval + strlen
     value_split = re.split(r"\s*[\(\),]\s*", value)
     logger.info(f"   VALUE SPLIT = {value_split}")
 
-    if value_split[0] == "interval" and ("." in value_split[1] or "." in value_split[2]):
-        raise TypeError("Interval expects int values")
-    
+    function_name = value_split[0]
+    args = value_split[1:]
 
+    if function_name == "interval":
+        try:
+            value1 = int(args[0])
+            value2 = int(args[1])
+        except ValueError:
+            raise TypeError("Interval expects two int")
+        
+        if value1 >= value2:
+            raise ValueError("Interval expects min < max")
+        
+    elif function_name == "finterval":
+        try:
+            value1 = float(args[0])
+            value2 = float(args[1])
+        except ValueError:
+            raise TypeError("Finterval expects two floats")
+        
+        if value1 >= value2:
+            raise ValueError("Finterval expets min < max")
+    
+    elif function_name == "seq":
+        try:
+            value1 = int(args[0])
+            value2 = int(args[1])
+            value3 = int(args[2])
+        except ValueError:
+            raise TypeError(f"Seq expects three ints. Instead got {function_name}({args})")
+        
+        if value1 >= value2 or value3 <= 0:
+            raise ValueError("Sew expects x < y and z > 0")
+
+    elif function_name == "str_len":
+        pass
 
 def validate_types(each_type: str, includes):
     basic_types: list[str] = ["int", "bool", "string", "float", "bigint"]
@@ -170,8 +203,9 @@ def validate_generate(generate: str, types_ds):
 
 
 def validate_include(includes: str):
-    if not all([value in AVAILABLE_INCLUDES for value in includes]):
-        logger.error(f"Include not part of available includes")
+    invalid_includes = [value for value in includes if value not in AVAILABLE_INCLUDES]
+    if invalid_includes:
+        logger.error(f"Include not part of available includes {invalid_includes}")
         raise TypeError("Include not part of available includes")
 
 

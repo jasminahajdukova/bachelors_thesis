@@ -77,8 +77,7 @@ def check_ollama_models():
 
 def main():
 
-    if not check_ollama_models():
-        return
+    
     start_time  = time.time()
     args        = parse_arguments()
     db_server   = args.db_server
@@ -89,6 +88,9 @@ def main():
     no_fix      = args.no_fix
 
     if not check_if_server_exists(db_server):
+        return
+    
+    if not check_ollama_models():
         return
     
     password = "" if no_password else getpass.getpass("Enter password: ")

@@ -300,7 +300,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
 MESSAGE assistant """
 types:
   Product_Categories:
-    Cost_per_1_lb: finterval(0.90, 6.00)"""
+    Cost_per_1_lb: finterval(0.90,6.00)"""
 
 
 
@@ -329,3 +329,19 @@ MESSAGE assistant """types:
       values:
         - first_names_cs
         - last_names_cs"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"Products": {"Product_Weight": [["1.00","1.00","10.00",3],["5.00","1.00","10.00",3],["10.00","1.00","10.00",3]]}}
+
+    Return ONLY the types section starting with 'types:', nothing else.
+"""
+
+MESSAGE assistant """types:
+  Products:
+    Product_Weight: finterval(1.00,10.00)"""
