@@ -312,8 +312,9 @@ def validate_constrains(constrains: str, types_ds) -> list[YAML_result]:
     if types_ds is None:
         return []
     
-    logger.debug(f"Constraints: {constrains}")
+    logger.info(f"Constraints: {constrains}")
     for constraint in constrains:
+        logger.info(f"Constraint = {constraint}")
         constraint_split = constraint.split(" ")
         if len(constraint_split) < 3:
             logger.error(f"Invalid constraint format: {constraint}")
@@ -326,7 +327,37 @@ def validate_constrains(constrains: str, types_ds) -> list[YAML_result]:
         if (typename.split(".")[0] not in types_ds) or (operator not in ["=", "!=", "<", ">", "<=", ">="] or (not bool(re.match(regex, value)) and value.split(".")[0] not in types_ds)):
             logger.error(f"Invalid constraint: {constraint}")
             errors.append(YAML_result("something", "constraints", "invalid_constraint", 1, f"Invalid constraint {constraint}"))
-            continue    
+            continue 
+        logger.info(f"typename = {typename}, operator = {operator}, value = {value}")
+        
+        typename = typename.split(".")
+        value_split = value.split(".") if "." in value else ""
+        logger.info(f"typename[1] = {typename[1]} types_ds[typename[0]] = {list(types_ds[typename[0]].keys())}")
+        
+
+        if typename[1] not in list(types_ds[typename[0]].keys()):
+            logger.error(f"1. Constraint type {typename[1]} does not exitst in types section {list(types_ds[typename[0]].keys())}, ")
+            errors.append(YAML_result("something", "constraints", "invalid_constraint", 1, f"Constraint type does not exitst in types section, {typename[1]}"))
+            continue
+        elif (value_split and value_split[1] not in list(types_ds[value_split[0]].keys())):
+            logger.error(f"2. Constraint type {value_split} does not exitst in types section {list(types_ds[value_split[0]].keys())}, ")
+            errors.append(YAML_result("something", "constraints", "invalid_constraint", 1, f"Constraint type does not exitst in types section,{value_split}"))
+            continue
+        
+        typename_value = types_ds[typename[0]][typename[1]]
+        logger.info(f"types_ds[typename[0]][typename[1]] = {typename_value}")
+        value_val = types_ds[value_split[0]][value_split[1]] if value_split else ""
+
+        if not typename_value.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
+            logger.error(f"Invalid type of constraint: {typename} is {typename_value}.")
+            errors.append(YAML_result("something", "constraints", "invalid_constraint", 1, f"Invalid type of constraint: {typename} is {typename_value}."))
+            continue
+
+        elif value_val and not value_val.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
+            logger.error(f"Invalid type of constraint: {value_split} is {value_val}.")
+            errors.append(YAML_result("something", "constraints", "invalid_constraint", 1, f"Invalid type of constraint: {value_split} is {value_val}."))
+            continue
+
     return errors
 
 def save_yaml(stream: str):
