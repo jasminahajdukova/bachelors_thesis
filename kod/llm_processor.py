@@ -266,7 +266,7 @@ def filter_constraints(constraints_yaml) :
 
 def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
     logger.info(f"apply_fk_to_schema called with fk_map: {fk_map}")
-    logger.info(f"schema_yaml repr:\n{repr(schema_yaml[:300])}")
+    logger.info(f"schema_yaml repr:\n{repr(schema_yaml)}")
     lines = schema_yaml.split('\n')
     result = []
     current_table = None
