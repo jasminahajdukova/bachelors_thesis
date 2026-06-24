@@ -2,6 +2,7 @@ import yaml, re
 import logging, colorlog
 from llm_processor import AVAILABLE_INCLUDES
 from dataclasses import dataclass
+from datetime import datetime
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
 	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
@@ -125,10 +126,23 @@ def check_param(value) -> list[YAML_result]:
             errors.append(YAML_result("something", "types", "invalid_types", 1, f"Invalid value inside seq(x,y,z). Got {args}"))
 
     elif function_name == "str_len":
-        pass
+        try:
+            pass
+        except ValueError:
+            errors.append(YAML_result("something", "types", "invalid_types", 1, f"Invalid value inside seq(x,y,z). Got {args}"))
+
 
     elif function_name == "dinterval":
-        pass
+        try:
+            date1 = datetime.strptime(args[0], "%Y-%m-%d")
+            date2 = datetime.strptime(args[1],"%Y-%m-%d")
+        except ValueError:
+            errors.append(YAML_result("something", "types", "invalid_types", 1, f"Invalid value inside dinterval. Got {args}"))
+            return errors
+        if date1 >= date2:
+            errors.append(YAML_result("something", "types", "invalid_types", 1, f"Invalid value inside dinterval. Got {args}"))
+
+
 
     return errors
 
