@@ -71,7 +71,9 @@ def validate_yaml(yaml_str: str) -> list[YAML_result]:
         errors += iterate_schemas(stream["schema"], types_ds)
     
     if "generate" in stream_keys:
-        errors += validate_generate(stream["generate"], types_ds)
+        generate = stream["generate"]
+        errors += validate_generate(generate, types_ds)
+        errors += validate_seq(generate, types_ds)
 
     if "constraints" in stream_keys:
         errors += validate_constrains(stream["constraints"], types_ds)
@@ -81,6 +83,48 @@ def validate_yaml(yaml_str: str) -> list[YAML_result]:
     else:
         logger.error(f"Found critical error")    
     logger.info(f"ERRORS = {errors}")
+    return errors
+
+def validate_seq(generate, types) -> list[YAML_result]:
+    errors = []
+    logger.info(f"list(types.keys()) = {list(types.keys())}")
+    for part in generate:
+        part_split = part.split("=")
+        logger.info(f"parts_split = {part_split}")
+        gen_name = part_split[0].strip()
+        if gen_name not in list(types.keys()):
+            logger.error(f"Generate tried to generate part {part_split} not included in TYPES section {list(types.keys())}")
+            errors.append(YAML_result("something", "generate", "invalid_generate", 1,f"Generate tried to generate part {part_split} not included in TYPES section {list(types.keys())}"))
+            continue
+        types_value = list(types[gen_name].values())
+        logger.info(f"TYPES_VALUE = {types_value}")
+
+        
+        for value in types_value:
+            logger.info(f"seq {value} type {type(value)}")
+           
+            value = str(value)
+            logger.info(f"seq {value} type {type(value)}")
+        
+            if not value.startswith("seq"):
+                continue
+            seq = re.split(r"\s*[\(\),]\s*", value)
+            
+            try:
+                gen_num = int(part_split[1])
+                seq_len = (int(seq[2]) - int(seq[1])) // int(seq[3]) + 1
+            except ValueError:
+                logger.error(f"Generate or Seq expected number: generate = {part_split[1]} seq({seq[1]},{seq[2]},{seq[3]})")
+                errors.append(YAML_result("something", "generate", "invalid_generate", 1, f"Generate or Seq expected number: generate = {part_split[1]} seq({seq[1]},{seq[2]},{seq[3]})"))
+                continue
+
+            if gen_num > seq_len:
+                logger.error(f"Number of generate for {part_split[0]} > seq len: seq_len {seq_len} generate: {part_split[1]}")
+                errors.append(YAML_result("something", "generate", "invalid_generate", 1, f"Number of generate for {part_split[0]} > seq len: seq_len {seq_len} generate: {part_split[1]}"))
+            if gen_num < seq_len:
+                logger.error(f"Number of generate for {part_split[0]} < seq len: seq_len {seq_len} generate: {part_split[1]}")
+                errors.append(YAML_result("something", "generate", "invalid_generate", 2, f"Number of generate for {part_split[0]} < seq len: seq_len {seq_len} generate: {part_split[1]}"))
+            
     return errors
     
     
