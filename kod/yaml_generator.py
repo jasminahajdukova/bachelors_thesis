@@ -1,7 +1,7 @@
 import yaml, re
 import logging, colorlog
 from llm_processor import AVAILABLE_INCLUDES
-
+from dataclasses import dataclass
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
 	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
@@ -14,6 +14,16 @@ logger = logging.getLogger("YAML_GENERATOR")
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 logger.propagate = False
+
+@dataclass
+class YAML_result:
+    database: str
+    section: str
+    error_type: str
+    severity: int
+    detail: str
+
+
 
 def remove_markdown(yaml_str):
 
@@ -30,48 +40,52 @@ def remove_markdown(yaml_str):
 
     return yaml_str
 
-def validate_yaml(yaml_str: str):
-    try:
-        yaml_str = yaml_str.strip()
-        
-        
-        yaml_str = remove_markdown(yaml_str)
-        logger.debug(f"YAML STR: \n {yaml_str}")
-
-        stream = yaml.safe_load(yaml_str)
-        stream_keys: list[str] = list(stream.keys())
-
-        includes = None
-        types_ds = None
-        if not all(key in stream_keys for key in ["types", "schema", "generate"]):
-            logger.error(f"Schema containes invalid parts")
-            raise TypeError("YAML contais invalid parts")
-        
-        if "include" in stream_keys:
-            validate_include(stream["include"])   
-            includes = stream["include"]
-
-        if "types" in stream_keys:
-            iterate_types(stream["types"], includes)
-            types_ds = stream["types"]
-
-        if "schema" in stream_keys:
-            iterate_schemas(stream["schema"], types_ds)
-        
-        if "generate" in stream_keys:
-            validate_generate(stream["generate"], types_ds)
-
-        if "constraints" in stream_keys:
-            validate_constrains(stream["constraints"], types_ds)
-        
-        save_yaml(stream)
-    except yaml.YAMLError as exc:
-        logger.error(f"Error: {exc}")
-    except TypeError as exc:
-        logger.error(f"Error: {exc}")
+def validate_yaml(yaml_str: str) -> list[YAML_result]:
     
-def check_param(value):
+    errors = []
+    yaml_str = yaml_str.strip()
+    
+    
+    yaml_str = remove_markdown(yaml_str)
+    logger.debug(f"YAML STR: \n {yaml_str}")
+
+    stream = yaml.safe_load(yaml_str)
+    stream_keys: list[str] = list(stream.keys())
+
+    includes = None
+    types_ds = None
+    if not all(key in stream_keys for key in ["types", "schema", "generate"]):
+        logger.error(f"Schema containes invalid parts")
+        errors.append(YAML_result("something", "YAML", "invalid_section", 1, "YAML contains invalid parts"))
+    
+    if "include" in stream_keys:
+        errors += validate_include(stream["include"])   
+        includes = stream["include"]
+
+    if "types" in stream_keys:
+        errors += iterate_types(stream["types"], includes)
+        types_ds = stream["types"]
+
+    if "schema" in stream_keys:
+        errors += iterate_schemas(stream["schema"], types_ds)
+    
+    if "generate" in stream_keys:
+        errors += validate_generate(stream["generate"], types_ds)
+
+    if "constraints" in stream_keys:
+        errors += validate_constrains(stream["constraints"], types_ds)
+    
+    if all(result.severity != 1 for result in errors):
+        save_yaml(stream)
+    else:
+        logger.error(f"Found critical error")    
+    logger.info(f"ERRORS = {errors}")
+    return errors
+    
+    
+def check_param(value) -> list[YAML_result]:
     # dopln dinterval + strlen
+    errors = []
     value_split = re.split(r"\s*[\(\),]\s*", value)
     logger.info(f"   VALUE SPLIT = {value_split}")
 
@@ -83,20 +97,21 @@ def check_param(value):
             value1 = int(args[0])
             value2 = int(args[1])
         except ValueError:
-            raise TypeError("Interval expects two int")
-        
+            errors.append(YAML_result("something", "types", "invalid_types", 1, f"Interval expects two integers. Instead got {args}"))
+            return errors
         if value1 >= value2:
-            raise ValueError("Interval expects min < max")
+            errors.append(YAML_result("something", "types", "invalid_types", 1, "Min value of interval exceed the max value"))
         
     elif function_name == "finterval":
         try:
             value1 = float(args[0])
             value2 = float(args[1])
         except ValueError:
-            raise TypeError("Finterval expects two floats")
+            errors.append(YAML_result("something", "types", "invalid_types", 1, f"Finterval expects two floats. Instead got {args}"))
+            return errors
         
         if value1 >= value2:
-            raise ValueError("Finterval expets min < max")
+            errors.append(YAML_result("something", "types", "invalid_types", 1, "Min value of finterval exceed the max value"))
     
     elif function_name == "seq":
         try:
@@ -104,23 +119,32 @@ def check_param(value):
             value2 = int(args[1])
             value3 = int(args[2])
         except ValueError:
-            raise TypeError(f"Seq expects three ints. Instead got {function_name}({args})")
-        
+            errors.append(YAML_result("something", "types", "invalid_types", 1, f"Seq expects three integers. Instead got {args}"))
+            return errors
         if value1 >= value2 or value3 <= 0:
-            raise ValueError("Sew expects x < y and z > 0")
+            errors.append(YAML_result("something", "types", "invalid_types", 1, f"Invalid value inside seq(x,y,z). Got {args}"))
 
     elif function_name == "str_len":
         pass
 
-def validate_types(each_type: str, includes):
+    elif function_name == "dinterval":
+        pass
+
+    return errors
+
+def validate_types(each_type: str, includes) -> list[YAML_result]:
+    errors = []
     basic_types: list[str] = ["int", "bool", "string", "float", "bigint"]
     param_types: list[str] = ["seq", "interval", "dinterval", "finterval", "str_len", "regex"]
     dataset_types: list[str] = includes
 
     if isinstance(each_type, str): # tohto sa musim zbavit
-        return
+        return []
+    
     for value in list(each_type.values()):
+    
         logger.info(f"VALUE = {value}")
+    
         if value is None:
             logger.error(f"Column has null type")
             continue
@@ -131,32 +155,37 @@ def validate_types(each_type: str, includes):
         if value in basic_types:
             continue
         elif any(value.startswith(whatever) for whatever in param_types):
-            check_param(value)
+            errors += check_param(value)
             continue
         elif dataset_types is not None and value in dataset_types:
             continue
         else:
-            logger.error(f"2. Uknown type {value}")
-            raise TypeError(f"2. Unknow type {value}")
+            logger.error(f"2. Unknown type {value}")
+            errors.append(YAML_result("something", "types", "invalid_types", 1, f"Unknown type {value}"))
+
+    return errors
 
 
+def iterate_types(types: str, includes) -> list[YAML_result]:
+    errors = []
 
-def iterate_types(types: str, includes):
     list_of_types: list[dict[str, str]] = list(types.keys())
     for part in list_of_types:
         if isinstance(types[part], list):
             pass
         else:
-            validate_types(types[part], includes)
+            errors += validate_types(types[part], includes)
+
+    return errors
 
 
-
-def validate_schema(each_schema: str, types_ds):
+def validate_schema(each_schema: str, types_ds) -> list[YAML_result]:
+    errors = []
     if types_ds is None:
-        return
+        return []
     
     if isinstance(each_schema, str): # tohto sa musim zbavit
-        return
+        return []
 
     for value in list(each_schema.values()):
         if value is None:
@@ -169,54 +198,68 @@ def validate_schema(each_schema: str, types_ds):
         split_fiction = value.split(".")
         if split_fiction[0] not in types_ds:
             logger.error(f"3. Uknown type {split_fiction[0]}")
-            raise TypeError(f"3. Uknown type {split_fiction[0]}")
+            errors.append(YAML_result("something", "schema", "invalid_schema", 1, f"Uknown type {split_fiction[0]}"))
         elif len(split_fiction) < 2 :
             continue
         elif split_fiction[1] not in list(types_ds[split_fiction[0]].keys()):
             logger.error(f"4. Uknown type {split_fiction[1]}")
-            raise TypeError(f"2. Unknow type {value}")
+            errors.append(YAML_result("something", "schema", "invalid_schema", 1, f"Uknown type {value}"))
 
+    return errors
 
-
-def iterate_schemas(schema: str, types_ds):
+def iterate_schemas(schema: str, types_ds) -> list[YAML_result]:
+    errors = []
     list_of_schemas: list[dict[str, str]] = list(schema.keys())
     for part in list_of_schemas:
-        validate_schema(schema[part], types_ds)
+        errors += validate_schema(schema[part], types_ds)
+
+    return errors
 
 
-
-def validate_generate(generate: str, types_ds):
+def validate_generate(generate: str, types_ds) -> list[YAML_result]:
+    
+    errors = []
+    
     if types_ds is None:
-        return
+        return []
     
     split_generate: list[str]
     for value in generate:
         if not "=" in value:
             logger.error("Value is missing =")
-            raise TypeError("Value is missing =")
+            errors.append(YAML_result("something", "generate", "invalid_generate", 1, f"Value ({value}) is missing ="))
         split_generate = value.split("=")
         count = split_generate[1].strip()
         if split_generate[0].strip() not in types_ds or not split_generate[1].strip().isdigit() and count != "auto":
             logger.error(f"5. Uknown type or invalid count: {value}")
-            raise TypeError(f"5. Uknown type or invalid count: {value}")
+            errors.append(YAML_result("something", "generate", "invalid_generate", 1, f"Unknown type or invalid count {value}"))
 
+    return errors
 
+def validate_include(includes: str) -> list[YAML_result]:
+    errors = []
 
-def validate_include(includes: str):
     invalid_includes = [value for value in includes if value not in AVAILABLE_INCLUDES]
     if invalid_includes:
-        logger.error(f"Include not part of available includes {invalid_includes}")
-        raise TypeError("Include not part of available includes")
+        logger.error(f"{invalid_includes} not part of available includes {AVAILABLE_INCLUDES}")
+        errors.append(YAML_result("something", "include", "invalid_include", 1, f"{invalid_includes} not part of available includes {AVAILABLE_INCLUDES}"))
+
+    return errors
 
 
-def validate_constrains(constrains: str, types_ds):
+def validate_constrains(constrains: str, types_ds) -> list[YAML_result]:
+
+    errors = []
+
     if types_ds is None:
-        return
+        return []
+    
     logger.debug(f"Constraints: {constrains}")
     for constraint in constrains:
         constraint_split = constraint.split(" ")
         if len(constraint_split) < 3:
             logger.error(f"Invalid constraint format: {constraint}")
+            errors.append(YAML_result("something", "constraints","invalid_constraint", 2, f"Invalid constraints format {constraint}"))
             continue
         typename = constraint_split[0]
         operator = constraint_split[1]
@@ -224,8 +267,9 @@ def validate_constrains(constrains: str, types_ds):
         regex = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)'
         if (typename.split(".")[0] not in types_ds) or (operator not in ["=", "!=", "<", ">", "<=", ">="] or (not bool(re.match(regex, value)) and value.split(".")[0] not in types_ds)):
             logger.error(f"Invalid constraint: {constraint}")
-            raise TypeError(f"Invalid constraint: {constraint}")
-
+            errors.append(YAML_result("something", "constraints", "invalid_constraint", 1, f"Invalid constraint {constraint}"))
+            continue    
+    return errors
 
 def save_yaml(stream: str):
     yaml_string = yaml.dump(stream, default_flow_style=False, indent=4, width=80, sort_keys=False)
