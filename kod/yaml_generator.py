@@ -348,7 +348,7 @@ def validate_constrains(constrains: str, types_ds) -> list[YAML_result]:
         logger.info(f"types_ds[typename[0]][typename[1]] = {typename_value}")
         value_val = types_ds[value_split[0]][value_split[1]] if value_split else ""
 
-        if not typename_value.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
+        if not isinstance(typename_value, str) and not typename_value.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
             logger.error(f"Invalid type of constraint: {typename} is {typename_value}.")
             errors.append(YAML_result("something", "constraints", "invalid_constraint", 1, f"Invalid type of constraint: {typename} is {typename_value}."))
             continue
