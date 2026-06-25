@@ -324,7 +324,42 @@ def sort_tables_multi_level(fk_map):
     logger.info(f"Sorted tables = {sorted_tables}")
     return sorted_tables
 
-def generate_yaml(samples, sql_server_type, fk_map, skip_fix=False):
+def go_over_generate(gen_count, generate_content):
+    logger.info(f"GEN COUNT = {gen_count}")
+    logger.info(f"generate_content = {generate_content}")
+    generate_content = generate_content.split("\n")
+    logger.info(f"generate_content after split = {generate_content}")
+
+    new_generate = []
+    for line in generate_content:
+        logger.info(f"Line before split ={line}")
+        if line == "generate:" or not line.strip():
+            new_generate.append(line)
+            continue
+        line_split = line.split("=")
+        logger.info(f"line_split = {line_split}")
+        try:
+            line_split[0] = line_split[0].replace("-", "").replace(" ", "").replace("'", "")
+            line_split[1] = int(line_split[1].replace("'", "").replace(" ",""))
+        except ValueError:
+            logger.error("cannot convert to number")
+            new_generate.append(line)
+            continue
+        logger.info(f"line_split[1] = {line_split[1]}, gen_copunt = {gen_count}")
+        if line_split[0] not in gen_count:
+            new_generate.append(line)
+            continue
+        if gen_count[line_split[0]] != line_split[1]:
+            new_generate.append(f" - '{line_split[0]} = {gen_count[line_split[0]]}'")
+        else:
+            new_generate.append(line)
+        logger.info(f"line_split[1] = {line_split[1]}")
+    
+    final_generate = "\n".join(new_generate)
+    logger.info(f"final_generate = {final_generate}")
+    return final_generate
+    
+def generate_yaml(samples, sql_server_type, fk_map, generate_count, skip_fix=False):
     sorted_table_names = sort_tables_multi_level(fk_map)
     sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
     types_content = generate_yaml_types(sorted_samples, sql_server_type)
@@ -339,7 +374,7 @@ def generate_yaml(samples, sql_server_type, fk_map, skip_fix=False):
     
     schema_content      = f_schema.result()
     schema_content      = apply_fk_to_schema(schema_content, fk_map)
-    generate_content    = f_generate.result()
+    generate_content = go_over_generate(generate_count, f_generate.result())
     constraints_content = f_constraints.result()
     constraints_content = filter_constraints(constraints_content)
     
