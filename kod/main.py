@@ -179,7 +179,7 @@ def main():
             logger.info("Sending samples to LLM for YAML generation")
             yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count, no_fix)
             logger.debug(f"Generated YAML:\n{yaml_str}")
-            errors = yaml_generator.validate_yaml(yaml_str)
+            errors = yaml_generator.validate_yaml(db_name, yaml_str)
             logger.info(f"Errors found in yaml {errors}")
         except RuntimeError as exc:
             logger.error(f"Error: {exc}")
