@@ -116,6 +116,7 @@ def main():
 
             samples = {}
             fk_map = {}
+            generate_count = {}
             for table in tables:
                 table_name = table[0]
                 samples[table_name] = {}
@@ -162,9 +163,10 @@ def main():
                         min_val = result[0][1]
                         max_val = result[0][2]
                         try:
-                            float(min_val)
-                            float(max_val)
+                            min_val = int(min_val)
+                            max_val = int(max_val)
                             samples[table_name][column_name] = {"is_pk": True, "seq": f"seq({min_val}, {max_val}, 1)"}
+                            generate_count[table_name] = max_val - min_val + 1
                             logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
                         except (ValueError, TypeError):
                             samples[table_name][column_name] = result
@@ -175,7 +177,7 @@ def main():
                         logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
 
             logger.info("Sending samples to LLM for YAML generation")
-            yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map,  no_fix)
+            yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count, no_fix)
             logger.debug(f"Generated YAML:\n{yaml_str}")
             errors = yaml_generator.validate_yaml(yaml_str)
             logger.info(f"Errors found in yaml {errors}")
