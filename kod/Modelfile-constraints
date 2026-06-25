@@ -37,8 +37,7 @@ types:
     name: 'str_len([cC] 3,20)'"""
 
 MESSAGE assistant """constraints:
-  - 'employee.salary > 0'
-"""
+  - 'employee.salary > 0'"""
 
 
 MESSAGE user """Generate constraints for:
@@ -130,6 +129,7 @@ types:
     parent_id: 'seq(1,5,1)'
     parent_name: 'str_len([cC] 10,50)'
     gender: 
+      - BLOCKS
       - Male
       - Female 
     parent_address: 'str_len(50,100)'
@@ -139,7 +139,8 @@ types:
   Children:
     child_id: 'seq(1,5,1)'
     parent_id: 'interval(1,4)'
-    gender: 
+    gender:
+      - BLOCKS
       - Male
       - Female 
     first_name: 'str_len([cC] 10,50)'
@@ -154,14 +155,60 @@ MESSAGE user """Generate constraints for:
 types:
   users:
     id: seq(1,10,1)
-    name:
-      format: '{} {}'
-      values:
-        - first_names_cs
-        - last_names_cs
+    first_name: first_names_cs
+    last_name: last_names_cs
     email:
-      format: '{}@test.com'
+      format: '{}.{}@test.com'
       values:
-        - first_names_cs"""
+        - users.firm_name
+        - users.last_name"""
 
 MESSAGE assistant """constraints: []""" 
+
+
+MESSAGE user """Generate constraints for:
+types:
+  job_specialization:
+    - ORDERED_DATASET
+    - 'Application programmer'
+    - 'System programmer'
+    - 'Web programmer'
+    - Tester
+  departments:
+    dept_no: 'seq(0,100000,1)'
+    dept_name: string
+    a: int
+  dept_emp:
+    from_date: 'dinterval(2000-1-1,2016-12-31)'
+    to_date: 'dinterval(2000-1-1,2016-12-31)'
+  salary:
+    from_date: 'dinterval(2000-1-1,2016-12-31)'
+    salary: 'interval(1,4)'
+  specialization:
+    title: job_specialization
+    from_date: 'dinterval(2000-1-1,2016-12-31)'
+  employee:
+    emp_no: 'seq(0,100000,1)'
+    birth_date: 'dinterval(1950-1-1,1997-12-31)'
+    first_name: first_names_cs
+    last_name: last_names_cs
+    email:
+      format: '{}.{}@company.com'
+      values:
+        - employee.first_name
+        - employee.last_name
+    hire_date: 'dinterval(2000-1-1,2016-12-31)'
+    spec: '[specialization]{1,2}'
+    salary: '[salary]{0,10}'
+    dept_emp: '[dept_emp]{1,3}'
+  dept_manager:
+    active: bool"""
+
+MESSAGE assistant """constraints:
+  - 'departments.a > 1'
+  - 'departments.dept_name in (4,10)'
+  - 'employee.salary.from_date.day = 10'
+  - 'employee.salary.from_date > employee.hire_date'
+  - 'employee.spec.from_date > employee.hire_date'
+  - 'employee.dept_emp.from_date > employee.hire_date'
+  - 'employee.dept_emp.to_date > employee.dept_emp.from_date'""" 

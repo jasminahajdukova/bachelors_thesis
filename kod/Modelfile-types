@@ -268,6 +268,7 @@ types:
     parent_id: seq(1,5,1)
     parent_name: str_len([cC] 10,50)
     gender:
+      - BLOCKS
       - Male
       - Female
     parent_address: str_len(50,100)
@@ -278,6 +279,7 @@ types:
     child_id: seq(1,5,1)
     parent_id: interval(1,4)
     gender:
+      - BLOCKS
       - Male
       - Female
     first_name: str_len([cC] 10,50)
@@ -319,16 +321,13 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
 MESSAGE assistant """types:
   users:
     id: 'seq(1,10,1)'
-    name:
-      format: '{} {}'
-      values:
-        - first_names_cs
-        - last_names_cs
+    first_name: first_names_cs
+    last_name: last_names_cs
     email:
       format: '{}.{}@test.com'
       values:
-        - first_names_cs
-        - last_names_cs"""
+        - users.firm_name
+        - users.last_name"""
 
 
 MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.

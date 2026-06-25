@@ -99,19 +99,20 @@ include:
 - first_names_cs
 - last_names_cs
 types:
-    users:
-        id: seq(1,5,1)
-        name: first_names_cs
-        email:
-            format: '{}.{}@test.com'
-            values:
-            - first_names_cs
-            - last_names_cs
+  users:
+    id: seq(1,5,1)
+    first_name: first_names_cs
+    last_name: last_names_cs
+    email:
+      format: '{}.{}@test.com'
+      values:
+        - users.firm_name
+        - users.last_name
 schema:
-    users:
-        id: users.id
-        name: users.name
-        email: users.email
+  users:
+    id: users.id
+    name: users.name
+    email: users.email
 generate:
 - users = 1000
 constraints:
