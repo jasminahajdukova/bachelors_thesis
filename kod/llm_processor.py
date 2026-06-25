@@ -34,7 +34,7 @@ AVAILABLE_INCLUDES = [
 
 def json_decimal(dec):
     if isinstance(dec, Decimal):
-        return str(dec)
+        return float(dec)
     if isinstance(dec, datetime.date):
         return f"{dec.year}-{dec.month}-{dec.day}"
     raise TypeError(f"Object of type {type(dec)} is not JSON serializable")
@@ -387,7 +387,7 @@ def generate_yaml(samples, sql_server_type, fk_map, generate_count, skip_fix=Fal
         f"{constraints_content}"
     )
     if skip_fix:
-        logger.info("Skipping YAML fix")
+        logger.info(f"Skipping YAML fix. Original YAML = {full_yaml}\n")
         return full_yaml
     logger.info(f"Sending yaml to fix. Original YAML = {full_yaml}\n")
     fixed_yaml = generate_yaml_fix(full_yaml)
