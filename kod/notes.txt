@@ -9,7 +9,18 @@ na zamyslenie:
 2. ked su tabulky roznymi vztahmi ako to spravit ? da sa to vobec riesit ? ako napr ze dieta moze mat jedneho rodica ale rodic moze mat viac deti 
 3. pri types by sa zisla ja valdacia ze napr finterval ma len float a ze arg interval min value < max value
 4. nie je lepsie predat opravaju yaml z llm_processor do yaml_generate + yaml generate by namiesto nahlasenia chyby ich mohol opravit (ak su opravitelne)
-
+5. spravna form format priklad:
+  employee:
+    emp_no: 'seq(0,100000,1)'
+    birth_date: 'dinterval(1950-1-1,1997-12-31)'
+    first_name: first_names_cs
+    last_name: last_names_cs
+    email:
+      format: '{}.{}@company.com'
+      values:
+        - employee.first_name
+        - employee.last_name
+        
 na testovanie:
 
 1. db bez tabuliek
