@@ -178,8 +178,8 @@ def check_param(db_name, value) -> list[YAML_result]:
 
     elif function_name == "dinterval":
         try:
-            date1 = datetime.strptime(args[0], "%Y-%m-%d")
-            date2 = datetime.strptime(args[1],"%Y-%m-%d")
+            date1 = datetime.strptime(args[0].strip("'"), "%Y-%m-%d")
+            date2 = datetime.strptime(args[1].strip("'"),"%Y-%m-%d")
         except ValueError:
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside dinterval. Got {args}"))
             return errors
@@ -344,14 +344,18 @@ def validate_constrains(db_name, constrains: str, types_ds) -> list[YAML_result]
             continue
         elif (value_split and value_split[1] not in list(types_ds[value_split[0]].keys())):
             logger.error(f"2. Constraint type {value_split} does not exitst in types section {list(types_ds[value_split[0]].keys())}, ")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Constraint type does not exitst in types section,{value_split}"))
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"2. Constraint type {".".join(value_split)} does not exitst in types section {list(types_ds[value_split[0]].keys())}"))
             continue
         
         typename_value = types_ds[typename[0]][typename[1]]
         logger.info(f"types_ds[typename[0]][typename[1]] = {typename_value}")
         value_val = types_ds[value_split[0]][value_split[1]] if value_split else ""
 
-        if not isinstance(typename_value, str) and not typename_value.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
+        if not isinstance(typename_value, str):
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraints", "1", "Not a string"))
+            continue
+        
+        if not typename_value.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
             logger.error(f"Invalid type of constraint: {typename} is {typename_value}.")
             errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid type of constraint: {typename} is {typename_value}."))
             continue
