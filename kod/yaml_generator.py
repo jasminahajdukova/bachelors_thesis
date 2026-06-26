@@ -3,6 +3,7 @@ import logging, colorlog
 from llm_processor import AVAILABLE_INCLUDES
 from dataclasses import dataclass
 from datetime import datetime
+import csv
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
 	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
@@ -79,7 +80,7 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
         errors += validate_constrains(db_name, stream["constraints"], types_ds)
     
     if all(result.severity != 1 for result in errors):
-        save_yaml(stream)
+        save_yaml(stream, db_name)
     else:
         logger.error(f"Found critical error")    
     logger.info(f"ERRORS = {errors}")
@@ -174,9 +175,16 @@ def check_param(db_name, value) -> list[YAML_result]:
 
     elif function_name == "str_len":
         try:
-            pass
+            min_val = args[0].split()[-1] if args else ""
+
+            value1 = int(min_val)
+            value2 = int(args[1])
         except ValueError:
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside seq(x,y,z). Got {args}"))
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid str_len value. Got {args}"))
+            return errors
+        
+        if value1 >= value2 or value1 < 0:
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside str_len. Got {args}"))
 
 
     elif function_name == "dinterval":
@@ -318,7 +326,34 @@ def validate_constrains(db_name, constrains: str, types_ds) -> list[YAML_result]
     logger.info(f"Constraints: {constrains}")
     for constraint in constrains:
         logger.info(f"Constraint = {constraint}")
+
+        constraint_split = constraint.split(" ", 2)
+        if len(constraint_split) >= 3:
+            typename = constraint_split[0]
+            operator = constraint_split[1]
+
+            if operator.lower() == "in":
+                typename_parts = typename.split(".")
+
+                if len(typename_parts) != 2 or typename_parts[0] not in types_ds or typename_parts[1] not in types_ds[typename_parts[0]]:
+                    logger.error(f"Invalid 'in' constraint (type does not exist): {constraint}")
+                    errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Constraint type does not exist in types section, {typename}"))
+                    continue
+
+                actual_type = types_ds[typename_parts[0]][typename_parts[1]]
+                if isinstance(actual_type, list):
+                    pass
+                
+                elif not isinstance(actual_type, str) or not (actual_type.startswith("enum") or "BLOCKS" in actual_type):
+                    logger.error(f"Invalid type for 'in' operator: {typename} is {actual_type}. Expected enum or BLOCKS.")
+                    errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Invalid type for 'in' operator: {typename} is {actual_type}."))
+                    continue
+                
+                logger.info(f"Successfully validated 'in' constraint: {constraint}")
+                continue
+        
         constraint_split = constraint.split(" ")
+
         if len(constraint_split) < 3:
             logger.error(f"Invalid constraint format: {constraint}")
             errors.append(YAML_result(db_name, "constraints","invalid_constraint", 2, f"Invalid constraints format {constraint}"))
@@ -353,26 +388,43 @@ def validate_constrains(db_name, constrains: str, types_ds) -> list[YAML_result]
         typename_value = types_ds[typename[0]][typename[1]]
         logger.info(f"types_ds[typename[0]][typename[1]] = {typename_value}")
         value_val = types_ds[value_split[0]][value_split[1]] if value_split else ""
-
+        logger.info(f"value_val = {value_val}")
         if not isinstance(typename_value, str):
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraints", "1", "Not a string"))
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, "Not a string"))
             continue
         
-        if not typename_value.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
-            logger.error(f"Invalid type of constraint: {typename} is {typename_value}.")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid type of constraint: {typename} is {typename_value}."))
-            continue
+        is_fk_equality = (operator == "=" and value_split and not is_num)
 
-        elif value_val and not value_val.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
+        if not typename_value.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
+            severity = 2 if typename_value.startswith("seq") else 1
+            if not is_fk_equality:
+                logger.error(f"Invalid type of constraint: {typename} is {typename_value}.")
+                errors.append(YAML_result(db_name, "constraints", "invalid_constraint", severity, f"Invalid type of constraint: {typename} is {typename_value}."))
+                continue
+
+        if not is_fk_equality and value_val and not value_val.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
+            severity = 2 if value_val.startswith("seq") else 1
             logger.error(f"Invalid type of constraint: {value_split} is {value_val}.")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid type of constraint: {value_split} is {value_val}."))
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", severity, f"Invalid type of constraint: {value_split} is {value_val}."))
             continue
 
     return errors
 
-def save_yaml(stream: str):
+def save_yaml(stream: str, db_name: str):
     yaml_string = yaml.dump(stream, default_flow_style=False, indent=4, width=80, sort_keys=False)
-    with open("dataster_config.yaml", "w") as f:
+    with open(f"results/dataster_config-{db_name}.yaml", "w") as f:
         f.write(yaml_string)
 
-       
+
+def save_csv(errors: list[YAML_result], db_name: str):
+    field_names = ["database", "section", "error_type", "severity", "detail"]
+
+    with open(f"results/results-{db_name}.csv", mode="a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(field_names)
+
+        for error in errors:
+            writer.writerow([error.database, error.section, error.error_type, error.severity, error.detail])
+        
+    
+    logger.info("Results saved into results/results.csv")
