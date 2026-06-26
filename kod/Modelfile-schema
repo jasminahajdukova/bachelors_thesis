@@ -45,6 +45,14 @@ MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a m
           - Passat
           - Rad 3
     
+    Rules:
+    - Every column must reference a type as 'typename.attribute'
+    - Schema table names must match exactly the type names
+    - Foreign keys use FROM syntax: 'FROM tablename.column'
+    - NEVER put data types directly in schema
+    
+    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
+    
     Return ONLY the schema section starting with 'schema:', nothing else."""
 
 MESSAGE assistant """schema:
@@ -69,7 +77,7 @@ MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a M
         customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
         customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
         actual_Payment_Amount: float
-    
+        
     Rules:
     - Every column must reference a type as 'typename.attribute'
     - Schema table names must match exactly the type names

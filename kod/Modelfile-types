@@ -14,16 +14,8 @@ TYPES RULES:
 - Use sample MIN and MAX values to choose realistic ranges for intervals
 - Use dinterval for ALL date columns, format ALWAYS: dinterval(YYYY-M-D,YYYY-M-D)
 - NEVER use: date, date(), date("Y-m-d"), datetime, datetime.date() — these are INVALID types
-- Date format is ALWAYS: dinterval(YYYY-M-D,YYYY-M-D)
 - str_len categories are ONLY: C (uppercase), c (lowercase), d (digits), s (whitespace), S (special chars)
 - NEVER use regex patterns inside str_len
-- to combine multiple values into one string, ALWAYS use format structure:
-  columnname:
-    format: '{} {}'
-    values:
-      - value1
-      - value2
-- NEVER use [] or + or concatenation to combine values
 - if you use a dataset name as type value, it MUST be from the available datasets list
 - Return ONLY the types: section, no include, no schema, no generate
 - for primary key column marked with 'is_pk': use ONLY the seq value, e.g. id: 'seq(1,5,1)'
@@ -33,61 +25,17 @@ TYPES RULES:
 - for columns like address, street, description, details, notes — use str_len(10,50) or string, NEVER invent dataset names
 - str_len parameters are ONLY two integers: str_len(min_length, max_length) — NEVER put regex or character classes inside str_len
 - if a column contains small integers (COUNT_DISTINCT <= 10) but values are numeric, use interval(MIN,MAX) not str_len
-- for columns like company_name, firm_name, organization_name — use str_len(10,50), NEVER use first_names_cs or last_names_cs
-- for text columns like name, title, description — ALWAYS use str_len([cC] x,y) with category [cC] to avoid special characters
+- for columns named name, full_name containing full person names (two-word values) — use format pattern with first_names_cs and last_names_cs
+- for text columns like title, description — use str_len([cC] x,y)
 - The table name is ALWAYS the top-level key in the database samples JSON — ALWAYS use it as the type name
 - NEVER put column names directly under 'types:' — they must ALWAYS be nested under the table name
+- NEVER use seq_cs — it is not a valid type and does not exist
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 """
 
 PARAMETER temperature 0.1
-PARAMETER num_predict 1024
-
-
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {{'is_pk': true, 'seq': 'seq(MIN,MAX,1)'}} - use the seq value directly as the type
-    
-    Database samples:
-    {"users": {"email": [["jana@test.com", "jana@test.com", "peter@test.com", 3]]}}
-    
-    Return ONLY the types section starting with 'types:', nothing else.
-"""
-
-MESSAGE assistant """
-types:
-  users:
-    email:
-      format: '{}.{}@test.com'
-      values:
-        - first_names_cs
-        - last_names_cs
-"""
-
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT]
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'}
-    
-    Database samples:
-    {"users": {"id": {"is_pk": true, "seq": "seq(1,5,1)"}, "name": [["Jana", "Jana", "Peter Horak", 5]], "email": [["jana@test.com", "jana@test.com", "peter@test.com", 3]]}}
-    
-    Return ONLY the types section starting with 'types:', nothing else."""
-
-MESSAGE assistant """
-types:
-  users:
-    id: 'seq(1,100,1)'
-    name: first_names_cs
-    email:
-      format: '{}@test.com'
-      values:
-        - users.name"""
 
 
 MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
@@ -106,12 +54,14 @@ types:
   car_models:
     model_code: 'seq(1,10,1)'
     manufacturer_code:
+      - BLOCKS
       - SKODA
       - VW
       - BMW
       - AUDI
       - TOYOTA
     model_name:
+      - BLOCKS
       - Octavia
       - Superb
       - Golf
@@ -141,6 +91,7 @@ types:
     car_Sold_ID: 'seq(101,115,1)'
     customer_ID: 'seq(501,515,1)'
     payment_Status_Code:
+      - BLOCK
       - PAID
       - OVERDUE
       - PENDING
@@ -168,6 +119,7 @@ types:
     last_name: last_names_cs
     address: 'str_len(10,50)'
     status_code:
+      - BLOCKS
       - ACTIVE
       - INACTIVE
     notes: 'str_len(10,100)'"""
@@ -305,31 +257,6 @@ types:
     Cost_per_1_lb: finterval(0.90,6.00)"""
 
 
-
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
-    
-    Database samples:
-    {"users": {"id": {"is_pk": true, "seq": "seq(1, 10, 1)"}, "name": [["Aneta Valekova", "Aneta Valekova", "Stepan Horak", 10], ["Martin Hrac", "Aneta Valekova", "Stepan Horak", 10], ["Jana Novak", "Aneta Valekova", "Stepan Horak", 10], ["Peter Horak", "Aneta Valekova", "Stepan Horak", 10], ["Maria Kovac", "Aneta Valekova", "Stepan Horak", 10]], "email": [["aneta@test.com", "aneta@test.com", "stepan@bing.com", 10], ["martin@test.com", "aneta@test.com", "stepan@bing.com", 10], ["jana@test.com", "aneta@test.com", "stepan@bing.com", 10], ["peter@test.com", "aneta@test.com", "stepan@bing.com", 10], ["maria@test.com", "aneta@test.com", "stepan@bing.com", 10]]}}
-    
-    Return ONLY the types section starting with 'types:', nothing else.
-"""
-
-MESSAGE assistant """types:
-  users:
-    id: 'seq(1,10,1)'
-    first_name: first_names_cs
-    last_name: last_names_cs
-    email:
-      format: '{}.{}@test.com'
-      values:
-        - users.firm_name
-        - users.last_name"""
-
-
 MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
     Each sample shows values in format:
         - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
@@ -344,3 +271,47 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
 MESSAGE assistant """types:
   Products:
     Product_Weight: finterval(1.00,10.00)"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+      
+    Database samples:
+    {"users": {"id": {"is_pk": true, "seq": "seq(1, 10, 1)"}, "name": [["Aneta Valekova", "Aneta Valekova", "Stepan Horak", 10], ["Martin Hrac", "Aneta Valekova", "Stepan Horak", 10], ["Jana Novak", "Aneta Valekova", "Stepan Horak", 10], ["Peter Horak", "Aneta Valekova", "Stepan Horak", 10], ["Maria Kovac", "Aneta Valekova", "Stepan Horak", 10]], "email": [["aneta@test.com", "aneta@test.com", "stepan@bing.com", 10], ["martin@test.com", "aneta@test.com", "stepan@bing.com", 10], ["jana@test.com", "aneta@test.com", "stepan@bing.com", 10], ["peter@test.com", "aneta@test.com", "stepan@bing.com", 10], ["maria@test.com", "aneta@test.com", "stepan@bing.com", 10]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """types:
+  users:
+    id: 'seq(1,10,1)'
+    first_name: first_names_cs
+    last_name: last_names_cs
+    name:
+      format: '{} {}'
+      values:
+        - users.first_name
+        - users.last_name
+    email:
+      format: '{}.{}@test.com'
+      values:
+        - users.first_name
+        - users.last_name"""
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
+    Each sample shows values in format:
+        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
+        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+    
+    Database samples:
+    {"Records": {"record_id": {"is_pk": true, "seq": "seq(1, 20, 1)"}, "record_type": [["Clinical_Trial_Alpha", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Border_Control_Log", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Research_Dataset_v2", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Corporate_Access_Log", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Banking_Auth_Record", "AI_Experiment_Set", "Zoo_Archive_DB", 15]], "record_owner": [["Ministry of Interior", "Bratislava Airport", "Vision AI Labs", 15], ["Customs Office", "Bratislava Airport", "Vision AI Labs", 15], ["Technical University", "Bratislava Airport", "Vision AI Labs", 15], ["Secure Tech Corp", "Bratislava Airport", "Vision AI Labs", 15], ["Global Bank IS", "Bratislava Airport", "Vision AI Labs", 15]], "record_location": [["Server Room A", "AWS Frankfurt", "Underground Bunker", 15], ["Cloud Region Europe", "AWS Frankfurt", "Underground Bunker", 15], ["Lab 403 Storage", "AWS Frankfurt", "Underground Bunker", 15], ["On-Premises Server", "AWS Frankfurt", "Underground Bunker", 15], ["AWS Frankfurt", "AWS Frankfurt", "Underground Bunker", 15]]}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """types:
+  Records:
+    record_id: 'seq(1,20,1)'
+    record_type: 'str_len([cC] 10,50)'
+    record_owner: 'str_len([cC] 10,50)'
+    record_location: 'str_len([cC] 10,50)'"""

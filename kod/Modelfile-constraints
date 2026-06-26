@@ -4,29 +4,24 @@ SYSTEM """
 You generate ONLY the constraints: section of a Dataster YAML.
 
 CONSTRAINTS RULES:
-- ONLY add constraints that are clearly meaningful from column names and sample values
 - date columns: use from_date < to_date, hire_date < end_date patterns
-- numeric columns: salary > 0, age >= 18, price > 0
 - Use ONLY type names and attributes that exist in the provided types section
 - If no meaningful constraints exist, return 'constraints: []'
 - Return ONLY the constraints section, nothing else
-- NEVER create constraints that validate data types or formats
-- ONLY create constraints for logical relationships like date ranges or numeric bounds
 - constraints work ONLY for: int, bigint, float, interval, finterval, dinterval, bool types
-- NEVER create constraints for string, str_len, regex, or seq columns
 - NEVER reference column names that do not exist in the provided types section
 - NEVER create constraints for format, dataset (first_names_cs etc.), or enum list columns
+- NEVER create constraints for seq columns — seq defines a primary key sequence and constraints on it are always invalid
+- NEVER compare intervals from different numeric ranges against each other (e.g. interval(101,107) vs interval(501,507) have no logical relationship)
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 
 """
 
-PARAMETER temperature 0.3
-PARAMETER num_predict 1024
-PARAMETER top_k 40
-PARAMETER repeat_penalty 1.1
-PARAMETER top_p 0.1
+PARAMETER temperature 0.1
+PARAMETER num_predict 512
+
 
 MESSAGE user """Generate constraints for:
 types:
@@ -154,13 +149,18 @@ MESSAGE assistant """constraints: []"""
 MESSAGE user """Generate constraints for:
 types:
   users:
-    id: seq(1,10,1)
+    id: 'seq(1,10,1)'
     first_name: first_names_cs
     last_name: last_names_cs
+    name:
+      format: '{} {}'
+      values:
+        - users.first_name
+        - users.last_name
     email:
       format: '{}.{}@test.com'
       values:
-        - users.firm_name
+        - users.first_name
         - users.last_name"""
 
 MESSAGE assistant """constraints: []""" 
@@ -212,3 +212,12 @@ MESSAGE assistant """constraints:
   - 'employee.spec.from_date > employee.hire_date'
   - 'employee.dept_emp.from_date > employee.hire_date'
   - 'employee.dept_emp.to_date > employee.dept_emp.from_date'""" 
+
+MESSAGE user """Generate constraints for:
+types:
+  Hotels:
+    Hotel_ID: 'seq(1,50,1)'
+    Star_Rating_Code: 'seq(1,5,1)'
+    hotel_name: 'str_len([cC] 5,30)'"""
+
+MESSAGE assistant """constraints: []"""
