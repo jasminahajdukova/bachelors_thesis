@@ -79,9 +79,9 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str, table_
             {template}
 
             SQL query:"""
-    logger.info(f"Generate SQL query prompt = {prompt}")
+    logger.debug(f"Generate SQL query prompt = {prompt}")
     response = check_ollama("SQL query", prompt, model)
-    logger.info(f"Generated SQL query: {response.response}")
+    logger.debug(f"Generated SQL query: {response.response}")
     return response.response
 
 
@@ -195,7 +195,7 @@ def generate_yaml_schema(types_section, sql_server_type):
 def generate_yaml_types(samples, sql_server_type):
     logger.info("Generating YAML 'types' section")
     prompt = build_types_prompt(samples,sql_server_type)
-    logger.info(f"PROMPT=\n{prompt}")
+    logger.debug(f"PROMPT=\n{prompt}")
  
     response = check_ollama("YAML types", prompt, "yaml-generator-types")    
     logger.info(f"Generated YAML types: {response.response}")
@@ -225,22 +225,9 @@ def generate_yaml_constraints(types_content, samples, sql_server_type):
     return generated_yaml
 
 
-def generate_yaml_fix(full_yaml):
-    logger.info("Generating YAML fix")
-    prompt = f"""Fix this Dataster YAML. Return ONLY the corrected YAML:
-
-    {full_yaml}
-    """
-    response = check_ollama("YAML fix", prompt, "yaml-generator-fix")
-    logger.debug(f"Generated YAML fix: {response.response}")
-    generated_yaml = strip_markdown(response.response)
-    return generated_yaml
-
-
 def filter_constraints(constraints_yaml) :
     lines = constraints_yaml.split('\n')
     filtered = []
-    # in the future check in/IN
     invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not NULL', 'IS NOT NULL', 'is null', 'IS NULL']
     logger.info("------------------------------------------------------------------------------------------------------------------------------")
     for line in lines:
@@ -253,6 +240,16 @@ def filter_constraints(constraints_yaml) :
             continue
         right_side = " ".join(stripped_line[3:])
         right_side = right_side.strip("'\"")
+
+        if len(stripped_line) >= 4 and stripped_line[2].lower() == 'in':
+            in_match = re.match(r"^\w+\.\w+$", stripped_line[1]) and right_side.strip().startswith('(') and right_side.strip().endswith(')')
+
+            if in_match:
+                filtered.append(line)
+                continue
+            else:
+                logger.info(f"Removing invalid 'in' constraint {line.strip()}")
+
         if not re.match(r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)', right_side) and '.' not in right_side and len(stripped_line) >= 4:
             logger.info(f"Removing invalid constraint: {line.strip()}")
             continue
@@ -341,7 +338,7 @@ def go_over_generate(gen_count, generate_content):
         try:
             line_split[0] = line_split[0].replace("-", "").replace(" ", "").replace("'", "")
             line_split[1] = int(line_split[1].replace("'", "").replace(" ",""))
-        except ValueError:
+        except (ValueError, IndexError):
             logger.error("cannot convert to number")
             new_generate.append(line)
             continue
@@ -359,7 +356,7 @@ def go_over_generate(gen_count, generate_content):
     logger.info(f"final_generate = {final_generate}")
     return final_generate
     
-def generate_yaml(samples, sql_server_type, fk_map, generate_count, skip_fix=False):
+def generate_yaml(samples, sql_server_type, fk_map, generate_count):
     sorted_table_names = sort_tables_multi_level(fk_map)
     sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
     types_content = generate_yaml_types(sorted_samples, sql_server_type)
@@ -386,9 +383,6 @@ def generate_yaml(samples, sql_server_type, fk_map, generate_count, skip_fix=Fal
         f"{generate_content}\n\n"
         f"{constraints_content}"
     )
-    if skip_fix:
-        logger.info(f"Skipping YAML fix. Original YAML = {full_yaml}\n")
-        return full_yaml
-    logger.info(f"Sending yaml to fix. Original YAML = {full_yaml}\n")
-    fixed_yaml = generate_yaml_fix(full_yaml)
-    return fixed_yaml
+
+    logger.info(f"Original YAML = {full_yaml}\n")
+    return full_yaml
