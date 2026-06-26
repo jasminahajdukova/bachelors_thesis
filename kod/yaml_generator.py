@@ -109,13 +109,16 @@ def validate_seq(db_name, generate, types) -> list[YAML_result]:
             if not value.startswith("seq"):
                 continue
             seq = re.split(r"\s*[\(\),]\s*", value)
-            
+            logger.info(f"SEQ = {seq}")
             try:
-                gen_num = int(part_split[1])
-                seq_len = (int(seq[2]) - int(seq[1])) // int(seq[3]) + 1
+                if len(seq) >= 3:
+                    gen_num = int(part_split[1])
+                    seq_len = (int(seq[2]) - int(seq[1])) // int(seq[3]) + 1
+                else:
+                    raise ValueError
             except ValueError:
-                logger.error(f"Generate or Seq expected number: generate = {part_split[1]} seq({seq[1]},{seq[2]},{seq[3]})")
-                errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Generate or Seq expected number: generate = {part_split[1]} seq({seq[1]},{seq[2]},{seq[3]})"))
+                logger.error(f"Generate or Seq expected number: generate = {part_split[1]} seq = {seq}")
+                errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Generate or Seq expected number: generate = {part_split[1]} seq = {seq}"))
                 continue
 
             if gen_num > seq_len:
