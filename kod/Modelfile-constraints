@@ -13,6 +13,7 @@ CONSTRAINTS RULES:
 - NEVER create constraints for format, dataset (first_names_cs etc.), or enum list columns
 - NEVER create constraints for seq columns — seq defines a primary key sequence and constraints on it are always invalid
 - NEVER compare intervals from different numeric ranges against each other (e.g. interval(101,107) vs interval(501,507) have no logical relationship)
+- NEVER use 'and' in constraints — each constraint must be a single comparison
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
@@ -168,56 +169,115 @@ MESSAGE assistant """constraints: []"""
 
 MESSAGE user """Generate constraints for:
 types:
-  job_specialization:
-    - ORDERED_DATASET
-    - 'Application programmer'
-    - 'System programmer'
-    - 'Web programmer'
-    - Tester
-  departments:
-    dept_no: 'seq(0,100000,1)'
-    dept_name: string
-    a: int
-  dept_emp:
-    from_date: 'dinterval(2000-1-1,2016-12-31)'
-    to_date: 'dinterval(2000-1-1,2016-12-31)'
-  salary:
-    from_date: 'dinterval(2000-1-1,2016-12-31)'
-    salary: 'interval(1,4)'
-  specialization:
-    title: job_specialization
-    from_date: 'dinterval(2000-1-1,2016-12-31)'
-  employee:
-    emp_no: 'seq(0,100000,1)'
-    birth_date: 'dinterval(1950-1-1,1997-12-31)'
-    first_name: first_names_cs
-    last_name: last_names_cs
-    email:
-      format: '{}.{}@company.com'
-      values:
-        - employee.first_name
-        - employee.last_name
-    hire_date: 'dinterval(2000-1-1,2016-12-31)'
-    spec: '[specialization]{1,2}'
-    salary: '[salary]{0,10}'
-    dept_emp: '[dept_emp]{1,3}'
-  dept_manager:
-    active: bool"""
-
-MESSAGE assistant """constraints:
-  - 'departments.a > 1'
-  - 'departments.dept_name in (4,10)'
-  - 'employee.salary.from_date.day = 10'
-  - 'employee.salary.from_date > employee.hire_date'
-  - 'employee.spec.from_date > employee.hire_date'
-  - 'employee.dept_emp.from_date > employee.hire_date'
-  - 'employee.dept_emp.to_date > employee.dept_emp.from_date'""" 
-
-MESSAGE user """Generate constraints for:
-types:
   Hotels:
     Hotel_ID: 'seq(1,50,1)'
     Star_Rating_Code: 'seq(1,5,1)'
     hotel_name: 'str_len([cC] 5,30)'"""
 
 MESSAGE assistant """constraints: []"""
+
+
+MESSAGE user """Generate constraints for:
+types:
+  Parents:
+    parent_id: seq(1,5,1)
+    first_name: first_names_cs
+    last_name: last_names_cs
+    parent_name:
+      format: '{} {}'
+      values:
+        - Parents.first_name
+        - Parents.last_name
+    gender:
+      - BLOCKS
+      - Male
+      - Female
+    parent_address: str_len(50,100)
+    home_phone: regex(''555-[0-9]{4}'')
+    cell_mobile_phone: regex(''555-[0-9]{4}'')
+    other_details: str_len(10,100)
+  Children:
+    child_id: seq(1,5,1)
+    parent_id: interval(1,5)
+    gender:
+      - BLOCKS
+      - Male
+      - Female
+    first_name: first_names_cs
+    last_name: last_names_cs
+    age: interval(5,12)
+    date_of_birth: dinterval(2014-11-5,2021-8-23)
+    other_details: str_len(10,100)"""
+
+MESSAGE assistant """constraints: []"""
+
+
+MESSAGE user """Generate constraints for:
+types:
+  Accomodation:
+    Accommodation_ID: seq(1,10,1)
+    Accommodation_Type_Code:
+      - BLOCKS
+      - HOTEL
+      - APART
+      - VILLAGE
+  Competitors:
+    Competitor_ID: seq(1,10,1)
+    Accommodation_ID: interval(1,8)
+    Gender_Code:
+      - BLOCKS
+      - M
+      - F
+    ISO_Country_Code:
+      - BLOCKS
+      - USA
+      - AUS
+      - CAN
+      - GBR
+      - AUS
+  Competitors_in_Events:
+    Event_ID: seq(101,105,1)
+    Competitor_ID: seq(1,10,1)"""
+
+MESSAGE assistant """constraints: []""" 
+
+MESSAGE user """Generate constraints for:
+types:
+  Suppliers:
+    supplier_id: 'seq(1,12,1)'
+    supplier_short_name: str_len([cC] 5,50)
+    supplier_long_name: str_len([cC] 5,50)
+    supplier_address: str_len([cC] 10,100)
+    other_supplier_details: string
+  Non_Pharmaceutical_Items:
+    item_number: 'seq(1,17,1)'
+    clinic_id: interval(10,17)
+    supplier_id: interval(4,11)
+    item_name: 'str_len(2,50)'
+    item_cost: float
+    item_description: 'str_len(2,50)'
+    quantity_in_stock: int
+    reorder_level: int
+    reorder_quantity: int
+    other_supplied_item_details: string
+  Pharmaceutical_Items:
+    drug_number: 'seq(1,15,1)'
+    clinic_id: interval(10,17)
+    supplier_id: interval(4,11)
+    drug_name: 'str_len(2,50)'
+    drug_cost: float
+    drug_description: 'str_len(2,50)'
+    quantity_in_stock: int
+    reorder_level: int
+    reorder_quantity: int
+    dosage: string
+    method_of_administration: string
+    other_item_details: string"""
+
+MESSAGE assistant """constraints:
+  - 'Non_Pharmaceutical_Items.item_cost > 0'
+  - 'Non_Pharmaceutical_Items.quantity_in_stock >= 0'
+  - 'Non_Pharmaceutical_Items.reorder_level > 0'
+  - 'Non_Pharmaceutical_Items.reorder_quantity > 0'
+  - 'Pharmaceutical_Items.drug_cost > 0'
+  - 'Pharmaceutical_Items.quantity_in_stock >= 0'"""

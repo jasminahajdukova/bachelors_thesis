@@ -25,11 +25,11 @@ TYPES RULES:
 - for columns like address, street, description, details, notes — use str_len(10,50) or string, NEVER invent dataset names
 - str_len parameters are ONLY two integers: str_len(min_length, max_length) — NEVER put regex or character classes inside str_len
 - if a column contains small integers (COUNT_DISTINCT <= 10) but values are numeric, use interval(MIN,MAX) not str_len
-- for columns named name, full_name containing full person names (two-word values) — use format pattern with first_names_cs and last_names_cs
 - for text columns like title, description — use str_len([cC] x,y)
 - The table name is ALWAYS the top-level key in the database samples JSON — ALWAYS use it as the type name
 - NEVER put column names directly under 'types:' — they must ALWAYS be nested under the table name
 - NEVER use seq_cs — it is not a valid type and does not exist
+- NEVER use Python list syntax ['x', 'y'] for enum columns — ALWAYS use BLOCKS list format
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
@@ -88,10 +88,10 @@ MESSAGE assistant """
 types:
   Customer_Payments:
     customer_Payment_ID: 'seq(1,15,1)'
-    car_Sold_ID: 'seq(101,115,1)'
-    customer_ID: 'seq(501,515,1)'
+    car_Sold_ID: 'interval(101,115)'
+    customer_ID: 'interval(501,515)'
     payment_Status_Code:
-      - BLOCK
+      - BLOCKS
       - PAID
       - OVERDUE
       - PENDING
@@ -218,28 +218,33 @@ MESSAGE assistant """
 types:
   Parents:
     parent_id: seq(1,5,1)
-    parent_name: str_len([cC] 10,50)
+    first_name: first_names_cs
+    last_name: last_names_cs
+    parent_name:
+      format: '{} {}'
+      values:
+        - Parents.first_name
+        - Parents.last_name
     gender:
       - BLOCKS
       - Male
       - Female
-    parent_address: str_len(50,100)
+    parent_address: str_len([cC] 50,100)
     home_phone: regex(''555-[0-9]{4}'')
     cell_mobile_phone: regex(''555-[0-9]{4}'')
-    other_details: str_len(10,100)
+    other_details: str_len([cC]10,100)
   Children:
     child_id: seq(1,5,1)
-    parent_id: interval(1,4)
+    parent_id: interval(1,5)
     gender:
       - BLOCKS
       - Male
       - Female
-    first_name: str_len([cC] 10,50)
-    last_name: str_len([cC] 10,50)
+    first_name: first_names_cs
+    last_name: last_names_cs
     age: interval(5,12)
     date_of_birth: dinterval(2014-11-5,2021-8-23)
-    other_details: str_len(10,100)
-"""
+    other_details: str_len(10,100)"""
 
 
 MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.

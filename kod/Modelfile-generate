@@ -39,7 +39,7 @@ MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a
     Return ONLY the generate section starting with 'generate:', nothing else."""
 
 MESSAGE assistant """generate:
-  - 'car_models = 10'"""
+- 'car_models = 10'"""
 
 
 MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
@@ -61,7 +61,7 @@ MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a
     Return ONLY the generate section starting with 'generate:', nothing else."""
 
 MESSAGE assistant """generate:
- - 'Customer_Payments = 15'"""
+- 'Customer_Payments = 15'"""
 
 
 MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
@@ -79,4 +79,35 @@ MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a
     Return ONLY the generate section starting with 'generate:', nothing else."""
 
 MESSAGE assistant """generate:
- - 'Corporate_Customer = 25'"""
+- 'Corporate_Customer = 25'"""
+
+
+MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
+    
+    Here are the generated types:
+    types:
+      Product_Categories:
+        Product_Category_Code:
+          - BLOCKS
+          - FRUIT
+          - GRAIN
+          - NUTS
+          - VEG
+        Product_Category_Description: str_len([cC] 50,70)
+        Cost_per_1_lb: finterval(0.9,6.0)
+        Cost_per_5_lb: finterval(4.05,27.0)
+        Cost_per_10_lb: finterval(7.2,48.0)
+        eg_Fruit_Vegetables: str_len([cC] 13,20)
+      Products:
+        Product_ID: seq(1,50,1)
+        Product_Category_Code: str_len([cC] 4,6)
+        Product_Name: str_len([cC] 12,30)
+        Product_Description: str_len([cC] 50,70)
+        Product_Weight: finterval(1.0,10.0)
+        Calculated_Product_Cost: finterval(0.9,48.0)
+        Product_Image_Name: str_len([cC] 12,30)
+    
+    Return ONLY the generate section starting with 'generate:', nothing else."""
+MESSAGE assistant """generate:
+- 'Product_Categories = 5'
+- 'Products = 50'"""
