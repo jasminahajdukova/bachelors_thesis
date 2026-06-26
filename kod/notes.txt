@@ -48,7 +48,7 @@ ollama create yaml-generator-generate -f Modelfile-generate
 ollama create yaml-generator-constraints -f Modelfile-constraints
 ollama create yaml-generator-fix -f Modelfile-fix
 ollama create yaml-generator-sql -f Modelfile-sql
-python3 main.py -d mysql --host 127.0.0.1 --user root --db testdb --no-fix
+python3 main.py -d mysql --host 127.0.0.1 --user root --db testdb 
 python3 main.py -d postgresql --host 127.0.0.1 --user postgres --db testdb
 
 
