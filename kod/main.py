@@ -172,9 +172,12 @@ def main():
                             samples[table_name][column_name] = result
                             
                     else:    
-                        logger.debug(f"2nd column loop: NOT prime key: {column_name}")
-                        samples[table_name][column_name] = result
-                        logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
+                        count_distinct_in_sample = len(set(row[0] for row in result if row[0] is not None))
+                        result_with_sample_count = [
+                            (row[0], row[1], row[2], count_distinct_in_sample)
+                            for row in result
+                        ]
+                        samples[table_name][column_name] = result_with_sample_count
 
             logger.info("Sending samples to LLM for YAML generation")
             yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count, no_fix)
