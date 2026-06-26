@@ -26,7 +26,7 @@ def parse_arguments():
     parser.add_argument("--user", required=True, help="Database user")
     parser.add_argument("--db", required=True, help="Database name")
     parser.add_argument("--no-password", action="store_true", help="Connect without password")
-    parser.add_argument("--no-fix", action="store_true", help="Skip YAML fix step")
+    parser.add_argument("--password", default=None, help="Database password")
     return parser.parse_args()
     
 
@@ -65,7 +65,7 @@ def check_ollama_models():
 
     found_models = [(model.model).split(":")[0] for model in response.models]
 
-    required_models = ["yaml-generator-types", "yaml-generator-constraints", "yaml-generator-schema", "yaml-generator-fix", "yaml-generator-generate", "yaml-generator-sql"]
+    required_models = ["yaml-generator-types", "yaml-generator-constraints", "yaml-generator-schema", "yaml-generator-generate", "yaml-generator-sql"]
 
     missing_models = [ model for model in required_models if model not in found_models]
     if missing_models:
@@ -85,15 +85,21 @@ def main():
     user        = args.user
     db_name     = args.db
     no_password = args.no_password
-    no_fix      = args.no_fix
-
+ 
     if not check_if_server_exists(db_server):
         return
     
     if not check_ollama_models():
         return
     
-    password = "" if no_password else getpass.getpass("Enter password: ")
+    # password = "" if no_password else getpass.getpass("Enter password: ")
+    if args.password is not None:
+        password = args.password
+    elif no_password:
+        password = ""
+    else:
+        password = getpass.getpass("Enter password: ")
+        
     server   = choose_server(db_server, host, user, db_name, password)
 
     if server is None:
@@ -180,10 +186,10 @@ def main():
                         samples[table_name][column_name] = result_with_sample_count
 
             logger.info("Sending samples to LLM for YAML generation")
-            yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count, no_fix)
+            yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count)
             logger.debug(f"Generated YAML:\n{yaml_str}")
             errors = yaml_generator.validate_yaml(db_name, yaml_str)
-            logger.info(f"Errors found in yaml {errors}")
+            yaml_generator.save_csv(errors, db_name)
         except RuntimeError as exc:
             logger.error(f"Error: {exc}")
             
