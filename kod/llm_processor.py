@@ -51,10 +51,12 @@ def get_response(type: str, prompt: str, model: str, thinking: bool = False):
 # pridaj rozsirenie dalsich llm
 def generate_sql_query(template: str, sql_server_type: str, db_name: str, table_name: str | None, model: str = "yaml-generator-sql"):
     logger.info(f"Generating SQL query for {sql_server_type}")
+
+    table = f"`{table_name}`" if table_name else "NULL"
     prompt = f"""Generate a valid {sql_server_type} SQL query based on this template.
-            Database name = {db_name}
-            Database server = {sql_server_type}
-            Table name = {table_name}
+            Database name = `{db_name}`
+            Database server = `{sql_server_type}`
+            Table name = {table}
 
             Template:
             {template}
