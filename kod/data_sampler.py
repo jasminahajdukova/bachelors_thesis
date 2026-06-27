@@ -20,37 +20,39 @@ def calculate_limit(row_count):
     limit = int(row_count * 0.25)
     return max(5, min(limit,20))
 
+def prime_keys_template(table_name: str, column_name: str):
+    template = f"SELECT MIN(`{column_name}`), MAX(`{column_name}`) FROM `{table_name}`"
+    return template
+
 def data_samples_templates(table_name: str | None, column_name: str | None, limit: int = 5) -> str:
     
-    template = f"""SELECT DISTINCT {column_name},
-                        (SELECT MIN({column_name}) FROM {table_name}),
-                        (SELECT MAX({column_name}) FROM {table_name}),
-                        (SELECT COUNT(DISTINCT {column_name}) FROM {table_name})
-                    FROM {table_name}
-                    LIMIT {limit};"""
-    
+    template = f"SELECT DISTINCT `{column_name}` FROM `{table_name}` ORDER BY `{column_name}` LIMIT {limit}"
+
     logger.debug(f"Creating SQL query: {template}")
     return template
 
 
-def data_samples_templates_postgresql(table_name: str | None, column_name: str | None) -> str:
-    template = f"""SELECT MIN({column_name}), MAX({column_name}), COUNT(DISTINCT {column_name})
-                   FROM {table_name};"""
-    
-    logger.debug(f"Creating SQL query: {template}")
-    return template
 
 
-def execute_sql(db_name: psycopg2.extensions.connection | MySQLConnection, query: str):
+def execute_sql(conn: psycopg2.extensions.connection | MySQLConnection, query: str):
     try:
-        mycursor = db_name.cursor()
-
+        mycursor = conn.cursor()
         mycursor.execute(query)
-
         myresults = mycursor.fetchall()
-        logger.debug(f"Query returned {len(myresults)} rows")
+        logger.debug(f"Query returned {len(myresults)} rows")        
         return myresults
+    
     except Exception as e:
         logger.error(f"Failed to execute query: {e}") 
-        raise Exception("Failed to execute query.") from e
+        raise RuntimeError("Failed to execute query.") from e
     
+
+
+
+
+# def data_samples_templates_postgresql(table_name: str | None, column_name: str | None) -> str:
+#     template = f"""SELECT MIN({column_name}), MAX({column_name}), COUNT(DISTINCT {column_name})
+#                    FROM {table_name};"""
+    
+#     logger.debug(f"Creating SQL query: {template}")
+#     return template
