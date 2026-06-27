@@ -1,4 +1,5 @@
 from mysql.connector.connection import MySQLConnection
+import mysql.connector
 import logging
 import colorlog
 
@@ -18,11 +19,11 @@ logger.propagate = False
 
 
 def error_check(types: str, table_name: str) -> None:
-    if types not in ["tables","columns", "prime_keys", "foreign_keys"]:
-        raise ValueError(f"Search type:{types} is not part of templates for tables,columns, prime_keys:")
+    if types not in ["tables","columns", "prime_keys", "foreign_keys", "count"]:
+        raise ValueError(f"Search type:{types} is not part of templates for tables,columns, prime_keys, foreign_keys, count")
     
     if table_name is None and types in ["columns", "prime_keys", "foreign_keys"]:
-        raise ValueError("Table name is need to search for columns/primary keys")
+        raise ValueError("Table name is needed to search for columns/primary keys")
     
 
 def mysql_query_templates(types: str) -> str:
@@ -33,54 +34,23 @@ def mysql_query_templates(types: str) -> str:
                        WHERE table_schema = '{db_name}';""",
 
         "columns": """SHOW COLUMNS 
-                       FROM {table_name} 
-                       FROM {db_name};""",
+                       FROM `{table_name}` 
+                       FROM `{db_name}`;""",
 
         "prime_keys":  """SHOW KEYS 
-                           FROM {table_name} 
+                           FROM `{table_name}` 
                            WHERE Key_name = 'PRIMARY';""",
 
         "foreign_keys": """SELECT column_name, referenced_table_name, referenced_column_name
                             FROM information_schema.KEY_COLUMN_USAGE
-                            WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL; """
+                            WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL; """,
+
+        "count":        "SELECT COUNT(*) FROM `{table_name}`;"
     }
 
     logger.debug(f"Created SQL template: {templates_dict[types]}")
     return templates_dict[types]
 
-
-
-def postgresql_query_template(db_name: str, table_name: str | None, types: str) -> str:
-
-    error_check(types, table_name)
-
-    templates_dict = {
-        "tables":       """SELECT table_name 
-                            FROM information_schema.tables
-                            WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_schema = 'public'; """,
-
-        "columns":      f"""SELECT *
-                            FROM information_schema.columns
-                            WHERE table_schema = 'public' and table_name = '{table_name}'; """,
-        
-        "prime_keys":   f"""SELECT kcu.column_name
-                            FROM information_schema.table_constraints tc
-                            JOIN information_schema.key_column_usage kcu
-                            ON tc.constraint_name = kcu.constraint_name
-                            WHERE tc.table_schema = 'public' AND tc.table_name = '{table_name}' AND tc.constraint_type = 'PRIMARY KEY';""",
-
-        "foreign_keys": f"""SELECT tc.table_schema, tc.constraint_name, tc.table_name, kcu.column_name, ccu.table_schema AS foreign_table_schema, ccu.table_name AS foreign_table_name, ccu.column_name AS foreign_column_name 
-                            FROM information_schema.table_constraints AS tc 
-                            JOIN information_schema.key_column_usage AS kcu
-                            ON tc.constraint_name = kcu.constraint_name
-                            AND tc.table_schema = kcu.table_schema  
-                            JOIN information_schema.constraint_column_usage AS ccu
-                            ON ccu.constraint_name = tc.constraint_name
-                            WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema='public' AND tc.table_name='{table_name}'; """
-    }
-
-    logger.debug(f"Created SQL template: {templates_dict[types]}")
-    return templates_dict[types]
 
 
 def execute_sql(db_name: MySQLConnection, query):
@@ -93,11 +63,16 @@ def execute_sql(db_name: MySQLConnection, query):
         myresult = mycursor.fetchall()
 
         logger.debug(f"MY RESULT {myresult}")
-        
         logger.debug(f"Query returned {len(myresult)} rows")
+
         return myresult
+    
+    except mysql.connector.Error as err:
+        logger.error(f"Failed to execute query {err}")
+        raise RuntimeError(f"Failed to execute query {err}") from err
     except Exception as e:
-        logger.error(f"Failed to execute query: {e}") 
-        raise Exception("Failed to execute query.") from e
+        logger.error(f"Unexpected failure: {e}") 
+        raise RuntimeError(f"Unexpected failure: {e}") from e
+
 
 
