@@ -20,7 +20,8 @@ na zamyslenie:
       values:
         - employee.first_name
         - employee.last_name
-        
+6. treba kontrolovat a opravovat format napr pri mene alebo email
+       
 na testovanie:
 
 1. db bez tabuliek

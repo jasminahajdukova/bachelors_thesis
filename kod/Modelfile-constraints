@@ -70,8 +70,8 @@ MESSAGE user """Generate constraints for:
 types:
   Customer_Payments:
     customer_Payment_ID: 'seq(1,15,1)'
-    car_Sold_ID: 'seq(101,115,1)'
-    customer_ID: 'seq(501,515,1)'
+    car_Sold_ID: 'interval(101,115)'
+    customer_ID: 'interval(501,515)'
     payment_Status_Code:
       - PAID
       - OVERDUE

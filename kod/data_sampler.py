@@ -1,5 +1,7 @@
 from mysql.connector.connection import MySQLConnection
-import psycopg2, logging, colorlog
+import psycopg2
+import logging
+import colorlog
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(

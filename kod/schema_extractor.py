@@ -1,5 +1,6 @@
 from mysql.connector.connection import MySQLConnection
-import psycopg2, logging, colorlog
+import logging
+import colorlog
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
@@ -21,7 +22,7 @@ def error_check(types: str, table_name: str) -> None:
         raise ValueError(f"Search type:{types} is not part of templates for tables,columns, prime_keys:")
     
     if table_name is None and types in ["columns", "prime_keys", "foreign_keys"]:
-        raise ValueError(f"Table name is need to search for columns/primary keys")
+        raise ValueError("Table name is need to search for columns/primary keys")
     
 
 def mysql_query_templates(types: str) -> str:
@@ -54,7 +55,7 @@ def postgresql_query_template(db_name: str, table_name: str | None, types: str) 
     error_check(types, table_name)
 
     templates_dict = {
-        "tables":       f"""SELECT table_name 
+        "tables":       """SELECT table_name 
                             FROM information_schema.tables
                             WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_schema = 'public'; """,
 

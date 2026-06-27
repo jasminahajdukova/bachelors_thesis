@@ -282,32 +282,6 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a My
     Each sample shows values in format:
         - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
         - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
-      
-    Database samples:
-    {"users": {"id": {"is_pk": true, "seq": "seq(1, 10, 1)"}, "name": [["Aneta Valekova", "Aneta Valekova", "Stepan Horak", 10], ["Martin Hrac", "Aneta Valekova", "Stepan Horak", 10], ["Jana Novak", "Aneta Valekova", "Stepan Horak", 10], ["Peter Horak", "Aneta Valekova", "Stepan Horak", 10], ["Maria Kovac", "Aneta Valekova", "Stepan Horak", 10]], "email": [["aneta@test.com", "aneta@test.com", "stepan@bing.com", 10], ["martin@test.com", "aneta@test.com", "stepan@bing.com", 10], ["jana@test.com", "aneta@test.com", "stepan@bing.com", 10], ["peter@test.com", "aneta@test.com", "stepan@bing.com", 10], ["maria@test.com", "aneta@test.com", "stepan@bing.com", 10]]}}
-    
-    Return ONLY the types section starting with 'types:', nothing else."""
-
-MESSAGE assistant """types:
-  users:
-    id: 'seq(1,10,1)'
-    first_name: first_names_cs
-    last_name: last_names_cs
-    name:
-      format: '{} {}'
-      values:
-        - users.first_name
-        - users.last_name
-    email:
-      format: '{}.{}@test.com'
-      values:
-        - users.first_name
-        - users.last_name"""
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
     
     Database samples:
     {"Records": {"record_id": {"is_pk": true, "seq": "seq(1, 20, 1)"}, "record_type": [["Clinical_Trial_Alpha", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Border_Control_Log", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Research_Dataset_v2", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Corporate_Access_Log", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Banking_Auth_Record", "AI_Experiment_Set", "Zoo_Archive_DB", 15]], "record_owner": [["Ministry of Interior", "Bratislava Airport", "Vision AI Labs", 15], ["Customs Office", "Bratislava Airport", "Vision AI Labs", 15], ["Technical University", "Bratislava Airport", "Vision AI Labs", 15], ["Secure Tech Corp", "Bratislava Airport", "Vision AI Labs", 15], ["Global Bank IS", "Bratislava Airport", "Vision AI Labs", 15]], "record_location": [["Server Room A", "AWS Frankfurt", "Underground Bunker", 15], ["Cloud Region Europe", "AWS Frankfurt", "Underground Bunker", 15], ["Lab 403 Storage", "AWS Frankfurt", "Underground Bunker", 15], ["On-Premises Server", "AWS Frankfurt", "Underground Bunker", 15], ["AWS Frankfurt", "AWS Frankfurt", "Underground Bunker", 15]]}}

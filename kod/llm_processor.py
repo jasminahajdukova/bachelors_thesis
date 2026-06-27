@@ -1,7 +1,11 @@
 import re
 
-import ollama, httpx
-import logging, colorlog, json, datetime
+import ollama
+import httpx
+import logging
+import colorlog
+import json
+import datetime
 from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor
 
@@ -231,6 +235,8 @@ def filter_constraints(constraints_yaml) :
     invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not NULL', 'IS NOT NULL', 'is null', 'IS NULL']
     logger.info("------------------------------------------------------------------------------------------------------------------------------")
     for line in lines:
+        if line is None:
+            continue
         logger.info(f"Line = {line.split()}")
         if (stripped_line := line.split()) and len(stripped_line) == 4 and stripped_line[1].strip("'") == stripped_line[3].strip("'"):
             logger.info(f"Removing self-referencing contraint: {line.strip()}")
@@ -241,8 +247,8 @@ def filter_constraints(constraints_yaml) :
         right_side = " ".join(stripped_line[3:])
         right_side = right_side.strip("'\"")
 
-        if len(stripped_line) >= 4 and stripped_line[2].lower() == 'in':
-            in_match = re.match(r"^\w+\.\w+$", stripped_line[1]) and right_side.strip().startswith('(') and right_side.strip().endswith(')')
+        if len(stripped_line) >= 4 and stripped_line[1].lower() == 'in':
+            in_match = re.match(r"^\w+\.\w+$", stripped_line[0]) and right_side.strip().startswith('(') and right_side.strip().endswith(')')
 
             if in_match:
                 filtered.append(line)
@@ -347,7 +353,7 @@ def go_over_generate(gen_count, generate_content):
             new_generate.append(line)
             continue
         if gen_count[line_split[0]] != line_split[1]:
-            new_generate.append(f" - '{line_split[0]} = {gen_count[line_split[0]]}'")
+            new_generate.append(f"- '{line_split[0]} = {gen_count[line_split[0]]}'")
         else:
             new_generate.append(line)
         logger.info(f"line_split[1] = {line_split[1]}")

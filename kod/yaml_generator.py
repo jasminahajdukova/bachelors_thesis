@@ -1,5 +1,7 @@
-import yaml, re
-import logging, colorlog
+import yaml
+import re
+import logging
+import colorlog
 from llm_processor import AVAILABLE_INCLUDES
 from dataclasses import dataclass
 from datetime import datetime
@@ -50,14 +52,20 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
     
     yaml_str = remove_markdown(yaml_str)
     logger.debug(f"YAML STR: \n {yaml_str}")
-
-    stream = yaml.safe_load(yaml_str)
-    stream_keys: list[str] = list(stream.keys())
-
+    try:
+        stream = yaml.safe_load(yaml_str)
+        if stream:
+            stream_keys: list[str] = list(stream.keys())
+        else:
+            raise yaml.YAMLError
+    except yaml.YAMLError:
+        logger.error("Failed to load YAML")
+        errors.append(YAML_result(db_name, "YAML load", "yaml_load", 1, "Failed to load YAML"))
+        return errors
     includes = None
     types_ds = None
     if not all(key in stream_keys for key in ["types", "schema", "generate"]):
-        logger.error(f"Schema containes invalid parts")
+        logger.error("Schema containes invalid parts")
         errors.append(YAML_result(db_name, "YAML", "invalid_section", 1, "YAML contains invalid parts"))
     
     if "include" in stream_keys:
@@ -79,10 +87,11 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
     if "constraints" in stream_keys:
         errors += validate_constrains(db_name, stream["constraints"], types_ds)
     
-    if all(result.severity != 1 for result in errors):
-        save_yaml(stream, db_name)
-    else:
-        logger.error(f"Found critical error")    
+    # if all(result.severity != 1 for result in errors):
+    #     save_yaml(stream, db_name)
+    # else:
+    #     logger.error(f"Found critical error")    
+    save_yaml(yaml_str, db_name)
     logger.info(f"ERRORS = {errors}")
     return errors
 
@@ -175,7 +184,12 @@ def check_param(db_name, value) -> list[YAML_result]:
 
     elif function_name == "str_len":
         try:
+            logger.info(f"ARGS JAS = {args}")
             min_val = args[0].split()[-1] if args else ""
+            logger.info(f"1 MIN VAL JAS = {min_val}")
+            if "[cC]" in min_val:
+                logger.info(f"2 MIN VAL JAS = {min_val}")
+                min_val = min_val.replace("[cC]","").strip()
 
             value1 = int(min_val)
             value2 = int(args[1])
@@ -183,7 +197,7 @@ def check_param(db_name, value) -> list[YAML_result]:
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid str_len value. Got {args}"))
             return errors
         
-        if value1 >= value2 or value1 < 0:
+        if value1 > value2 or value1 < 0:
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside str_len. Got {args}"))
 
 
@@ -215,7 +229,7 @@ def validate_types(db_name, each_type: str, includes) -> list[YAML_result]:
         logger.info(f"VALUE = {value}")
     
         if value is None:
-            logger.error(f"Column has null type")
+            logger.error("Column has null type")
             continue
         if isinstance(value, list):
             continue
@@ -294,7 +308,7 @@ def validate_generate(db_name, generate: str, types_ds) -> list[YAML_result]:
     
     split_generate: list[str]
     for value in generate:
-        if not "=" in value:
+        if "=" not in value:
             logger.error("Value is missing =")
             errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Value ({value}) is missing ="))
         split_generate = value.split("=")
@@ -380,7 +394,7 @@ def validate_constrains(db_name, constrains: str, types_ds) -> list[YAML_result]
             logger.error(f"1. Constraint type {typename[1]} does not exitst in types section {list(types_ds[typename[0]].keys())}, ")
             errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Constraint type does not exitst in types section, {typename[1]}"))
             continue
-        elif (value_split and value_split[1] not in list(types_ds[value_split[0]].keys())):
+        elif (value_split and len(value_split) > 1 and value_split[1] not in list(types_ds[value_split[0]].keys())):
             logger.error(f"2. Constraint type {value_split} does not exitst in types section {list(types_ds[value_split[0]].keys())}, ")
             errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"2. Constraint type {".".join(value_split)} does not exitst in types section {list(types_ds[value_split[0]].keys())}"))
             continue
@@ -410,10 +424,10 @@ def validate_constrains(db_name, constrains: str, types_ds) -> list[YAML_result]
 
     return errors
 
-def save_yaml(stream: str, db_name: str):
-    yaml_string = yaml.dump(stream, default_flow_style=False, indent=4, width=80, sort_keys=False)
-    with open(f"results/dataster_config-{db_name}.yaml", "w") as f:
+def save_yaml(yaml_string: str, db_name: str):
+    with open(f"results/dataster_config-{db_name}.yaml", "a") as f:
         f.write(yaml_string)
+        f.write("\n----------------------------------------------------------------------\n")
 
 
 def save_csv(errors: list[YAML_result], db_name: str):

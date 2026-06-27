@@ -103,35 +103,35 @@ MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a M
     
     Here are the generated types:
     types:
-  Parents:
-    parent_id: seq(1,5,1)
-    first_name: first_names_cs
-    last_name: last_names_cs
-    parent_name:
-      format: '{} {}'
-      values:
-        - Parents.first_name
-        - Parents.last_name
-    gender:
-      - BLOCKS
-      - Male
-      - Female
-    parent_address: str_len(50,100)
-    home_phone: regex(''555-[0-9]{4}'')
-    cell_mobile_phone: regex(''555-[0-9]{4}'')
-    other_details: str_len(10,100)
-  Children:
-    child_id: seq(1,5,1)
-    parent_id: interval(1,5)
-    gender:
-      - BLOCKS
-      - Male
-      - Female
-    first_name: first_names_cs
-    last_name: last_names_cs
-    age: interval(5,12)
-    date_of_birth: dinterval(2014-11-5,2021-8-23)
-    other_details: str_len(10,100)
+      Parents:
+        parent_id: seq(1,5,1)
+        first_name: first_names_cs
+        last_name: last_names_cs
+        parent_name:
+          format: '{} {}'
+          values:
+            - Parents.first_name
+            - Parents.last_name
+        gender:
+          - BLOCKS
+          - Male
+          - Female
+        parent_address: str_len(50,100)
+        home_phone: regex(''555-[0-9]{4}'')
+        cell_mobile_phone: regex(''555-[0-9]{4}'')
+        other_details: str_len(10,100)
+      Children:
+        child_id: seq(1,5,1)
+        parent_id: interval(1,5)
+        gender:
+          - BLOCKS
+          - Male
+          - Female
+        first_name: first_names_cs
+        last_name: last_names_cs
+        age: interval(5,12)
+        date_of_birth: dinterval(2014-11-5,2021-8-23)
+        other_details: str_len(10,100)
         
     Rules:
     - Every column must reference a type as 'typename.attribute'

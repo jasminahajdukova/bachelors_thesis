@@ -1,4 +1,7 @@
-import mysql.connector, psycopg2, logging, colorlog
+import mysql.connector
+import psycopg2
+import logging
+import colorlog
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
