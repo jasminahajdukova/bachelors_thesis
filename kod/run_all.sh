@@ -2,7 +2,7 @@
 IFS= read -rs -p "Enter password: " DB_PASS
 echo
 
-for j in $(seq 1 5); do
+for j in $(seq 1 3); do
     echo "$j. round"
     echo "Running testdb"
     python3 main.py -d mysql --host 127.0.0.1 --user root --db testdb --password "$DB_PASS" 2>&1 | tee results/logs/"$j"log-testdb.txt
