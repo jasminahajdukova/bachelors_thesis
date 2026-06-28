@@ -1,3 +1,5 @@
+import os
+
 import yaml
 import re
 import logging
@@ -51,14 +53,15 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
     
     
     yaml_str = remove_markdown(yaml_str)
-    logger.debug(f"YAML STR: \n {yaml_str}")
+    logger.info(f"YAML STR: \n{yaml_str}")
     try:
         stream = yaml.safe_load(yaml_str)
         if stream:
             stream_keys: list[str] = list(stream.keys())
         else:
-            raise yaml.YAMLError
-    except yaml.YAMLError:
+            logger.error("HEERE")
+            raise RuntimeError("Loaded empty YAML file")
+    except (yaml.YAMLError, RuntimeError):
         logger.error("Failed to load YAML")
         errors.append(YAML_result(db_name, "YAML load", "yaml_load", 1, "Failed to load YAML"))
         return errors
@@ -85,7 +88,7 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
         errors += validate_seq(db_name, generate, types_ds)
 
     if "constraints" in stream_keys:
-        errors += validate_constrains(db_name, stream["constraints"], types_ds)
+        errors += validate_constraints(db_name, stream["constraints"], types_ds)
     
     # if all(result.severity != 1 for result in errors):
     #     save_yaml(stream, db_name)
@@ -97,47 +100,52 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
 
 def validate_seq(db_name, generate, types) -> list[YAML_result]:
     errors = []
-    logger.info(f"list(types.keys()) = {list(types.keys())}")
+
     for part in generate:
+        if "=" not in part:
+            continue
+
         part_split = part.split("=")
         logger.info(f"parts_split = {part_split}")
         gen_name = part_split[0].strip()
-        if gen_name not in list(types.keys()):
+
+        if gen_name not in types:
             logger.error(f"Generate tried to generate part {part_split} not included in TYPES section {list(types.keys())}")
-            errors.append(YAML_result(db_name, "generate", "invalid_generate", 1,f"Generate tried to generate part {part_split} not included in TYPES section {list(types.keys())}"))
+            errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Generate tried to generate part {part_split} not included in TYPES section {list(types.keys())}"))
             continue
+
         types_value = list(types[gen_name].values())
         logger.info(f"TYPES_VALUE = {types_value}")
-
         
         for value in types_value:
-            logger.info(f"seq {value} type {type(value)}")
            
             value = str(value)
-            logger.info(f"seq {value} type {type(value)}")
         
             if not value.startswith("seq"):
                 continue
-            seq = re.split(r"\s*[\(\),]\s*", value)
-            logger.info(f"SEQ = {seq}")
+
+            nums = re.findall(r"\d+", value)
+
+            logger.info(f"Exctracted numbers from seq {nums}")
             try:
-                if len(seq) >= 3:
-                    gen_num = int(part_split[1])
-                    seq_len = (int(seq[2]) - int(seq[1])) // int(seq[3]) + 1
+                if len(nums) >= 2:
+                    gen_num = int(part_split[1].strip())
+                    min_num = int(nums[0])
+                    max_num = int(nums[1])
+                    step    = int(nums[2]) if len(nums) >=3 else 1
+                    seq_len = (max_num - min_num) // step + 1
                 else:
                     raise ValueError
-            except ValueError:
-                logger.error(f"Generate or Seq expected number: generate = {part_split[1]} seq = {seq}")
-                errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Generate or Seq expected number: generate = {part_split[1]} seq = {seq}"))
+                
+            except (ValueError, IndexError, ZeroDivisionError):
+                logger.error(f"Generate or Seq expected number: generate = {part_split[1]} seq = {value}")
+                errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Generate or Seq expected number: generate = {part_split[1]} seq = {value}"))
                 continue
 
             if gen_num > seq_len:
                 logger.error(f"Number of generate for {part_split[0]} > seq len: seq_len {seq_len} generate: {part_split[1]}")
                 errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Number of generate for {part_split[0]} > seq len: seq_len {seq_len} generate: {part_split[1]}"))
-            if gen_num < seq_len:
-                logger.error(f"Number of generate for {part_split[0]} < seq len: seq_len {seq_len} generate: {part_split[1]}")
-                errors.append(YAML_result(db_name, "generate", "invalid_generate", 2, f"Number of generate for {part_split[0]} < seq len: seq_len {seq_len} generate: {part_split[1]}"))
-            
+
     return errors
     
     
@@ -145,7 +153,6 @@ def check_param(db_name, value) -> list[YAML_result]:
     # dopln dinterval + strlen
     errors = []
     value_split = re.split(r"\s*[\(\),]\s*", value)
-    logger.info(f"   VALUE SPLIT = {value_split}")
 
     function_name = value_split[0]
     args = value_split[1:]
@@ -184,15 +191,19 @@ def check_param(db_name, value) -> list[YAML_result]:
 
     elif function_name == "str_len":
         try:
-            logger.info(f"ARGS JAS = {args}")
-            min_val = args[0].split()[-1] if args else ""
-            logger.info(f"1 MIN VAL JAS = {min_val}")
-            if "[cC]" in min_val:
-                logger.info(f"2 MIN VAL JAS = {min_val}")
-                min_val = min_val.replace("[cC]","").strip()
+            
+            min_val = args[0].strip() if args else ""
+            max_val = args[1].strip()  if len(args) > 1 else ""
+            
+            min_re = re.search(r"(\d+)\s*$", min_val)
+            max_re = re.search(r"(\d+)\s*$", max_val)
 
-            value1 = int(min_val)
-            value2 = int(args[1])
+            if not min_re or not max_re:
+                raise ValueError
+
+            value1 = int(min_re.group(1))
+            value2 = int(max_re.group(1))
+
         except ValueError:
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid str_len value. Got {args}"))
             return errors
@@ -221,30 +232,38 @@ def validate_types(db_name, each_type: str, includes) -> list[YAML_result]:
     param_types: list[str] = ["seq", "interval", "dinterval", "finterval", "str_len", "regex"]
     dataset_types: list[str] = includes
 
-    if isinstance(each_type, str): # tohto sa musim zbavit
-        return []
+    if not isinstance(each_type, dict): # 
+        logger.error(f"Expected dict for table types got {type(each_type)}")
+        errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Expected dict for table types got {type(each_type)}"))
+        return errors
     
-    for value in list(each_type.values()):
-    
-        logger.info(f"VALUE = {value}")
+    for column_name, value in each_type.items():
     
         if value is None:
-            logger.error("Column has null type")
+            logger.error(f"Column {column_name} has null type")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Column {column_name} has null type"))
             continue
-        if isinstance(value, list):
+
+        if isinstance(value, (list, dict)):
             continue
-        if isinstance(value,dict):
+        
+        if not isinstance(value, str):
+            logger.error(f"Invalid type format for column '{column_name}': {value} (expected string, got {type(value)})")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid type format for column '{column_name}': {value} (expected string, got {type(value)})"))
             continue
+            
         if value in basic_types:
             continue
+    
         elif any(value.startswith(whatever) for whatever in param_types):
             errors += check_param(db_name, value)
             continue
-        elif dataset_types is not None and value in dataset_types:
+            
+        elif value in dataset_types:
             continue
         else:
-            logger.error(f"2. Unknown type {value}")
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Unknown type {value}"))
+            logger.error(f"Unknown type {value} for column {column_name}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Unknown type {value} for column {column_name}"))
 
     return errors
 
@@ -267,26 +286,48 @@ def validate_schema(db_name, each_schema: str, types_ds) -> list[YAML_result]:
     if types_ds is None:
         return []
     
-    if isinstance(each_schema, str): # tohto sa musim zbavit
-        return []
+    if not isinstance(each_schema, dict): # 
+        logger.error(f"Expected dict for table types got {type(each_schema)}")
+        errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Expected dict for table types got {type(each_schema)}"))
+        return errors
 
-    for value in list(each_schema.values()):
+    for column_name, value in each_schema.items():
+
         if value is None:
-            logger.error("Schema contains null value")
+            logger.error(f"Schema column {column_name} contains null value")
+            errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Schema column {column_name} contains null value"))
             continue
+
         if isinstance(value, str) and value.startswith("FROM "):
             continue
-        if isinstance(value, list) or isinstance(value,dict):
+
+        if isinstance(value, (list, dict)):
             continue
+
+        if not isinstance(value, str):
+            logger.error(f"Invalid schema format for column '{column_name}': {value} (expected string, got {type(value)})")
+            errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Invalid schema format for column '{column_name}': {value} (expected string, got {type(value)})"))
+            continue
+
         split_fiction = value.split(".")
-        if split_fiction[0] not in types_ds:
-            logger.error(f"3. Uknown type {split_fiction[0]}")
-            errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Uknown type {split_fiction[0]}"))
-        elif len(split_fiction) < 2 :
+
+        if len(split_fiction) != 2:
+            logger.error(f"Invalid schema reference format {value} for column '{column_name}' (expected table.column)")
+            errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Invalid schema reference format {value} for column '{column_name}' (expected table.column)"))
             continue
-        elif split_fiction[1] not in list(types_ds[split_fiction[0]].keys()):
-            logger.error(f"4. Uknown type {split_fiction[1]}")
-            errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Uknown type {value}"))
+            
+        table_ref = split_fiction[0]
+        col_ref   = split_fiction[1]
+
+        if table_ref not in types_ds:
+            logger.error(f"Unknown table reference {table_ref} in schema for column {column_name}")
+            errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Unknown table reference {table_ref} in schema for column {column_name}"))
+            continue
+        
+        if col_ref not in types_ds[table_ref]:
+            logger.error(f"Unknown column reference {col_ref} in schema for column {column_name}")
+            errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Unknown column reference {col_ref} in schema for column {column_name}"))
+            continue
 
     return errors
 
@@ -306,16 +347,40 @@ def validate_generate(db_name, generate: str, types_ds) -> list[YAML_result]:
     if types_ds is None:
         return []
     
-    split_generate: list[str]
+    if not isinstance(generate, list): # 
+        logger.error(f"Expected list for table types got {type(generate)}")
+        errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Expected list for table types got {type(generate)}"))
+        return errors
+    
     for value in generate:
+
+        if not isinstance(value, str):
+            logger.error(f"Invalid type format in generate section {value} (expected string)")
+            errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Invalid type format in generate section {value} (expected string)"))
+            continue
+
+        value = value.strip()
+        if not value:
+            continue
+
         if "=" not in value:
-            logger.error("Value is missing =")
-            errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Value ({value}) is missing ="))
-        split_generate = value.split("=")
-        count = split_generate[1].strip()
-        if split_generate[0].strip() not in types_ds or not split_generate[1].strip().isdigit() and count != "auto":
-            logger.error(f"5. Uknown type or invalid count: {value}")
-            errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Unknown type or invalid count {value}"))
+            logger.error(f"Value is missing = operator {value}")
+            errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Value is missing = operator {value}"))
+            continue
+
+        split_generate = value.split("=", 1)
+        table_name     = split_generate[0].strip()
+        count          = split_generate[1].strip()
+
+        if table_name not in types_ds:
+            logger.error(f"Unknown table reference {table_name} in generate section")
+            errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Unknown table reference {table_name} in generate section"))
+            continue
+
+        if not count.isdigit() and count.lower() != "auto":
+            logger.error(f"Invalid count value {count} for table {table_name} (expected digits or auto)")
+            errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Invalid count value {count} for table {table_name} (expected digits or auto)"))
+            continue
 
     return errors
 
@@ -330,41 +395,116 @@ def validate_include(db_name, includes: str) -> list[YAML_result]:
     return errors
 
 
-def validate_constrains(db_name, constrains: str, types_ds) -> list[YAML_result]:
+
+def validate_in(db_name, constraints, typename, types_ds):
+    errors = []
+    typename_parts = typename.split(".")
+
+    if len(typename_parts) != 2 or typename_parts[0] not in types_ds or typename_parts[1] not in types_ds[typename_parts[0]]:
+        logger.error(f"Invalid 'in' constraint (type does not exist): {typename}")
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Constraint type does not exist in types section, {typename}"))
+        return errors
+
+    actual_type = types_ds[typename_parts[0]][typename_parts[1]]
+
+    if isinstance(actual_type, list):
+        return errors
+    
+    if not isinstance(actual_type, str) or not (actual_type.startswith("enum") or "BLOCKS" in actual_type):
+        logger.error(f"Invalid type for 'in' operator: {typename} is {actual_type}. Expected enum or BLOCKS.")
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Invalid type for 'in' operator: {typename} is {actual_type}."))
+        return errors
+    
+    return errors
+
+
+def validate_rel_result(db_name, constraint, con_split, types_ds):
+    errors = []
+    typename = con_split[0].split(".")
+    table_name = typename[0]
+    operator = con_split[1]
+    value = con_split[2]
+
+    
+    if (table_name not in types_ds):
+        logger.error(f"Invalid constraint: {constraint}")
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid constraint {constraint}"))
+        return errors
+    
+    if operator not in ["=", "!=", "<", ">", "<=", ">="]:
+        logger.error(f"Invalid operator {operator}: {constraint}")
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid constraint {constraint}"))
+        return errors
+    
+    num_re = r"^-?\d+(\.\d+)?$"
+    is_num = bool(re.match(num_re, str(value)))
+    value_num_re = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)'
+    value_bool = bool(re.match(value_num_re, str(value)))
+    value_split = str(value).split(".") if ("." in str(value) and not is_num) else []
+
+    if not is_num and not value_bool and not value_split:
+        logger.error(f"Invalid constraint value: {constraint}")
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid constraint value: {constraint}"))
+        return errors
+     
+    if typename[1] not in types_ds[table_name]:
+        logger.error(f"Constraint type {typename[1]} does not exist in types section")
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"1. Constraint type {typename[1]} does not exist in types section"))
+        return errors
+    
+    if value_split and len(value_split) > 1:
+        val_table = value_split[0]
+        val_col   = value_split[1]
+
+        if val_table not in types_ds or val_col not in types_ds[val_table]:
+            logger.error(f"Constraint type {val_table}.{val_col} does not exist in types section")
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Constraint type {val_table}.{val_col} does not exist in types section"))
+            return errors
+    
+    typename_value = types_ds[table_name][typename[1]]
+
+    value_val = types_ds[value_split[0]][value_split[1]] if value_split else ""
+   
+
+    if not isinstance(typename_value, str):
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, "Not a string"))
+        return errors
+    
+    is_fk_equality = (operator == "=" and bool(value_split) and not is_num)
+
+    if not typename_value.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
+        severity = 2 if typename_value.startswith("seq") else 1
+        if not is_fk_equality:
+            logger.error(f"Invalid type of constraint: {typename} is {typename_value}.")
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", severity, f"Invalid type of constraint: {typename} is {typename_value}."))
+            return errors
+
+    if not is_fk_equality and value_val and not value_val.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
+        severity = 2 if value_val.startswith("seq") else 1
+        logger.error(f"Invalid type of constraint: {value} is {value_val}.")
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", severity, f"Invalid type of constraint: {value} is {value_val}."))
+        return errors
+    
+    return errors
+
+
+def validate_constraints(db_name, constraints: str, types_ds) -> list[YAML_result]:
 
     errors = []
 
-    if types_ds is None:
+    if not constraints or types_ds is None:
         return []
     
-    logger.info(f"Constraints: {constrains}")
-    for constraint in constrains:
-        logger.info(f"Constraint = {constraint}")
+    for constraint in constraints:
+
+        constraint = constraint.strip()
+        if not constraint:
+            continue
 
         constraint_split = constraint.split(" ", 2)
-        if len(constraint_split) >= 3:
-            typename = constraint_split[0]
-            operator = constraint_split[1]
-
-            if operator.lower() == "in":
-                typename_parts = typename.split(".")
-
-                if len(typename_parts) != 2 or typename_parts[0] not in types_ds or typename_parts[1] not in types_ds[typename_parts[0]]:
-                    logger.error(f"Invalid 'in' constraint (type does not exist): {constraint}")
-                    errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Constraint type does not exist in types section, {typename}"))
-                    continue
-
-                actual_type = types_ds[typename_parts[0]][typename_parts[1]]
-                if isinstance(actual_type, list):
-                    pass
-                
-                elif not isinstance(actual_type, str) or not (actual_type.startswith("enum") or "BLOCKS" in actual_type):
-                    logger.error(f"Invalid type for 'in' operator: {typename} is {actual_type}. Expected enum or BLOCKS.")
-                    errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Invalid type for 'in' operator: {typename} is {actual_type}."))
-                    continue
-                
-                logger.info(f"Successfully validated 'in' constraint: {constraint}")
-                continue
+        if len(constraint_split) >= 3 and constraint_split[1].lower() == "in":
+            errors += validate_in(db_name, constraint, constraint_split[0], types_ds)
+            continue
         
         constraint_split = constraint.split(" ")
 
@@ -372,56 +512,9 @@ def validate_constrains(db_name, constrains: str, types_ds) -> list[YAML_result]
             logger.error(f"Invalid constraint format: {constraint}")
             errors.append(YAML_result(db_name, "constraints","invalid_constraint", 2, f"Invalid constraints format {constraint}"))
             continue
-        typename = constraint_split[0]
-        operator = constraint_split[1]
-        value = constraint_split[2]
-        regex = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)'
-        if (typename.split(".")[0] not in types_ds) or (operator not in ["=", "!=", "<", ">", "<=", ">="] or (not bool(re.match(regex, value)) and value.split(".")[0] not in types_ds)):
-            logger.error(f"Invalid constraint: {constraint}")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid constraint {constraint}"))
-            continue 
-        logger.info(f"typename = {typename}, operator = {operator}, value = {value}")
-        num_re = r"^-?\d+(\.\d+)?$"
 
-        is_num = bool(re.match(num_re, str(value)))
-        typename = typename.split(".")
-
-        value_split = str(value).split(".") if ("." in str(value)and not is_num) else ""
-        logger.info(f"typename[1] = {typename[1]} types_ds[typename[0]] = {list(types_ds[typename[0]].keys())}")
+        errors += validate_rel_result(db_name, constraint, constraint_split, types_ds)
         
-        
-        if typename[1] not in list(types_ds[typename[0]].keys()):
-            logger.error(f"1. Constraint type {typename[1]} does not exitst in types section {list(types_ds[typename[0]].keys())}, ")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Constraint type does not exitst in types section, {typename[1]}"))
-            continue
-        elif (value_split and len(value_split) > 1 and value_split[1] not in list(types_ds[value_split[0]].keys())):
-            logger.error(f"2. Constraint type {value_split} does not exitst in types section {list(types_ds[value_split[0]].keys())}, ")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"2. Constraint type {".".join(value_split)} does not exitst in types section {list(types_ds[value_split[0]].keys())}"))
-            continue
-        
-        typename_value = types_ds[typename[0]][typename[1]]
-        logger.info(f"types_ds[typename[0]][typename[1]] = {typename_value}")
-        value_val = types_ds[value_split[0]][value_split[1]] if value_split else ""
-        logger.info(f"value_val = {value_val}")
-        if not isinstance(typename_value, str):
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, "Not a string"))
-            continue
-        
-        is_fk_equality = (operator == "=" and value_split and not is_num)
-
-        if not typename_value.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
-            severity = 2 if typename_value.startswith("seq") else 1
-            if not is_fk_equality:
-                logger.error(f"Invalid type of constraint: {typename} is {typename_value}.")
-                errors.append(YAML_result(db_name, "constraints", "invalid_constraint", severity, f"Invalid type of constraint: {typename} is {typename_value}."))
-                continue
-
-        if not is_fk_equality and value_val and not value_val.startswith(("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")):
-            severity = 2 if value_val.startswith("seq") else 1
-            logger.error(f"Invalid type of constraint: {value_split} is {value_val}.")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", severity, f"Invalid type of constraint: {value_split} is {value_val}."))
-            continue
-
     return errors
 
 def save_yaml(yaml_string: str, db_name: str):
@@ -433,9 +526,12 @@ def save_yaml(yaml_string: str, db_name: str):
 def save_csv(errors: list[YAML_result], db_name: str):
     field_names = ["database", "section", "error_type", "severity", "detail"]
 
+    writer_header = not os.path.exists(f"results/results-{db_name}.csv") or os.path.getsize(f"results/results-{db_name}.csv") == 0
+
     with open(f"results/results-{db_name}.csv", mode="a", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        writer.writerow(field_names)
+        if writer_header:
+            writer.writerow(field_names)
 
         for error in errors:
             writer.writerow([error.database, error.section, error.error_type, error.severity, error.detail])
