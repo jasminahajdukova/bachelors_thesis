@@ -193,23 +193,39 @@ def check_param(db_name, value) -> list[YAML_result]:
             
             min_val = args[0].strip() if args else ""
             max_val = args[1].strip()  if len(args) > 1 else ""
-            
-            min_re = re.search(r"(\d+)\s*$", min_val)
-            max_re = re.search(r"(\d+)\s*$", max_val)
 
-            if not min_re or not max_re:
+            if not min_val:
                 raise ValueError
-
+            
+            "-------------MIN VAL-------------"
+            min_re = re.search(r"(\d+)\s*$", min_val)
+            if not min_re:
+                raise ValueError
+            
             value1 = int(min_re.group(1))
-            value2 = int(max_re.group(1))
+
+
+            if not max_val:
+                if value1 < 0:
+                    errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside str_len. Got {args}"))
+
+            else:
+                "-------------MAX VAL-------------"
+                max_re = re.search(r"(\d+)\s*$", max_val)
+
+                if not max_re:
+                    raise ValueError
+
+                value2 = int(max_re.group(1))
+                if value1 > value2 or value1 < 0:
+                    errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside str_len. Got {args}"))
+
 
         except ValueError:
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid str_len value. Got {args}"))
             return errors
         
-        if value1 > value2 or value1 < 0:
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside str_len. Got {args}"))
-
+        
 
     elif function_name == "dinterval":
         try:
