@@ -17,7 +17,6 @@ CONSTRAINTS RULES:
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
-
 """
 
 PARAMETER temperature 0.1
@@ -26,258 +25,47 @@ PARAMETER num_predict 512
 
 MESSAGE user """Generate constraints for:
 types:
-  employee:
-    id: 'seq(1,1000,1)'
-    hire_date: 'dinterval(2000-1-1,2020-12-31)'
-    salary: 'interval(1000,5000)'
-    name: 'str_len([cC] 3,20)'"""
-
-MESSAGE assistant """constraints:
-  - 'employee.salary > 0'"""
-
-
-MESSAGE user """Generate constraints for:
-types:
-  users:
-    id: 'seq(1,1000,1)'
-    name: 'str_len([cC] 4,20)'
-    email: 'str_len([cC] 8,30)'"""
-
-MESSAGE assistant """constraints: []""" 
-
-
-MESSAGE user """Generate constraints for:
-types:
-  car_models:
-    model_code: 'seq(1,10,1)'
-    manufacturer_code:
-      - SKODA
-      - VW
-      - BMW
-      - AUDI
-      - TOYOTA
-    model_name:
-      - Octavia
-      - Superb
-      - Golf
-      - Passat
-      - Rad 3"""
+  Stations:
+    station_id: 'seq(1,6,1)'
+    region_code:
+      - BLOCKS
+      - NORD
+      - SUED
+      - WEST
+    station_name: 'str_len([cC] 10,30)'
+    altitude_m: 'interval(380,1245)'
+    is_automated: 'bool'"""
 
 MESSAGE assistant """constraints: []"""
 
-
-MESSAGE user """Generate constraints for:
-types:
-  Customer_Payments:
-    customer_Payment_ID: 'seq(1,15,1)'
-    car_Sold_ID: 'interval(101,115)'
-    customer_ID: 'interval(501,515)'
-    payment_Status_Code:
-      - PAID
-      - OVERDUE
-      - PENDING
-    customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
-    customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
-    actual_Payment_Amount: float"""
-
-MESSAGE assistant """constraints:
-  - 'Customer_Payments.customer_Payment_Date_Made <= Customer_Payments.customer_Payment_Date_Due'
-  - 'Customer_Payments.actual_Payment_Amount > 0.0'"""
-
-
-MESSAGE user """Generate constraints for:
-types:
-  Ebola_Victims:
-    Victim_ID: 'seq(1,15,1)'
-    Victim_Status_Code:
-      - CONFIRMED
-      - DECEASED
-      - SUSPECTED
-      - RECOVERED
-    First_Name: first_names_cs
-    Last_Name: last_names_cs
-    Date_First_Suspected: 'dinterval(2025-12-20,2026-5-15)'
-    Date_Confirmed: 'dinterval(2025-12-22,2026-4-11)'
-    Date_of_Death: 'dinterval(2026-1-20,2026-3-27)'
-    Other_Details: 'str_len(10,100)'"""
-
-MESSAGE assistant """constraints:
-  - 'Ebola_Victims.Date_First_Suspected < Ebola_Victims.Date_Confirmed'
-  - 'Ebola_Victims.Date_Confirmed < Ebola_Victims.Date_of_Death'"""
-
-
-MESSAGE user """Generate constraints for:
-types:
-  Students:
-    student_id: 'seq(1,15,1)'
-    cell_mobile_number: 'regex(''\+[0-9]{9,12}'')'
-    date_first_rental: 'dinterval(2022-9-1,2026-6-1)'
-    date_left_university: 'dinterval(2022-9-1,2026-6-1)'
-    other_student_details: 'str_len(10,100)'"""
-
-MESSAGE assistant """constraints:
-  - 'Students.date_first_rental <= Students.date_left_university'"""  
-
-
-MESSAGE user """Generate constraints for:
-types:
-  Parents:
-    parent_id: 'seq(1,5,1)'
-    parent_name: 'str_len([cC] 10,50)'
-    gender: 
-      - BLOCKS
-      - Male
-      - Female 
-    parent_address: 'str_len(50,100)'
-    home_phone: regex(''555-[0-9]{4}'')
-    cell_mobile_phone: regex(''555-[0-9]{4}'')
-    other_details: 'str_len(10,100)'
-  Children:
-    child_id: 'seq(1,5,1)'
-    parent_id: 'interval(1,4)'
-    gender:
-      - BLOCKS
-      - Male
-      - Female 
-    first_name: 'str_len([cC] 10,50)'
-    last_name: 'str_len([cC] 10,50)'
-    age: 'interval(5,12)'
-    date_of_birth: 'dinterval(2014-11-5,2021-8-23)'
-    other_details: 'str_len(10,100)'"""
-
-MESSAGE assistant """constraints: []"""
-
-MESSAGE user """Generate constraints for:
-types:
-  users:
-    id: 'seq(1,10,1)'
-    first_name: first_names_cs
-    last_name: last_names_cs
-    name:
-      format: '{} {}'
-      values:
-        - users.first_name
-        - users.last_name
-    email:
-      format: '{}.{}@test.com'
-      values:
-        - users.first_name
-        - users.last_name"""
-
-MESSAGE assistant """constraints: []""" 
-
-
-MESSAGE user """Generate constraints for:
-types:
-  Hotels:
-    Hotel_ID: 'seq(1,50,1)'
-    Star_Rating_Code: 'seq(1,5,1)'
-    hotel_name: 'str_len([cC] 5,30)'"""
-
-MESSAGE assistant """constraints: []"""
-
-
-MESSAGE user """Generate constraints for:
-types:
-  Parents:
-    parent_id: seq(1,5,1)
-    first_name: first_names_cs
-    last_name: last_names_cs
-    parent_name:
-      format: '{} {}'
-      values:
-        - Parents.first_name
-        - Parents.last_name
-    gender:
-      - BLOCKS
-      - Male
-      - Female
-    parent_address: str_len(50,100)
-    home_phone: regex(''555-[0-9]{4}'')
-    cell_mobile_phone: regex(''555-[0-9]{4}'')
-    other_details: str_len(10,100)
-  Children:
-    child_id: seq(1,5,1)
-    parent_id: interval(1,5)
-    gender:
-      - BLOCKS
-      - Male
-      - Female
-    first_name: first_names_cs
-    last_name: last_names_cs
-    age: interval(5,12)
-    date_of_birth: dinterval(2014-11-5,2021-8-23)
-    other_details: str_len(10,100)"""
-
-MESSAGE assistant """constraints: []"""
-
-
-MESSAGE user """Generate constraints for:
-types:
-  Accomodation:
-    Accommodation_ID: seq(1,10,1)
-    Accommodation_Type_Code:
-      - BLOCKS
-      - HOTEL
-      - APART
-      - VILLAGE
-  Competitors:
-    Competitor_ID: seq(1,10,1)
-    Accommodation_ID: interval(1,8)
-    Gender_Code:
-      - BLOCKS
-      - M
-      - F
-    ISO_Country_Code:
-      - BLOCKS
-      - USA
-      - AUS
-      - CAN
-      - GBR
-      - AUS
-  Competitors_in_Events:
-    Event_ID: seq(101,105,1)
-    Competitor_ID: seq(1,10,1)"""
-
-MESSAGE assistant """constraints: []""" 
 
 MESSAGE user """Generate constraints for:
 types:
   Suppliers:
-    supplier_id: 'seq(1,12,1)'
-    supplier_short_name: str_len([cC] 5,50)
-    supplier_long_name: str_len([cC] 5,50)
-    supplier_address: str_len([cC] 10,100)
-    other_supplier_details: string
-  Non_Pharmaceutical_Items:
-    item_number: 'seq(1,17,1)'
-    clinic_id: interval(10,17)
-    supplier_id: interval(4,11)
-    item_name: 'str_len(2,50)'
-    item_cost: float
-    item_description: 'str_len(2,50)'
-    quantity_in_stock: int
-    reorder_level: int
-    reorder_quantity: int
-    other_supplied_item_details: string
-  Pharmaceutical_Items:
-    drug_number: 'seq(1,15,1)'
-    clinic_id: interval(10,17)
-    supplier_id: interval(4,11)
-    drug_name: 'str_len(2,50)'
-    drug_cost: float
-    drug_description: 'str_len(2,50)'
-    quantity_in_stock: int
-    reorder_level: int
-    reorder_quantity: int
-    dosage: string
-    method_of_administration: string
-    other_item_details: string"""
+    supplier_id: 'seq(1,8,1)'
+    supplier_name: 'str_len([cC] 10,30)'
+    country_code: countries_cs
+    rating: 'finterval(3.8,4.2)'
+    contract_signed: 'dinterval(2020-7-25,2022-6-21)'
+  Products:
+    product_id: 'seq(1,12,1)'
+    supplier_id: 'interval(1,8)'
+    category:
+      - BLOCKS
+      - CABLES
+      - PAINT
+      - TOOLS
+    min_stock_level: 'interval(5,20)'
+    max_stock_level: 'interval(50,100)'
+    unit_price: 'finterval(5.25,12.4)'
+    product_name: 'str_len([cC] 10,40)'
+  Orders:
+    order_id: 'seq(1,10,1)'
+    product_id: 'interval(1,12)'
+    quantity: 'interval(1,5)'
+    order_date: 'dinterval(2024-1-10,2024-3-18)'
+    delivery_date: 'dinterval(2024-1-17,2024-3-27)'"""
 
 MESSAGE assistant """constraints:
-  - 'Non_Pharmaceutical_Items.item_cost > 0'
-  - 'Non_Pharmaceutical_Items.quantity_in_stock >= 0'
-  - 'Non_Pharmaceutical_Items.reorder_level > 0'
-  - 'Non_Pharmaceutical_Items.reorder_quantity > 0'
-  - 'Pharmaceutical_Items.drug_cost > 0'
-  - 'Pharmaceutical_Items.quantity_in_stock >= 0'"""
+  - 'Products.min_stock_level < Products.max_stock_level'
+  - 'Orders.order_date <= Orders.delivery_date'"""

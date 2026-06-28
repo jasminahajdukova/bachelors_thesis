@@ -14,100 +14,112 @@ OUTPUT RULES:
 """
 
 PARAMETER temperature 0.3
-
 PARAMETER num_predict 512
 
-MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
-    
-    Here are the generated types:
-    types:
-      car_models:
-        model_code: 'seq(1,10,1)'
-        manufacturer_code:
-          - SKODA
-          - VW
-          - BMW
-          - AUDI
-          - TOYOTA
-        model_name:
-          - Octavia
-          - Superb
-          - Golf
-          - Passat
-          - Rad 3
-    
-    Return ONLY the generate section starting with 'generate:', nothing else."""
-
-MESSAGE assistant """generate:
-- 'car_models = 10'"""
-
 
 MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
     
     Here are the generated types:
     types:
-      Customer_Payments:
-        customer_Payment_ID: 'seq(1,15,1)'
-        car_Sold_ID: 'seq(101,115,1)'
-        customer_ID: 'seq(501,515,1)'
-        payment_Status_Code:
-          - PAID
-          - OVERDUE
-          - PENDING
-        customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
-        customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
-        actual_Payment_Amount: float
-    
-    Return ONLY the generate section starting with 'generate:', nothing else."""
-
-MESSAGE assistant """generate:
-- 'Customer_Payments = 15'"""
-
-
-MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
-    
-    Here are the generated types:
-    types:
-      Corporate_Customer:
-        customer_id: seq(1,25,1)
-        company_name: str_len([cC] 10,50)
-        phone_number: regex('\+421[0-9]{9}')
-        credit_score: interval(410,880)
-        date_credit_score_reviewed: dinterval(2025-10-5,2026-5-20)
-        date_credit_class_reviewed: dinterval(2025-10-5,2026-5-20)
-    
-    Return ONLY the generate section starting with 'generate:', nothing else."""
-
-MESSAGE assistant """generate:
-- 'Corporate_Customer = 25'"""
-
-
-MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
-    
-    Here are the generated types:
-    types:
-      Product_Categories:
-        Product_Category_Code:
+      Stations:
+        station_id: 'seq(1,6,1)'
+        region_code:
           - BLOCKS
-          - FRUIT
-          - GRAIN
-          - NUTS
-          - VEG
-        Product_Category_Description: str_len([cC] 50,70)
-        Cost_per_1_lb: finterval(0.9,6.0)
-        Cost_per_5_lb: finterval(4.05,27.0)
-        Cost_per_10_lb: finterval(7.2,48.0)
-        eg_Fruit_Vegetables: str_len([cC] 13,20)
-      Products:
-        Product_ID: seq(1,50,1)
-        Product_Category_Code: str_len([cC] 4,6)
-        Product_Name: str_len([cC] 12,30)
-        Product_Description: str_len([cC] 50,70)
-        Product_Weight: finterval(1.0,10.0)
-        Calculated_Product_Cost: finterval(0.9,48.0)
-        Product_Image_Name: str_len([cC] 12,30)
+          - NORD
+          - SUED
+          - WEST
+        station_name: 'str_len([cC] 10,30)'
+        altitude_m: 'interval(380,1245)'
+        is_automated: 'bool'
+      Readings:
+        reading_id: 'seq(1,14,1)'
+        station_id: 'interval(1,6)'
+        weather_type:
+          - BLOCKS
+          - CLEAR
+          - CLOUDY
+          - RAIN
+          - SNOW
+        temperature_c: 'finterval(-12.3,4.9)'
+        pressure_hpa: 'finterval(1007.6,1013.1)'
+        humidity_pct: 'interval(31,52)'
+        wind_kmh: 'interval(6,14)'
+        measured_on: 'dinterval(2024-1-12,2024-3-1)'
     
     Return ONLY the generate section starting with 'generate:', nothing else."""
+
 MESSAGE assistant """generate:
-- 'Product_Categories = 5'
-- 'Products = 50'"""
+- 'Stations = 6'
+- 'Readings = 14'"""
+
+
+MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
+    
+    Here are the generated types:
+    types:
+      airlines:
+        airline_id: 'seq(1,6,1)'
+        iata_code: 'str_len([cC] 2,3)'
+        airline_name: 'str_len([cC] 10,30)'
+        country_code: countries_cs
+        is_lowcost: 'bool'
+      airports:
+        airport_id: 'seq(1,7,1)'
+        iata_code: 'str_len([cC] 3,3)'
+        airport_name: 'str_len([cC] 10,40)'
+        city_country: 'str_len([cC] 10,30)'
+        timezone_code:
+          - BLOCKS
+          - CET
+          - EST
+          - GMT
+      aircraft:
+        aircraft_id: 'seq(1,8,1)'
+        airline_id: 'interval(1,6)'
+        aircraft_type:
+          - BLOCKS
+          - A320
+          - A321
+          - A350
+          - ATR72
+          - B737
+        seat_capacity: 'interval(70,325)'
+        max_range_km: 'interval(1500,15000)'
+        in_service: 'bool'
+      flights:
+        flight_id: 'seq(1,12,1)'
+        aircraft_id: 'interval(1,8)'
+        origin_airport: 'interval(1,7)'
+        flight_code: 'regex(''[A-Z]{2,3}[0-9]{4}'')'
+        status:
+          - BLOCKS
+          - BOARDING
+          - CANCELLED
+          - DELAYED
+          - SCHEDULED
+        duration_hours: 'finterval(1.6,2.05)'
+        base_price_eur: 'finterval(39.99,59.5)'
+        departure_date: 'dinterval(2024-7-1,2024-7-10)'
+      bookings:
+        booking_id: 'seq(1,15,1)'
+        flight_id: 'interval(1,12)'
+        passenger_first: first_names_cs
+        passenger_last: last_names_cs
+        seat_class:
+          - BLOCKS
+          - BUSINESS
+          - ECONOMY
+          - FIRST
+        baggage_kg: 'finterval(15.0,19.0)'
+        price_paid_eur: 'finterval(42.0,129.0)'
+        booked_on: 'dinterval(2024-6-10,2024-6-18)'
+        checked_in: 'bool'
+    
+    Return ONLY the generate section starting with 'generate:', nothing else."""
+
+MESSAGE assistant """generate:
+- 'airlines = 6'
+- 'airports = 7'
+- 'aircraft = 8'
+- 'flights = 12'
+- 'bookings = 15'"""

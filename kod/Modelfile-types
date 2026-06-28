@@ -174,7 +174,7 @@ MESSAGE assistant """types:
     flight_id: 'seq(1,12,1)'
     aircraft_id: 'interval(1,8)'
     origin_airport: 'interval(1,7)'
-    flight_code: 'regex(\'[A-Z]{2,3}[0-9]{4}\')'
+    flight_code: 'regex(''[A-Z]{2,3}[0-9]{4}'')'
     status:
       - BLOCKS
       - BOARDING
@@ -269,7 +269,7 @@ MESSAGE assistant """types:
     author_first: first_names_cs
     author_last: last_names_cs
     title: 'str_len([cC] 10,40)'
-    shelf_code: 'regex(\'[A-Z][0-9]{2}\')'
+    shelf_code: 'regex(''[A-Z][0-9]{2}'')'
     page_count: 'interval(95,350)'
     rating: 'finterval(3.6,4.0)'
     is_available: 'bool'

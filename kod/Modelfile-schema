@@ -5,7 +5,7 @@ You generate ONLY the schema: section of a Dataster YAML.
 
 The expected format is
   Table name:
-    table column name:type name.attribute name
+    table column name: typename.attribute name
 
 
 SCHEMA RULES:
@@ -30,139 +30,151 @@ MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a m
     
     Here are the generated types:
     types:
-      car_models:
-        model_code: 'seq(1,10,1)'
-        manufacturer_code:
-          - SKODA
-          - VW
-          - BMW
-          - AUDI
-          - TOYOTA
-        model_name:
-          - Octavia
-          - Superb
-          - Golf
-          - Passat
-          - Rad 3
-    
-    Rules:
-    - Every column must reference a type as 'typename.attribute'
-    - Schema table names must match exactly the type names
-    - Foreign keys use FROM syntax: 'FROM tablename.column'
-    - NEVER put data types directly in schema
-    
-    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
+      Stations:
+        station_id: 'seq(1,6,1)'
+        region_code:
+          - BLOCKS
+          - NORD
+          - SUED
+          - WEST
+        station_name: 'str_len([cC] 10,30)'
+        altitude_m: 'interval(380,1245)'
+        is_automated: 'bool'
+      Readings:
+        reading_id: 'seq(1,14,1)'
+        station_id: 'interval(1,6)'
+        weather_type:
+          - BLOCKS
+          - CLEAR
+          - CLOUDY
+          - RAIN
+          - SNOW
+        temperature_c: 'finterval(-12.3,4.9)'
+        pressure_hpa: 'finterval(1007.6,1013.1)'
+        humidity_pct: 'interval(31,52)'
+        wind_kmh: 'interval(6,14)'
+        measured_on: 'dinterval(2024-1-12,2024-3-1)'
     
     Return ONLY the schema section starting with 'schema:', nothing else."""
 
 MESSAGE assistant """schema:
-  car_models:
-    model_code: car_models.model_code
-    manufacturer_code: car_models.manufacturer_code
-    model_name: car_models.model_name"""
+  Stations:
+    station_id: Stations.station_id
+    region_code: Stations.region_code
+    station_name: Stations.station_name
+    altitude_m: Stations.altitude_m
+    is_automated: Stations.is_automated
+  Readings:
+    reading_id: Readings.reading_id
+    station_id: 'FROM Stations.station_id'
+    weather_type: Readings.weather_type
+    temperature_c: Readings.temperature_c
+    pressure_hpa: Readings.pressure_hpa
+    humidity_pct: Readings.humidity_pct
+    wind_kmh: Readings.wind_kmh
+    measured_on: Readings.measured_on"""
 
 
-MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a MySQL database.
+MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.
     
     Here are the generated types:
     types:
-      Customer_Payments:
-        customer_Payment_ID: 'seq(1,15,1)'
-        car_Sold_ID: 'seq(101,115,1)'
-        customer_ID: 'seq(501,515,1)'
-        payment_Status_Code:
-          - PAID
-          - OVERDUE
-          - PENDING
-        customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
-        customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
-        actual_Payment_Amount: float
-        
-    Rules:
-    - Every column must reference a type as 'typename.attribute'
-    - Schema table names must match exactly the type names
-    - Foreign keys use FROM syntax: 'FROM tablename.column'
-    - NEVER put data types directly in schema
-    
-    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
+      airlines:
+        airline_id: 'seq(1,6,1)'
+        iata_code: 'str_len([cC] 2,3)'
+        airline_name: 'str_len([cC] 10,30)'
+        country_code: countries_cs
+        is_lowcost: 'bool'
+      airports:
+        airport_id: 'seq(1,7,1)'
+        iata_code: 'str_len([cC] 3,3)'
+        airport_name: 'str_len([cC] 10,40)'
+        city_country: 'str_len([cC] 10,30)'
+        timezone_code:
+          - BLOCKS
+          - CET
+          - EST
+          - GMT
+      aircraft:
+        aircraft_id: 'seq(1,8,1)'
+        airline_id: 'interval(1,6)'
+        aircraft_type:
+          - BLOCKS
+          - A320
+          - A321
+          - A350
+          - ATR72
+          - B737
+        seat_capacity: 'interval(70,325)'
+        max_range_km: 'interval(1500,15000)'
+        in_service: 'bool'
+      flights:
+        flight_id: 'seq(1,12,1)'
+        aircraft_id: 'interval(1,8)'
+        origin_airport: 'interval(1,7)'
+        flight_code: 'regex(''[A-Z]{2,3}[0-9]{4}'')'
+        status:
+          - BLOCKS
+          - BOARDING
+          - CANCELLED
+          - DELAYED
+          - SCHEDULED
+        duration_hours: 'finterval(1.6,2.05)'
+        base_price_eur: 'finterval(39.99,59.5)'
+        departure_date: 'dinterval(2024-7-1,2024-7-10)'
+      bookings:
+        booking_id: 'seq(1,15,1)'
+        flight_id: 'interval(1,12)'
+        passenger_first: first_names_cs
+        passenger_last: last_names_cs
+        seat_class:
+          - BLOCKS
+          - BUSINESS
+          - ECONOMY
+          - FIRST
+        baggage_kg: 'finterval(15.0,19.0)'
+        price_paid_eur: 'finterval(42.0,129.0)'
+        booked_on: 'dinterval(2024-6-10,2024-6-18)'
+        checked_in: 'bool'
     
     Return ONLY the schema section starting with 'schema:', nothing else."""
 
 MESSAGE assistant """schema:
-  Customer_Payments:
-    customer_Payment_ID: Customer_Payments.customer_Payment_ID
-    car_Sold_ID: Customer_Payments.car_Sold_ID
-    customer_ID: Customer_Payments.customer_ID
-    payment_Status_Code: Customer_Payments.payment_Status_Code
-    customer_Payment_Date_Due: Customer_Payments.customer_Payment_Date_Due
-    customer_Payment_Date_Made: Customer_Payments.customer_Payment_Date_Made
-    actual_Payment_Amount: Customer_Payments.actual_Payment_Amount"""
-
-
-MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a MySQL database.
-    
-    Here are the generated types:
-    types:
-      Parents:
-        parent_id: seq(1,5,1)
-        first_name: first_names_cs
-        last_name: last_names_cs
-        parent_name:
-          format: '{} {}'
-          values:
-            - Parents.first_name
-            - Parents.last_name
-        gender:
-          - BLOCKS
-          - Male
-          - Female
-        parent_address: str_len(50,100)
-        home_phone: regex(''555-[0-9]{4}'')
-        cell_mobile_phone: regex(''555-[0-9]{4}'')
-        other_details: str_len(10,100)
-      Children:
-        child_id: seq(1,5,1)
-        parent_id: interval(1,5)
-        gender:
-          - BLOCKS
-          - Male
-          - Female
-        first_name: first_names_cs
-        last_name: last_names_cs
-        age: interval(5,12)
-        date_of_birth: dinterval(2014-11-5,2021-8-23)
-        other_details: str_len(10,100)
-        
-    Rules:
-    - Every column must reference a type as 'typename.attribute'
-    - Schema table names must match exactly the type names
-    - Foreign keys use FROM syntax: 'FROM tablename.column'
-    - NEVER put data types directly in schema
-    
-    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
-    
-    Return ONLY the schema section starting with 'schema:', nothing else."""
-
-
-
-MESSAGE assistant """schema:
-  Parents:
-    first_name: Parents.first_name
-    last_name: Parents.last_name
-    parent_id: Parents.parent_id
-    parent_name: Parents.parent_name
-    gender: Parents.gender
-    parent_address: Parents.parent_address
-    home_phone: Parents.home_phone
-    cell_mobile_phone: Parents.cell_mobile_phone
-    other_details: Parents.other_details
-  Children:
-    child_id: Children.child_id
-    parent_id: FROM Parents.parent_id
-    gender: Children.gender
-    first_name: Children.first_name
-    last_name: Children.last_name
-    age: Children.age
-    date_of_birth: Children.date_of_birth
-    other_details: Children.other_details
-"""
+  airlines:
+    airline_id: airlines.airline_id
+    iata_code: airlines.iata_code
+    airline_name: airlines.airline_name
+    country_code: airlines.country_code
+    is_lowcost: airlines.is_lowcost
+  airports:
+    airport_id: airports.airport_id
+    iata_code: airports.iata_code
+    airport_name: airports.airport_name
+    city_country: airports.city_country
+    timezone_code: airports.timezone_code
+  aircraft:
+    aircraft_id: aircraft.aircraft_id
+    airline_id: 'FROM airlines.airline_id'
+    aircraft_type: aircraft.aircraft_type
+    seat_capacity: aircraft.seat_capacity
+    max_range_km: aircraft.max_range_km
+    in_service: aircraft.in_service
+  flights:
+    flight_id: flights.flight_id
+    aircraft_id: 'FROM aircraft.aircraft_id'
+    origin_airport: 'FROM airports.airport_id'
+    flight_code: flights.flight_code
+    status: flights.status
+    duration_hours: flights.duration_hours
+    base_price_eur: flights.base_price_eur
+    departure_date: flights.departure_date
+  bookings:
+    booking_id: bookings.booking_id
+    flight_id: 'FROM flights.flight_id'
+    passenger_first: bookings.passenger_first
+    passenger_last: bookings.passenger_last
+    seat_class: bookings.seat_class
+    baggage_kg: bookings.baggage_kg
+    price_paid_eur: bookings.price_paid_eur
+    booked_on: bookings.booked_on
+    checked_in: bookings.checked_in"""

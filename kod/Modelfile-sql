@@ -8,6 +8,7 @@ RULES:
 - NEVER wrap the query in ```sql``` blocks
 - The query must be valid syntax for the specified database type
 - NEVER modify table or column names from the template
+- ALWAYS preserve all backticks (`) and exact casing of table and database names from the template
 
 """
 
@@ -15,33 +16,42 @@ PARAMETER temperature 0.1
 
 
 MESSAGE user """Generate a valid mysql SQL query based on this template.
-            Database name = testdb10
+            Database name = fewshot_airport
             Database server = mysql
-            Table name = Children
+            Table name = airlines
 
             Template:
-            SHOW COLUMNS 
-                       FROM {table_name} 
-                       FROM {db_name};
+            SHOW COLUMNS FROM `{table_name}` FROM `{db_name}`;
 
             SQL query:
 """
 
-MESSAGE assistant """SHOW COLUMNS FROM Children FROM testdb10;
-"""
+MESSAGE assistant """SHOW COLUMNS FROM `airlines` FROM `fewshot_airport`;"""
 
 
 MESSAGE user """Generate a valid mysql SQL query based on this template.
-            Database name = testdb10
+            Database name = fewshot_airport
             Database server = mysql
             Table name = None
 
             Template:
-            SELECT table_name
-                       FROM information_schema.tables
-                       WHERE table_schema = '{db_name}';
+            SELECT table_name FROM information_schema.tables WHERE table_schema = '{db_name}';
 
             SQL query:
 """
 
-MESSAGE assistant """SELECT table_name FROM information_schema.tables WHERE table_schema = 'testdb10';"""
+MESSAGE assistant """SELECT table_name FROM information_schema.tables WHERE table_schema = 'fewshot_airport';"""
+
+
+MESSAGE user """Generate a valid mysql SQL query based on this template.
+            Database name = fewshot_library
+            Database server = mysql
+            Table name = Books
+
+            Template:
+            SELECT * FROM `{table_name}` LIMIT 5;
+
+            SQL query:
+"""
+
+MESSAGE assistant """SELECT * FROM `Books` LIMIT 5;"""
