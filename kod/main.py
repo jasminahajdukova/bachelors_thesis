@@ -86,7 +86,7 @@ def check_ollama_models():
     logger.info("Ollama is running with all required models")
     return True 
 
-def go_over_prime_keys(p_keys: list[tuple], err: list[YAML_result]):
+def go_over_prime_keys(p_keys: list[tuple]):
     extracted_pks = []
     for pk in p_keys:
         if not isinstance(pk, (tuple, list)) or len(pk) < 5:
@@ -131,7 +131,7 @@ def go_over_columns(columns, table_name, limit, server, prime_keys, samples, gen
 
                 cl_samples = [row[0] for row in raw_samples if row[0] is not None]
 
-                samples[table_name][column_name] = {"is_pk": True, "data_type": "non-numeric", "samples": cl_samples}
+                samples[table_name][column_name] = {"is_pk": True, "data_type": "non-numeric", "samples": cl_samples[:10]}
                 generate_count[table_name] = row_count
                 
         else:
@@ -166,7 +166,6 @@ def get_result(db_server, db_name, table_name, server, sql_type):
 
     if sql_type == "tables" and len(result) == 0:
         logger.error("Db has no data. Cannot generate YAML.")
-        disconnect(db_server, server)
         return
 
     return result
@@ -232,18 +231,16 @@ def main():
                 count_result = get_result(db_server, db_name, table_name, server, "count")
                 
                 prime_key = get_result(db_server, db_name, table_name, server, "prime_keys")
-                logger.info(f"prime_key = {prime_key}, type = {type(prime_key)}")
 
                 row_count = count_result[0][0]
                 limit = data_sampler.calculate_limit(row_count)
                 logger.info(f"Table {table_name}: {row_count} rows, LIMIT {limit}")
                 logger.debug("Entering second column loop")
 
-                prime_keys += go_over_prime_keys(prime_key, errors)
+                prime_keys += go_over_prime_keys(prime_key)
                 samples, generate_count = go_over_columns(columns, table_name, limit, server, prime_keys, samples, generate_count, db_name, row_count)
-                logger.info(f"SAMPLES = {samples} \n GENERATED COUNT = {generate_count}\n")
 
-            logger.info("Sending samples to LLM for YAML generation")
+            logger.info(f"Sending samples to LLM for YAML generation \n{samples}")
             yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count)
             logger.debug(f"Generated YAML:\n{yaml_str}")
             errors += yaml_generator.validate_yaml(db_name, yaml_str)
