@@ -21,6 +21,7 @@ na zamyslenie:
         - employee.first_name
         - employee.last_name
 6. treba kontrolovat a opravovat format napr pri mene alebo email
+7. co ked si niekto vlozi vlastny include ?
        
 na testovanie:
 
