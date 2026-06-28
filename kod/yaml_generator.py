@@ -90,11 +90,10 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
     if "constraints" in stream_keys:
         errors += validate_constraints(db_name, stream["constraints"], types_ds)
     
-    # if all(result.severity != 1 for result in errors):
-    #     save_yaml(stream, db_name)
-    # else:
-    #     logger.error(f"Found critical error")    
-    save_yaml(yaml_str, db_name)
+    if all(result.severity != 1 for result in errors):
+        save_yaml(yaml_str, db_name)
+    else:
+        logger.error(f"Found critical error")    
     logger.info(f"ERRORS = {errors}")
     return errors
 
