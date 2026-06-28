@@ -34,15 +34,23 @@ AVAILABLE_INCLUDES = [
     "countries_cs"          # names of counties (in Czech language)
 ]
 
+client = ollama.Client(timeout=600.0)
 
-def get_response(type: str, prompt: str, model: str, thinking: bool = False):
+def get_response(type_name: str, prompt: str, model: str, thinking: bool = False):
+    
+
     try: 
-        response = ollama.generate(model=model,
+        response = client.generate(model=model,
                            prompt=prompt,
-                           think=thinking)
+                           think=thinking,
+                            options={ "num_predict": 4096})
+        
+    except (httpx.TimeoutException, httpx.ReadTimeout) as exc:
+        logger.error(f"Ollama timed out after 180s during {type_name} generation {exc}") 
+        raise RuntimeError(f"{type_name} generation timed out {exc}")
     except ollama.ResponseError as exc:
         logger.error(f"Ollama model error: {exc}")
-        raise RuntimeError(f"{type} was not generated: {exc}") from exc
+        raise RuntimeError(f"{type_name} was not generated: {exc}") from exc
     except httpx.ConnectError as exc:
         logger.error(f"Ollama is not running: {exc}")
         raise RuntimeError(f"Ollama is not running: {exc}") from exc
@@ -70,11 +78,21 @@ def generate_sql_query(template: str, sql_server_type: str, db_name: str, table_
 
 
 def strip_markdown(content: str) -> str:
+
+    if not content:
+        return ""
+
     content = content.strip()
+
     if content.startswith("```"):
-        content = content.split("\n", 1)[1]
+
+        first_newline = content.find("\n")
+        if first_newline != -1:
+            content = content[first_newline + 1:]
+        else:
+            content = content[3:]
     if content.endswith("```"):
-        content = content.rsplit("```", 1)[0]
+        content = content[:-3]
     return content.strip()
 
 
@@ -83,7 +101,7 @@ def generate_yaml_prompt(samples, types_section, sql_server_type, model, section
         "schema": prompts.build_schema_prompt(types_section, sql_server_type),
         "types": prompts.build_types_prompt(samples, sql_server_type),
         "generate": prompts.build_generate_prompt(types_section, sql_server_type),
-        "constraints": prompts.build_contraints_prompt(types_section, samples, sql_server_type)
+        "constraints": prompts.build_constraints_prompt(types_section, samples, sql_server_type)
     }
     logger.info(f"Generating YAML '{section}' section")
     if section in build_prompt:
@@ -95,9 +113,19 @@ def generate_yaml_prompt(samples, types_section, sql_server_type, model, section
 
 
 def generate_yaml_include(type_content):
+    if not type_content:
+        return "include: []"
+    
+    cl_content = type_content
+    for char in [":", "[", "]", "(", ")", ",", "-", "\n", "\r"]:
+        cl_content = cl_content.replace(char, " ")
+    
+    words_in_content = set(cl_content.split())
+
     includes = []
     for dataset in AVAILABLE_INCLUDES:
-        if dataset in type_content:
+    
+        if dataset in words_in_content:
             includes.append(dataset)
 
     if includes:
@@ -108,38 +136,54 @@ def generate_yaml_include(type_content):
     
 
 def filter_constraints(constraints_yaml) :
+    if not constraints_yaml:
+        return "constraints: []"
+    
     lines = constraints_yaml.split('\n')
     filtered = []
+    
     invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not NULL', 'IS NOT NULL', 'is null', 'IS NULL']
-    logger.info("------------------------------------------------------------------------------------------------------------------------------")
+
     for line in lines:
         if line is None:
             continue
-        logger.info(f"Line = {line.split()}")
-        if (stripped_line := line.split()) and len(stripped_line) == 4 and stripped_line[1].strip("'") == stripped_line[3].strip("'"):
-            logger.info(f"Removing self-referencing contraint: {line.strip()}")
+        
+        stripped_line = line.split()
+        if not stripped_line or line.strip().endswith(":"):
+            filtered.append(line)
             continue
+        
+        if len(stripped_line) == 4 and stripped_line[0].strip("'\"") == stripped_line[3].strip("'\""):
+            logger.info(f"Removing self-referencing constraint: {line.strip()}")
+            continue
+
         if any(op in line for op in invalid_operators):
             logger.debug(f"Removing invalid constraint: {line.strip()}")
             continue
-        right_side = " ".join(stripped_line[3:])
-        right_side = right_side.strip("'\"")
+        operator = stripped_line[1].lower()
+        right_side = " ".join(stripped_line[2:]).strip("'\"")
 
-        if len(stripped_line) >= 4 and stripped_line[1].lower() == 'in':
-            in_match = re.match(r"^\w+\.\w+$", stripped_line[0]) and right_side.strip().startswith('(') and right_side.strip().endswith(')')
+        if operator == 'in':
+            in_match = bool(re.match(r"^\w+\.\w+$", stripped_line[0]) and right_side.startswith('(') and right_side.endswith(')'))
 
             if in_match:
                 filtered.append(line)
-                continue
+                
             else:
                 logger.info(f"Removing invalid 'in' constraint {line.strip()}")
+            
+            continue
 
-        if not re.match(r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)', right_side) and '.' not in right_side and len(stripped_line) >= 4:
+        is_numeric = bool(re.match(r'^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$', right_side))
+        is_col_ref = '.' in right_side and len(right_side.split('.')) == 2
+
+        if not is_numeric and not is_col_ref:
             logger.info(f"Removing invalid constraint: {line.strip()}")
             continue
+
         filtered.append(line)
     result = '\n'.join(filtered)
-    logger.info("-------------------------------------------------------------------------------------------------------------------------------")
+
     if result.strip() == 'constraints:':
         return 'constraints: []'
     return result
@@ -147,7 +191,7 @@ def filter_constraints(constraints_yaml) :
 
 def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
     logger.info(f"apply_fk_to_schema called with fk_map: {fk_map}")
-    logger.info(f"schema_yaml repr:\n{repr(schema_yaml)}")
+    logger.debug(f"schema_yaml repr:\n{repr(schema_yaml)}")
     lines = schema_yaml.split('\n')
     result = []
     current_table = None
@@ -169,8 +213,16 @@ def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
 
         if current_table and ':' in stripped and indent_count == 4:
             col_name = stripped.split(':')[0].strip()
+
             if current_table in fk_map and col_name in fk_map[current_table]:
+
                 ref_table, ref_col = fk_map[current_table][col_name]
+
+                if current_table == ref_table:
+                    logger.warning(f"Self-referencing foreign key detected and skipped")
+                    result.append(line)
+                    continue
+                
                 result.append(f"{' ' * indent_count}{col_name}: FROM {ref_table}.{ref_col}")
                 continue
     
@@ -206,10 +258,8 @@ def sort_tables_multi_level(fk_map):
     return sorted_tables
 
 def go_over_generate(gen_count, generate_content):
-    logger.info(f"GEN COUNT = {gen_count}")
-    logger.info(f"generate_content = {generate_content}")
+    logger.debug(f"GEN COUNT = {gen_count}")
     generate_content = generate_content.split("\n")
-    logger.info(f"generate_content after split = {generate_content}")
 
     new_generate = []
     for line in generate_content:
@@ -243,20 +293,18 @@ def go_over_generate(gen_count, generate_content):
 def generate_yaml(samples, sql_server_type, fk_map, generate_count):
     sorted_table_names = sort_tables_multi_level(fk_map)
     sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
+    
     types_content = generate_yaml_prompt(sorted_samples, None, sql_server_type, "yaml-generator-types", "types")
     
     logger.info(f"types content:\n{types_content}")
     include_content = generate_yaml_include(types_content)
 
-    with ThreadPoolExecutor() as executor:
-        f_schema      = executor.submit(generate_yaml_prompt, None, types_content, sql_server_type, "yaml-generator-schema", "schema")
-        f_generate    = executor.submit(generate_yaml_prompt, None, types_content, sql_server_type, "yaml-generator-generate", "generate")
-        f_constraints = executor.submit(generate_yaml_prompt, samples, types_content, sql_server_type, "yaml-generator-constraints", "constraints")
+    schema_content      = generate_yaml_prompt(None, types_content, sql_server_type, "yaml-generator-schema", "schema")
+    generate_content    = generate_yaml_prompt(None, types_content, sql_server_type, "yaml-generator-generate", "generate")
+    constraints_content = generate_yaml_prompt(samples, types_content, sql_server_type, "yaml-generator-constraints", "constraints")
     
-    schema_content      = f_schema.result()
     schema_content      = apply_fk_to_schema(schema_content, fk_map)
-    generate_content    = go_over_generate(generate_count, f_generate.result())
-    constraints_content = f_constraints.result()
+    generate_content    = go_over_generate(generate_count, generate_content)
     constraints_content = filter_constraints(constraints_content)
     
     
