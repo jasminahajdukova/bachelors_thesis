@@ -12,45 +12,43 @@ Supported types: int, bigint, float, bool, string, seq(x,y,z), interval(x,y), fi
 TYPES RULES:
 - Generate types for EVERY table in the provided samples, no exceptions
 - Use sample MIN and MAX values to choose realistic ranges for intervals
-- Use dinterval for ALL date columns, format ALWAYS: dinterval(YYYY-M-D,YYYY-M-D)
+- Use dinterval for ALL date columns, format ALWAYS nepaddovaný: dinterval(YYYY-M-D,YYYY-M-D) — NEVER use leading zeros for single-digit months/days in the output (e.g., use 2024-1-5, NEVER 2024-01-05).
 - NEVER use: date, date(), date("Y-m-d"), datetime, datetime.date() — these are INVALID types
 - str_len categories are ONLY: C (uppercase), c (lowercase), d (digits), s (whitespace), S (special chars)
 - NEVER use regex patterns inside str_len
-- if you use a dataset name as type value, it MUST be from the available datasets list
+- If you use a dataset name as type value, it MUST be from the available datasets list
 - Return ONLY the types: section, no include, no schema, no generate
-- for primary key column marked with 'is_pk': use ONLY the seq value, e.g. id: 'seq(1,5,1)'
+- For primary key column marked with 'is_pk': use ONLY the seq value, e.g. id: 'seq(1,5,1)'
 - NEVER output 'is_pk' or 'seq' keys in the types section
-- for primary key: extract ONLY the seq value and use it directly, e.g. id: 'seq(1,5,1)'
-- if COUNT_DISTINCT equals the total row count, it is free text — use string or str_len, NEVER copy sample values as a list
-- for columns like address, street, description, details, notes — use str_len(10,50) or string, NEVER invent dataset names
-- str_len parameters are ONLY two integers: str_len(min_length, max_length) — NEVER put regex or character classes inside str_len
-- if a column contains small integers (COUNT_DISTINCT <= 10) but values are numeric, use interval(MIN,MAX) not str_len
-- for text columns like title, description — use str_len([cC] x,y)
-- The table name is ALWAYS the top-level key in the database samples JSON — ALWAYS use it as the type name
-- NEVER put column names directly under 'types:' — they must ALWAYS be nested under the table name
-- NEVER use seq_cs — it is not a valid type and does not exist
-- NEVER use Python list syntax ['x', 'y'] for enum columns — ALWAYS use BLOCKS list format
+- FOREIGN KEY RULE: If a column is a foreign key referencing a primary key of another table, ALWAYS use 'interval(MIN, MAX)' where MIN and MAX exactly match the boundaries of the parent table's primary key 'seq(MIN, MAX, STEP)'. Do NOT use 'seq' for foreign keys.
+
+CRITICAL CATEGORY DECISION ALGORITHM:
+1. Use BLOCKS if: the column has a low distinct count (distinct_count_in_sample <= 8) AND the values represent a closed set of categories, statuses, types, or genres (e.g., status, weather_type, seat_class, gender, genre, aircraft_type, condition_state, language_code).
+2. Use DATASET (e.g., countries_cs, first_names_cs) if: the values exactly match a domain from the available datasets list and represent an open/large real-world entity (e.g., country_code ALWAYS maps to countries_cs).
+3. Use STR_LEN/REGEX if: the column is a formatted identifier, code, or structured string rather than a semantic category (e.g., iata_code, flight_code, shelf_code, phone numbers).
 
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 """
 
 PARAMETER temperature 0.1
+PARAMETER num_predict 1024
 
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
     
     Database samples:
-    {"car_models": {"model_code": {"is_pk": true, "seq": "seq(1, 10, 1)"}, "manufacturer_code": [["SKODA", "AUDI", "VW", 5], ["VW", "AUDI", "VW", 5], ["BMW", "AUDI", "VW", 5], ["AUDI", "AUDI", "VW", 5], ["TOYOTA", "AUDI", "VW", 5]], "model_name": [["Octavia", "A4", "Superb", 10], ["Superb", "A4", "Superb", 10], ["Golf", "A4", "Superb", 10], ["Passat", "A4", "Superb", 10], ["Rad 3", "A4", "Superb", 10]]}}
+    {
+      "car_models": {
+        "model_code": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 10, 1)"},
+        "manufacturer_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["SKODA", "VW", "BMW", "AUDI", "TOYOTA"]},
+        "model_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Octavia", "Superb", "Golf", "Passat", "Rad 3"]}
+      }
+    }
     
-    Return ONLY the types section starting with 'types:', nothing else.
-"""
+    Return ONLY the types section starting with 'types:', nothing else."""
 
-MESSAGE assistant """
-types:
+MESSAGE assistant """types:
   car_models:
     model_code: 'seq(1,10,1)'
     manufacturer_code:
@@ -66,26 +64,27 @@ types:
       - Superb
       - Golf
       - Passat
-      - 'Rad 3'
-      - A4
-      - A6
-      - Tiguan
-      - Corolla"""
+      - 'Rad 3'"""
 
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
     
     Database samples:
-    {"Customer_Payments": {"customer_Payment_ID": {"is_pk": true, "seq": "seq(1, 15, 1)"}, "car_Sold_ID": [[101, 101, 115, 15], [102, 101, 115, 15], [103, 101, 115, 15], [104, 101, 115, 15], [105, 101, 115, 15]], "customer_ID": [[501, 501, 515, 15], [502, 501, 515, 15], [503, 501, 515, 15], [504, 501, 515, 15], [505, 501, 515, 15]], "payment_Status_Code": [["PAID", "OVERDUE", "PENDING", 3], ["PENDING", "OVERDUE", "PENDING", 3], ["OVERDUE", "OVERDUE", "PENDING", 3]], "customer_Payment_Date_Due": [["2026-1-15", "2026-1-15", "2026-7-10", 15], ["2026-1-20", "2026-1-15", "2026-7-10", 15], ["2026-6-20", "2026-1-15", "2026-7-10", 15], ["2026-2-10", "2026-1-15", "2026-7-10", 15], ["2026-5-1", "2026-1-15", "2026-7-10", 15]], "customer_Payment_Date_Made": [["2026-1-14", "2026-1-14", "2026-5-20", 9], ["2026-1-20", "2026-1-14", "2026-5-20", 9], [null, "2026-1-14", "2026-5-20", 9], ["2026-2-12", "2026-1-14", "2026-5-20", 9], ["2026-2-28", "2026-1-14", "2026-5-20", 9]], "actual_Payment_Amount": [["15000.00", "12350.00", "45000.00", 9], ["22500.50", "12350.00", "45000.00", 9], [null, "12350.00", "45000.00", 9], ["18900.00", "12350.00", "45000.00", 9], ["31000.00", "12350.00", "45000.00", 9]]}}
+    {
+      "Customer_Payments": {
+        "customer_Payment_ID": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 15, 1)"},
+        "car_Sold_ID": {"is_pk": false, "distinct_count_in_sample": 15, "samples": [101, 105, 110, 115]},
+        "customer_ID": {"is_pk": false, "distinct_count_in_sample": 15, "samples": [501, 505, 510, 515]},
+        "payment_Status_Code": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["PAID", "OVERDUE", "PENDING"]},
+        "customer_Payment_Date_Due": {"is_pk": false, "distinct_count_in_sample": 12, "samples": ["2026-01-15", "2026-04-20", "2026-07-10"]},
+        "customer_Payment_Date_Made": {"is_pk": false, "distinct_count_in_sample": 10, "samples": ["2026-01-14", "2026-03-01", "2026-05-20"]},
+        "actual_Payment_Amount": {"is_pk": false, "distinct_count_in_sample": 15, "samples": [150.50, 3200.00, 99.99]}
+      }
+    }
     
     Return ONLY the types section starting with 'types:', nothing else."""
 
-
-MESSAGE assistant """
-types:
+MESSAGE assistant """types:
   Customer_Payments:
     customer_Payment_ID: 'seq(1,15,1)'
     car_Sold_ID: 'interval(101,115)'
@@ -97,200 +96,181 @@ types:
       - PENDING
     customer_Payment_Date_Due: 'dinterval(2026-1-15,2026-7-10)'
     customer_Payment_Date_Made: 'dinterval(2026-1-14,2026-5-20)'
-    actual_Payment_Amount: float"""
+    actual_Payment_Amount: 'float'"""
 
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
     
     Database samples:
-    {"patients": {"patient_id": {"is_pk": true, "seq": "seq(1, 20, 1)"}, "first_name": [["John", "Adam", "Zoe", 20], ["Maria", "Adam", "Zoe", 20]], "middle_name": [["Robert", "Alan", "Zoe", 15], [null, "Alan", "Zoe", 15], ["James", "Alan", "Zoe", 15]], "last_name": [["Smith", "Brown", "Wilson", 20], ["Jones", "Brown", "Wilson", 20]], "address": [["72 High Street, London", "14 Baker Street", "York Road 5", 20], ["Flat 3, Oak Avenue", "14 Baker Street", "York Road 5", 20]], "status_code": [["ACTIVE", "ACTIVE", "INACTIVE", 2], ["INACTIVE", "ACTIVE", "INACTIVE", 2]], "notes": [["Patient shows signs of recovery.", "Allergic to penicillin.", "Transferred to ICU.", 20], ["Awaiting lab results.", "Allergic to penicillin.", "Transferred to ICU.", 20], ["Discharged after observation.", "Allergic to penicillin.", "Transferred to ICU.", 20]]}}
+    {"Stations": {"station_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 6, 1)"}, "region_code": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["NORD", "SUED", "WEST"]}, "station_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Cheb Lowland", "Jeseniky Ridge", "Karlovy Vary Basin", "Novohradske Hory", "Snezka Peak"]}, "altitude_m": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [380, 459, 740, 980, 1245]}, "is_automated": {"is_pk": false, "distinct_count_in_sample": 2, "samples": [0, 1]}}, "Readings": {"reading_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 14, 1)"}, "station_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "weather_type": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["CLEAR", "CLOUDY", "RAIN", "SNOW"]}, "temperature_c": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [-12.3, -8.5, -4.7, 2.1, 4.9]}, "pressure_hpa": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1007.6, 1008.3, 1009.8, 1010.0, 1013.1]}, "humidity_pct": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [31, 35, 40, 44, 52]}, "wind_kmh": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [6, 7, 9, 12, 14]}, "measured_on": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2024-01-12", "2024-03-01"]}}}
     
     Return ONLY the types section starting with 'types:', nothing else."""
-
-MESSAGE assistant """
-types:
-  patients:
-    patient_id: 'seq(1,20,1)'
-    first_name: first_names_cs
-    middle_name: first_names_cs
-    last_name: last_names_cs
-    address: 'str_len(10,50)'
-    status_code:
-      - BLOCKS
-      - ACTIVE
-      - INACTIVE
-    notes: 'str_len(10,100)'"""
-
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
-    
-    Database samples:
-    {"contacts": {"contact_id": {"is_pk": true, "seq": "seq(1, 10, 1)"}, "phone_number": [["+421905111222", "+421902111555", "+421949111000", 10], ["+421911333444", "+421902111555", "+421949111000", 10]], "mobile": [["0905111222", "0902111555", "0949111000", 10], ["0911333444", "0902111555", "0949111000", 10]]}}
-    
-    Return ONLY the types section starting with 'types:', nothing else."""
-
-MESSAGE assistant """
-types:
-  contacts:
-    contact_id: 'seq(1,10,1)'
-    phone_number: 'regex(''\+[0-9]{9,12}'')'
-    mobile: 'regex(''0[0-9]{9}'')'"""
-
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
-    
-    Database samples:
-    {"Students": {"student_id": {"is_pk": true, "seq": "seq(1, 15, 1)"}, "first_name": [["Lukas", "Adam", "Zuzana", 15]], "last_name": [["Horvath", "Balaz", "Toth", 15]], "date_first_rental": [["2024-9-1", "2022-9-1", "2026-6-1", 15], ["2023-2-15", "2022-9-1", "2026-6-1", 15]], "date_left_university": [["2026-5-30", "2022-9-1", "2026-6-1", 8], [null, "2022-9-1", "2026-6-1", 8]]}}
-    
-    Return ONLY the types section starting with 'types:', nothing else."""
-
-MESSAGE assistant """
-types:
-  Students:
-    student_id: 'seq(1,15,1)'
-    first_name: first_names_cs
-    last_name: last_names_cs
-    date_first_rental: 'dinterval(2022-9-1,2026-6-1)'
-    date_left_university: 'dinterval(2022-9-1,2026-6-1)'"""
-
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
-    
-    Database samples:
-    {"Plants": {"plant_id": {"is_pk": true, "seq": "seq(1, 60, 1)"}, "plant_hierarchy_id": [[101, 101, 107, 7], [102, 101, 107, 7], [103, 101, 107, 7], [104, 101, 107, 7], [105, 101, 107, 7]], "family_id": [[501, 501, 507, 7], [502, 501, 507, 7], [503, 501, 507, 7], [504, 501, 507, 7], [505, 501, 507, 7]], "plant_details": [["Rosa canina - Vytrval ker, lieiva rastlina.", "Abies alba - Vysoky ihlinaty strom.", "Zea mays - Vysoka mohutna trava.", 60], ["Malus domestica - Ovocny strom.", "Abies alba - Vysoky ihlinaty strom.", "Zea mays - Vysoka mohutna trava.", 60]]}}
-    
-    Return ONLY the types section starting with 'types:', nothing else."""
-
-MESSAGE assistant """
-types:
-  Plants:
-    plant_id: 'seq(1,60,1)'
-    plant_hierarchy_id: 'interval(101,107)'
-    family_id: 'interval(501,507)'
-    plant_details: 'str_len(50,255)'"""
-
-
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
-    
-    Database samples:
-    {"Corporate_Customer": {"customer_id": {"is_pk": true, "seq": "seq(1, 25, 1)"}, "company_name": [["TechLogix s.r.o.", "Alpha Developer Group", "Zhradn Centrum Garden", 25], ["EuroTrade Slovakia a.s.", "Alpha Developer Group", "Zhradn Centrum Garden", 25], ["AutoServis Jn & synovia", "Alpha Developer Group", "Zhradn Centrum Garden", 25], ["Alpha Developer Group", "Alpha Developer Group", "Zhradn Centrum Garden", 25], ["BioFoods Distribution", "Alpha Developer Group", "Zhradn Centrum Garden", 25], ["StavbaTrend ilina", "Alpha Developer Group", "Zhradn Centrum Garden", 25]], "phone_number": [["+421905123456", "+421902112233", "+421948556677", 25], ["+421911234567", "+421902112233", "+421948556677", 25], ["+421948345678", "+421902112233", "+421948556677", 25], ["+421903456789", "+421902112233", "+421948556677", 25], ["+421915567890", "+421902112233", "+421948556677", 25], ["+421907678901", "+421902112233", "+421948556677", 25]], "credit_score": [[750, 410, 880, 25], [620, 410, 880, 25], [450, 410, 880, 25], [820, 410, 880, 25], [580, 410, 880, 25], [690, 410, 880, 25]], "date_credit_score_reviewed": [["2026-1-15", "2025-10-5", "2026-5-20", 25], ["2026-2-10", "2025-10-5", "2026-5-20", 25], ["2025-11-20", "2025-10-5", "2026-5-20", 25], ["2026-3-1", "2025-10-5", "2026-5-20", 25], ["2026-1-22", "2025-10-5", "2026-5-20", 25], ["2026-4-5", "2025-10-5", "2026-5-20", 25]], "date_credit_class_reviewed": [["2026-1-15", "2025-10-5", "2026-5-20", 25], ["2026-2-11", "2025-10-5", "2026-5-20", 25], ["2025-11-20", "2025-10-5", "2026-5-20", 25], ["2026-3-2", "2025-10-5", "2026-5-20", 25], ["2026-1-22", "2025-10-5", "2026-5-20", 25], ["2026-4-5", "2025-10-5", "2026-5-20", 25]]}}
-    
-    Return ONLY the types section starting with 'types:', nothing else."""
-
-MESSAGE assistant """
-types:
-  Corporate_Customer:
-    customer_id: 'seq(1,25,1)'
-    company_name: 'str_len([cC] 10,50)'
-    phone_number: regex(''\+421[0-9]{9}'')
-    credit_score: 'interval(410,880)'
-    date_credit_score_reviewed: 'dinterval(2025-10-5,2026-5-20)'
-    date_credit_class_reviewed: 'dinterval(2025-10-5,2026-5-20)'"""
-
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
-      
-    Database samples:
-    {"Parents": {"parent_id": {"is_pk": true, "seq": "seq(1, 5, 1)"}, "parent_name": [["John Doe", "Emily Davis", "Robert Johnson", 5], ["Jane Smith", "Emily Davis", "Robert Johnson", 5], ["Robert Johnson", "Emily Davis", "Robert Johnson", 5], ["Emily Davis", "Emily Davis", "Robert Johnson", 5], ["Michael Brown", "Emily Davis", "Robert Johnson", 5]], "gender": [["Male", "Female", "Male", 2], ["Female", "Female", "Male", 2]], "parent_address": [["123 Maple St, Springfield", "123 Maple St, Springfield", "789 Pine Ave, Gotham", 5], ["456 Oak Rd, Metropolis", "123 Maple St, Springfield", "789 Pine Ave, Gotham", 5], ["789 Pine Ave, Gotham", "123 Maple St, Springfield", "789 Pine Ave, Gotham", 5], ["321 Elm Blvd, Star City", "123 Maple St, Springfield", "789 Pine Ave, Gotham", 5], ["654 Birch Ln, Central City", "123 Maple St, Springfield", "789 Pine Ave, Gotham", 5]], "home_phone": [["555-0192", "555-0111", "555-0192", 5], ["555-0143", "555-0111", "555-0192", 5], ["555-0177", "555-0111", "555-0192", 5], ["555-0155", "555-0111", "555-0192", 5], ["555-0111", "555-0111", "555-0192", 5]], "cell_mobile_phone": [["555-4321", "555-3456", "555-9812", 5], ["555-8765", "555-3456", "555-9812", 5], ["555-9812", "555-3456", "555-9812", 5], ["555-3456", "555-3456", "555-9812", 5], ["555-6543", "555-3456", "555-9812", 5]], "other_details": [["Prefers email updates", "Authorized for school pickup", "Speaks English and Spanish", 5], ["Emergency contact listed", "Authorized for school pickup", "Speaks English and Spanish", 5], ["No special requirements", "Authorized for school pickup", "Speaks English and Spanish", 5], ["Authorized for school pickup", "Authorized for school pickup", "Speaks English and Spanish", 5], ["Speaks English and Spanish", "Authorized for school pickup", "Speaks English and Spanish", 5]]}, "Children": {"child_id": {"is_pk": true, "seq": "seq(1, 5, 1)"}, "parent_id": [[1, 1, 4, 4], [2, 1, 4, 4], [3, 1, 4, 4], [4, 1, 4, 4]], "gender": [["Male", "Female", "Male", 2], ["Female", "Female", "Male", 2]], "first_name": [["Billy", "Billy", "Tommy", 5], ["Lily", "Billy", "Tommy", 5], ["Tommy", "Billy", "Tommy", 5], ["Sophia", "Billy", "Tommy", 5], ["Ethan", "Billy", "Tommy", 5]], "last_name": [["Doe", "Davis", "Smith", 4], ["Smith", "Davis", "Smith", 4], ["Johnson", "Davis", "Smith", 4], ["Davis", "Davis", "Smith", 4]], "age": [[8, 5, 12, 5], [5, 5, 12, 5], [10, 5, 12, 5], [12, 5, 12, 5], [6, 5, 12, 5]], "date_of_birth": [["2018-4-12", "2014-11-5", "2021-8-23", 5], ["2021-8-23", "2014-11-5", "2021-8-23", 5], ["2016-1-15", "2014-11-5", "2021-8-23", 5], ["2014-11-5", "2014-11-5", "2021-8-23", 5], ["2020-5-30", "2014-11-5", "2021-8-23", 5]], "other_details": [["Allergic to peanuts", "Allergic to peanuts", "Wears glasses", 5], ["Enrolled in soccer league", "Allergic to peanuts", "Wears glasses", 5], ["Wears glasses", "Allergic to peanuts", "Wears glasses", 5], ["Plays piano", "Allergic to peanuts", "Wears glasses", 5], ["Requires afternoon daycare bus", "Allergic to peanuts", "Wears glasses", 5]]}}
-    
-    Return ONLY the types section starting with 'types:', nothing else."""
-
-MESSAGE assistant """
-types:
-  Parents:
-    parent_id: seq(1,5,1)
-    first_name: first_names_cs
-    last_name: last_names_cs
-    parent_name:
-      format: '{} {}'
-      values:
-        - Parents.first_name
-        - Parents.last_name
-    gender:
-      - BLOCKS
-      - Male
-      - Female
-    parent_address: str_len([cC] 50,100)
-    home_phone: regex(''555-[0-9]{4}'')
-    cell_mobile_phone: regex(''555-[0-9]{4}'')
-    other_details: str_len([cC]10,100)
-  Children:
-    child_id: seq(1,5,1)
-    parent_id: interval(1,5)
-    gender:
-      - BLOCKS
-      - Male
-      - Female
-    first_name: first_names_cs
-    last_name: last_names_cs
-    age: interval(5,12)
-    date_of_birth: dinterval(2014-11-5,2021-8-23)
-    other_details: str_len(10,100)"""
-
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
-    
-    Database samples:
-    {"Product_Categories": {"Cost_per_1_lb": [["0.90", "0.90", "6.00", 5], ["2.50", "0.90", "6.00", 5], ["1.20", "0.90", "6.00", 5], ["6.00", "0.90", "6.00", 5], ["1.80", "0.90", "6.00", 5]]}}
-    Return ONLY the types section starting with 'types:', nothing else."""
-
-MESSAGE assistant """
-types:
-  Product_Categories:
-    Cost_per_1_lb: finterval(0.90,6.00)"""
-
-
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
-    
-    Database samples:
-    {"Products": {"Product_Weight": [["1.00","1.00","10.00",3],["5.00","1.00","10.00",3],["10.00","1.00","10.00",3]]}}
-
-    Return ONLY the types section starting with 'types:', nothing else.
-"""
 
 MESSAGE assistant """types:
+  Stations:
+    station_id: 'seq(1,6,1)'
+    region_code:
+      - BLOCKS
+      - NORD
+      - SUED
+      - WEST
+    station_name: 'str_len([cC] 10,30)'
+    altitude_m: 'interval(380,1245)'
+    is_automated: 'bool'
+  Readings:
+    reading_id: 'seq(1,14,1)'
+    station_id: 'interval(1,6)'
+    weather_type:
+      - BLOCKS
+      - CLEAR
+      - CLOUDY
+      - RAIN
+      - SNOW
+    temperature_c: 'finterval(-12.3,4.9)'
+    pressure_hpa: 'finterval(1007.6,1013.1)'
+    humidity_pct: 'interval(31,52)'
+    wind_kmh: 'interval(6,14)'
+    measured_on: 'dinterval(2024-1-12,2024-3-1)'"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+    
+    Database samples:
+    {"airlines": {"airline_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 6, 1)"}, "iata_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["AF", "CSA", "FR2", "LH", "RYR"]}, "airline_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Air France Connect", "BudgetWings", "Czech airlines", "Lufthansa Group", "Ryanair Europe"]}, "country_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["CZE", "DEU", "FRA", "HUN", "IRL"]}, "is_lowcost": {"is_pk": false, "distinct_count_in_sample": 2, "samples": [0, 1]}}, "airports": {"airport_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 7, 1)"}, "iata_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["BUD", "CDG", "DUB", "FRA", "JFK"]}, "airport_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Budapest Ferenc Liszt", "Charles de Gaulle", "Dublin Airport", "Frankfurt Main", "John F Kennedy"]}, "city_country": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Budapest, Hungary", "Dublin, Ireland", "Frankfurt, Germany", "London, UK", "New York, USA"]}, "timezone_code": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["CET", "EST", "GMT"]}}, "aircraft": {"aircraft_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 8, 1)"}, "airline_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "aircraft_type": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["A320", "A321", "A350", "ATR72", "B737"]}, "seat_capacity": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [70, 180, 189, 230, 325]}, "max_range_km": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1500, 5400, 6100, 7400, 15000]}, "in_service": {"is_pk": false, "distinct_count_in_sample": 2, "samples": [0, 1]}}, "flights": {"flight_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 12, 1)"}, "aircraft_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "origin_airport": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "flight_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["AF0033", "CSA0421", "CSA0510", "FR2204", "FR2210"]}, "status": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["BOARDING", "CANCELLED", "DELAYED", "SCHEDULED"]}, "duration_hours": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1.6, 1.75, 1.9, 1.95, 2.05]}, "base_price_eur": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [39.99, 42.0, 49.99, 54.99, 59.5]}, "departure_date": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2024-07-01", "2024-07-10"]}}, "bookings": {"booking_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 15, 1)"}, "flight_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 5, 6]}, "passenger_first": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Anna", "David", "Eva", "Filip", "Hana"]}, "passenger_last": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Benesova", "Cerna", "Dvorakova", "Fiala", "Horak"]}, "seat_class": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["BUSINESS", "ECONOMY", "FIRST"]}, "baggage_kg": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [15.0, 16.0, 17.0, 18.0, 19.0]}, "price_paid_eur": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [42.0, 49.99, 54.99, 61.0, 129.0]}, "booked_on": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2024-06-10", "2024-06-18"]}, "checked_in": {"is_pk": false, "distinct_count_in_sample": 2, "samples": [0, 1]}}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """types:
+  airlines:
+    airline_id: 'seq(1,6,1)'
+    iata_code: 'str_len([cC] 2,3)'
+    airline_name: 'str_len([cC] 10,30)'
+    country_code: countries_cs
+    is_lowcost: 'bool'
+  airports:
+    airport_id: 'seq(1,7,1)'
+    iata_code: 'str_len([cC] 3,3)'
+    airport_name: 'str_len([cC] 10,40)'
+    city_country: 'str_len([cC] 10,30)'
+    timezone_code:
+      - BLOCKS
+      - CET
+      - EST
+      - GMT
+  aircraft:
+    aircraft_id: 'seq(1,8,1)'
+    airline_id: 'interval(1,6)'
+    aircraft_type:
+      - BLOCKS
+      - A320
+      - A321
+      - A350
+      - ATR72
+      - B737
+    seat_capacity: 'interval(70,325)'
+    max_range_km: 'interval(1500,15000)'
+    in_service: 'bool'
+  flights:
+    flight_id: 'seq(1,12,1)'
+    aircraft_id: 'interval(1,8)'
+    origin_airport: 'interval(1,7)'
+    flight_code: 'regex(\'[A-Z]{2,3}[0-9]{4}\')'
+    status:
+      - BLOCKS
+      - BOARDING
+      - CANCELLED
+      - DELAYED
+      - SCHEDULED
+    duration_hours: 'finterval(1.6,2.05)'
+    base_price_eur: 'finterval(39.99,59.5)'
+    departure_date: 'dinterval(2024-7-1,2024-7-10)'
+  bookings:
+    booking_id: 'seq(1,15,1)'
+    flight_id: 'interval(1,12)'
+    passenger_first: first_names_cs
+    passenger_last: last_names_cs
+    seat_class:
+      - BLOCKS
+      - BUSINESS
+      - ECONOMY
+      - FIRST
+    baggage_kg: 'finterval(15.0,19.0)'
+    price_paid_eur: 'finterval(42.0,129.0)'
+    booked_on: 'dinterval(2024-6-10,2024-6-18)'
+    checked_in: 'bool'"""
+
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+    
+    Database samples:
+    {"Suppliers": {"supplier_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 8, 1)"}, "supplier_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["AlpineSupply", "AlpineSupply Sud", "BalticTrade", "BalticTrade East", "IberMaterials"]}, "country_code": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["AUT", "ESP", "POL", "SWE"]}, "rating": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [3.8, 3.95, 4.1, 4.2]}, "contract_signed": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2020-07-25", "2022-06-21"]}}, "Products": {"product_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 12, 1)"}, "supplier_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "category": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["CABLES", "PAINT", "SEALANT", "TOOLS"]}, "unit_price": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [5.25, 6.6, 7.8, 11.9, 12.4]}, "product_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Acrylic Blue 5L", "Acrylic Green 5L", "Acrylic White 5L", "Angle Grinder Pro", "Coaxial Cable 10m"]}}, "Orders": {"order_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 10, 1)"}, "product_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "status": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["DELIVERED", "PENDING", "SHIPPED"]}, "quantity": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [8, 10, 15, 30, 40]}, "order_date": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2024-01-10", "2024-03-18"]}, "delivery_date": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2024-01-17", "2024-03-27"]}}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+MESSAGE assistant """types:
+  Suppliers:
+    supplier_id: 'seq(1,8,1)'
+    supplier_name: 'str_len([cC] 10,30)'
+    country_code: countries_cs
+    rating: 'finterval(3.8,4.2)'
+    contract_signed: 'dinterval(2020-7-25,2022-6-21)'
   Products:
-    Product_Weight: finterval(1.00,10.00)"""
+    product_id: 'seq(1,12,1)'
+    supplier_id: 'interval(1,8)'
+    category:
+      - BLOCKS
+      - CABLES
+      - PAINT
+      - SEALANT
+      - TOOLS
+    unit_price: 'finterval(5.25,12.4)'
+    product_name: 'str_len([cC] 10,30)'
+  Orders:
+    order_id: 'seq(1,10,1)'
+    product_id: 'interval(1,12)'
+    status:
+      - BLOCKS
+      - DELIVERED
+      - PENDING
+      - SHIPPED
+    quantity: 'interval(8,40)'
+    order_date: 'dinterval(2024-1-10,2024-3-18)'
+    delivery_date: 'dinterval(2024-1-17,2024-3-27)'"""
 
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a MySQL database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {'is_pk': true, 'seq': 'seq(MIN,MAX,1)'} - use the seq value directly as the type
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
     
     Database samples:
-    {"Records": {"record_id": {"is_pk": true, "seq": "seq(1, 20, 1)"}, "record_type": [["Clinical_Trial_Alpha", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Border_Control_Log", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Research_Dataset_v2", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Corporate_Access_Log", "AI_Experiment_Set", "Zoo_Archive_DB", 15], ["Banking_Auth_Record", "AI_Experiment_Set", "Zoo_Archive_DB", 15]], "record_owner": [["Ministry of Interior", "Bratislava Airport", "Vision AI Labs", 15], ["Customs Office", "Bratislava Airport", "Vision AI Labs", 15], ["Technical University", "Bratislava Airport", "Vision AI Labs", 15], ["Secure Tech Corp", "Bratislava Airport", "Vision AI Labs", 15], ["Global Bank IS", "Bratislava Airport", "Vision AI Labs", 15]], "record_location": [["Server Room A", "AWS Frankfurt", "Underground Bunker", 15], ["Cloud Region Europe", "AWS Frankfurt", "Underground Bunker", 15], ["Lab 403 Storage", "AWS Frankfurt", "Underground Bunker", 15], ["On-Premises Server", "AWS Frankfurt", "Underground Bunker", 15], ["AWS Frankfurt", "AWS Frankfurt", "Underground Bunker", 15]]}}
+    {"Books": {"book_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 12, 1)"}, "catalog_number": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1000045, 1000046, 1000047, 1000048, 1000049]}, "genre": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["FICTION", "HISTORY", "POETRY", "SCIENCE"]}, "language_code": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["CZE", "ENG", "FRA", "GER"]}, "condition_state": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["GOOD", "NEW", "WORN"]}, "author_first": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Anna", "David", "Eva", "Hana", "Jakub"]}, "author_last": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Benesova", "Cerna", "Dvorakova", "Horak", "Kralova"]}, "title": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Der lange Weg", "Empires and Echoes", "Husitstvi a doba", "La nuit claire", "Physik der Sterne"]}, "shelf_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["A05", "A12", "A18", "A30", "B03"]}, "page_count": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [95, 110, 280, 320, 350]}, "rating": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [3.6, 3.7, 3.8, 3.9, 4.0]}, "is_available": {"is_pk": false, "distinct_count_in_sample": 2, "samples": [0, 1]}, "acquired_on": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2017-09-22", "2019-12-01"]}}}
     
     Return ONLY the types section starting with 'types:', nothing else."""
 
 MESSAGE assistant """types:
-  Records:
-    record_id: 'seq(1,20,1)'
-    record_type: 'str_len([cC] 10,50)'
-    record_owner: 'str_len([cC] 10,50)'
-    record_location: 'str_len([cC] 10,50)'"""
+  Books:
+    book_id: 'seq(1,12,1)'
+    catalog_number: 'interval(1000045,1000049)'
+    genre:
+      - BLOCKS
+      - FICTION
+      - HISTORY
+      - POETRY
+      - SCIENCE
+    language_code:
+      - BLOCKS
+      - CZE
+      - ENG
+      - FRA
+      - GER
+    condition_state:
+      - BLOCKS
+      - GOOD
+      - NEW
+      - WORN
+    author_first: first_names_cs
+    author_last: last_names_cs
+    title: 'str_len([cC] 10,40)'
+    shelf_code: 'regex(\'[A-Z][0-9]{2}\')'
+    page_count: 'interval(95,350)'
+    rating: 'finterval(3.6,4.0)'
+    is_available: 'bool'
+    acquired_on: 'dinterval(2017-9-22,2019-12-1)'"""
