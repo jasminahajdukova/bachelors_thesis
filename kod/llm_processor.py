@@ -218,13 +218,22 @@ def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
 
                 ref_table, ref_col = fk_map[current_table][col_name]
 
-                if current_table == ref_table:
-                    logger.warning(f"Self-referencing foreign key detected and skipped")
-                    result.append(line)
-                    continue
-                
                 result.append(f"{' ' * indent_count}{col_name}: FROM {ref_table}.{ref_col}")
                 continue
+
+            if 'FROM' in stripped:
+                value = stripped.split(":", 1)[1].strip()
+                value = value.strip("'\"")
+                value = value.replace("FROM ", "").strip()
+                value_split = value.split(".")
+
+                if len(value_split) == 2:
+                    ref_table, ref_col = value_split[0], value_split[1]
+
+                    if current_table == ref_table:
+                        result.append(f"{' ' * indent_count}{col_name}: {current_table}.{col_name}")
+                        continue
+                
     
         result.append(line)
         
@@ -290,11 +299,39 @@ def go_over_generate(gen_count, generate_content):
     logger.info(f"final_generate = {final_generate}")
     return final_generate
     
+def fix_regex_quoting(types_yaml):
+    re_pattern = r"regex\([\\'](.*?)[\\']\)"
+
+    results = []
+
+    lines = types_yaml.splitlines()
+
+    for line in lines:
+        if "regex(" not in line:
+            results.append(line)
+            continue
+        
+        re_match = re.search(re_pattern, line)
+        if re_match:
+            inner = re_match.group(1)
+
+            inner = inner.replace("\\'", "'")
+            inner = inner.replace("'", "''")
+
+            fixed_line = re.sub(re_pattern, f"regex(''{inner}'')", line)
+            results.append(fixed_line)
+        else:
+            results.append(line)
+
+    return "\n".join(results)
+
+
 def generate_yaml(samples, sql_server_type, fk_map, generate_count):
     sorted_table_names = sort_tables_multi_level(fk_map)
     sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
     
     types_content = generate_yaml_prompt(sorted_samples, None, sql_server_type, "yaml-generator-types", "types")
+    types_content = fix_regex_quoting(types_content)
     
     logger.info(f"types content:\n{types_content}")
     include_content = generate_yaml_include(types_content)
