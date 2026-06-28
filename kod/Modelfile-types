@@ -27,6 +27,23 @@ CRITICAL CATEGORY DECISION ALGORITHM:
 2. Use DATASET (e.g., countries_cs, first_names_cs) if: the values exactly match a domain from the available datasets list and represent an open/large real-world entity (e.g., country_code ALWAYS maps to countries_cs).
 3. Use STR_LEN/REGEX if: the column is a formatted identifier, code, or structured string rather than a semantic category (e.g., iata_code, flight_code, shelf_code, phone numbers).
 
+- FORMAT RULE: If a column value in samples is clearly a combination of values from two other columns within the same table (e.g., full name combined from first and last name), use the format syntax.
+  Example structure:
+  column_name:
+    format: '{} {}'
+    values:
+      - tablename.first_column
+      - tablename.second_column
+
+DATASET FORMAT RULE:
+- A dataset column outputs ONLY the bare dataset name.
+- CORRECT:  country_code: countries_cs
+- WRONG:    country_code: dataset(countries_cs)
+- WRONG:    country_code: 'dataset(Canada, UK, USA)'
+- NEVER wrap a dataset in dataset(...).
+- NEVER combine two datasets in one value (WRONG: 'first_names_cs last_names_cs').
+  Each column gets exactly ONE dataset name.
+
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 """
@@ -274,3 +291,31 @@ MESSAGE assistant """types:
     rating: 'finterval(3.6,4.0)'
     is_available: 'bool'
     acquired_on: 'dinterval(2017-9-22,2019-12-1)'"""
+    
+
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+    
+    Database samples:
+    {"bookings": {"booking_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 15, 1)"}, "flight_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 5, 6]}, "passenger_first": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Anna", "David", "Eva", "Filip", "Hana"]}, "passenger_last": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Benesova", "Cerna", "Dvorakova", "Fiala", "Horak"]}, "passenger_full_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Anna Benesova", "David Cerna", "Eva Dvorakova", "Filip Fiala", "Hana Horak"]}, "seat_class": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["BUSINESS", "ECONOMY", "FIRST"]}}}
+    
+    Return ONLY the types section starting with 'types:', nothing else."""
+
+
+
+MESSAGE assistant """types:
+  bookings:
+    booking_id: 'seq(1,15,1)'
+    flight_id: 'interval(1,12)'
+    passenger_first: first_names_cs
+    passenger_last: last_names_cs
+    passenger_full_name:
+      format: '{} {}'
+      values:
+        - bookings.passenger_first
+        - bookings.passenger_last
+    seat_class:
+      - BLOCKS
+      - BUSINESS
+      - ECONOMY
+      - FIRST"""
+      - FIRST"""
