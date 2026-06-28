@@ -33,16 +33,20 @@ def json_decimal(dec):
 def build_types_prompt(samples, sql_server_type):
     json_data = json.dumps(samples, default=json_decimal)
     prompt = f"""Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
-    Each sample shows values in format:
-        - for non primary key column: [value, MIN, MAX, COUNT_DISTINCT] - use sample values to infer the correct Dataster type
-        - for primary key column: {{'is_pk': true, 'seq': 'seq(MIN,MAX,1)'}} - use the seq value directly as the type
+    
+    The database samples are provided as a JSON structure where each table contains its columns.
+    
+    Data structure rules for columns:
+    - If a column is a PRIMARY KEY, it is an object with: {{"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"}} or {{"samples": [...]}}
+      For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
+    - If a column is NOT a primary key, it is an object with: {{"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}}
+      Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type (e.g., str_len, interval, dataset, regex, etc.).
       
     Database samples:
     {json_data}
     
     Return ONLY the types section starting with 'types:', nothing else.
     """
-    logger.debug(f"Inside build types prompt \nPROMP = {prompt}\n")
     return prompt
 
 
@@ -84,28 +88,28 @@ def build_generate_prompt(types_section, sql_server_type):
 
 
 
-def build_contraints_prompt(types_section, samples, sql_server_type):
+def build_constraints_prompt(types_section, samples, sql_server_type):
     json_data = json.dumps(samples, default=json_decimal)
     prompt = f"""Generate ONLY the 'constraints:' section for a Dataster YAML from a {sql_server_type} database.
 
     Here are the generated types:
     {types_section}
 
-    Here are real data samples from the database:
+    Here are real data samples from the database provided as a JSON structure:
     {json_data}
 
-    Generate realistic constraints based on column names and sample values. 
+    Generate realistic constraints based on column names, inferred types, and sample values. 
     Rules: 
     - date relationships: from_date < to_date, hire_date <= from_date 
     - numeric: salary > 0, age >= 18, price > 0 
     - foreign keys usually don't need explicit constraints 
 
     Return format: 
-        constraints: 
-            - 'employee.hire_date < employee.from_date' 
-            - 'salary.salary > 0' 
+    constraints: 
+      - 'table_name.column1 < table_name.column2' 
+      - 'table_name.column3 > 0' 
 
-    Return ONLY the constraints section or empty list if no meaningful constraints can be inferred. 
+    Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no meaningful constraints can be inferred.
     """
     logger.debug(f"Inside build constraints prompt \nPROMP = {prompt}\n")
     return prompt
