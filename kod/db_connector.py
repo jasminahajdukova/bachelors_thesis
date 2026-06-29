@@ -5,8 +5,9 @@ import colorlog
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
-	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
+	'%(asctime)s %(log_color)s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'))
+
 
 logging.getLogger("mysql.connector").setLevel(logging.WARNING)
 logging.getLogger("psycopg2").setLevel(logging.WARNING)
