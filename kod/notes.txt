@@ -22,6 +22,14 @@ na zamyslenie:
         - employee.last_name
 6. treba kontrolovat a opravovat format napr pri mene alebo email
 7. co ked si niekto vlozi vlastny include ?
+8. skontrolovat ci v schema je aj v samples nie len types
+regex s vnorenými apostrofmi (hraničný prípad YAML escapingu)
+self-referencujúci FK (hraničný prípad FK detekcie)
+telefónne číslo klasifikované ako interval (hraničný prípad typovej inferencie)
+case-sensitivity názvov (hraničný prípad MySQL na Linuxe)
+jednohodnotový str_len (hraničný prípad validátora)
+generate > seq_len (hraničný prípad rozsahu)
+nedeterministickosť (ten istý vstup, dva rôzne výstupy)
        
 na testovanie:
 
@@ -40,6 +48,19 @@ ollama create yaml-generator-llm -f Modelfile
 ollama list
 ollama show yaml-generator-llm --modelfile
 
+ollama rm yaml-generator-types
+ollama rm yaml-generator-schema
+ollama rm yaml-generator-generate
+ollama rm yaml-generator-constraints
+ollama rm yaml-generator-sql
+ 
+ollama create yaml-generator-types -f Modelfile-types
+ollama create yaml-generator-schema -f Modelfile-schema
+ollama create yaml-generator-generate -f Modelfile-generate
+ollama create yaml-generator-constraints -f Modelfile-constraints
+ollama create yaml-generator-sql -f Modelfile-sql
+
+
 -- ked nejde dataster ---
 thisisunsafe
 
@@ -51,7 +72,7 @@ ollama create yaml-generator-constraints -f Modelfile-constraints
 ollama create yaml-generator-fix -f Modelfile-fix
 ollama create yaml-generator-sql -f Modelfile-sql
 python3 main.py -d mysql --host 127.0.0.1 --user root --db testdb 
-python3 main.py -d postgresql --host 127.0.0.1 --user postgres --db testdb
+
 
 
 --- TESTING ---
@@ -64,6 +85,14 @@ testdb10 - testdb14
 
 *** 3 tables ***
 testdb15 - testdb18
+
+
+**** real databases ***
+extreme_testdb - extreme_testdb4
+
+https://modelarchive.databases.biz/data_models/police_departments/index.html
+https://datamodels.databases.biz/?_gl=1%2A1mwac4q%2A_ga%2AMTM4NzM5OTkzNy4xNzgxMDE5Nzc2%2A_ga_ME9XQNELHF%2AczE3ODEwMTk3NzUkbzEkZzEkdDE3ODEwMTk3ODYkajQ5JGwwJGgw
+https://datamodels.databases.biz/?_gl=1%2A1mwac4q%2A_ga%2AMTM4NzM5OTkzNy4xNzgxMDE5Nzc2%2A_ga_ME9XQNELHF%2AczE3ODEwMTk3NzUkbzEkZzEkdDE3ODEwMTk3ODYkajQ5JGwwJGgw
 
 --- tvorenie novej db ---
 docker exec -it mysql-test mysql -u root -p
