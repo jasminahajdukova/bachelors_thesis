@@ -14,8 +14,9 @@ from yaml_generator import YAML_result
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
-	'%(asctime)s %(log_color)s %(levelname)s: %(name)s: %(message)s',
+	'%(asctime)s %(log_color)s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'))
+
 
 logging.getLogger("mysql.connector").setLevel(logging.WARNING)
 logging.getLogger("psycopg2").setLevel(logging.WARNING)
@@ -105,34 +106,41 @@ def go_over_prime_keys(p_keys: list[tuple]):
 
 
 def go_over_columns(columns, table_name, limit, server, prime_keys, samples, generate_count, db_name, row_count):
+
+    is_compostie_key = len(prime_keys) > 1
+
     for column in columns:
         column_name = column[0]
 
-        
         if column_name in prime_keys:
             logger.debug(f"2nd column loop: prime key: {column_name}")
 
-            pk_template = data_sampler.prime_keys_template(table_name, column_name)
-            pk_result   = schema_extractor.execute_sql(server, pk_template)
-            min_val = pk_result[0][0]
-            max_val = pk_result[0][1]
-
-            try:
-                min_val = int(min_val)
-                max_val = int(max_val)
-                samples[table_name][column_name] = {"is_pk": True, "data_type": "numeric", "seq": f"seq({min_val}, {max_val}, 1)"}
-                generate_count[table_name] = max_val - min_val + 1
-
-                logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
-            except (ValueError, TypeError):
-
-                sample_template = data_sampler.data_samples_templates(table_name, column_name, limit)
-                raw_samples = schema_extractor.execute_sql(server, sample_template)
-
-                cl_samples = [row[0] for row in raw_samples if row[0] is not None]
-
-                samples[table_name][column_name] = {"is_pk": True, "data_type": "non-numeric", "samples": cl_samples[:10]}
+            if is_compostie_key:
+                samples[table_name][column_name] = {"is_pk": True, "is_composite": True, "data_type": "composite-link", "note": "This column is part of a composite primary key (M:N relationship)."}
                 generate_count[table_name] = row_count
+                logger.info(f"Compiste prime key samples[table_name][column_name] = {samples[table_name][column_name]}")
+            else:
+                pk_template = data_sampler.prime_keys_template(table_name, column_name)
+                pk_result   = schema_extractor.execute_sql(server, pk_template)
+                min_val = pk_result[0][0]
+                max_val = pk_result[0][1]
+
+                try:
+                    min_val = int(min_val)
+                    max_val = int(max_val)
+                    samples[table_name][column_name] = {"is_pk": True, "data_type": "numeric", "seq": f"seq({min_val}, {max_val}, 1)"}
+                    generate_count[table_name] = max_val - min_val + 1
+
+                    logger.debug(f"samples[table_name][column_name] = {samples[table_name][column_name]}")
+                except (ValueError, TypeError):
+
+                    sample_template = data_sampler.data_samples_templates(table_name, column_name, limit)
+                    raw_samples = schema_extractor.execute_sql(server, sample_template)
+
+                    cl_samples = [row[0] for row in raw_samples if row[0] is not None]
+
+                    samples[table_name][column_name] = {"is_pk": True, "data_type": "non-numeric", "samples": cl_samples[:10]}
+                    generate_count[table_name] = row_count
                 
         else:
             template = data_sampler.data_samples_templates(table_name, column_name, limit)
@@ -188,7 +196,7 @@ def main():
     if not check_ollama_models():
         return
     
-    # password = "" if no_password else getpass.getpass("Enter password: ")
+
     if args.password is not None:
         password = args.password
     elif no_password:
@@ -206,15 +214,16 @@ def main():
             tables = get_result(db_server, db_name, None, server, "tables")
             if tables is None:
                 return
-
+            logger.info(f"Found {len(tables)} table(s) => {[table[0] for table in tables]}, ")
             samples = {}
             fk_map = {}
             generate_count = {}
-
+            i = 0
             for table in tables:
+                i+=1
                 table_name = table[0]
                 samples[table_name] = {}
-                logger.info(f"Processing table: {table_name}")
+                logger.info(f"{i} Processing table: {table_name}")
                 
                 columns = get_result(db_server, db_name, table_name, server, "columns")
 
@@ -234,13 +243,14 @@ def main():
 
                 row_count = count_result[0][0]
                 limit = data_sampler.calculate_limit(row_count)
-                logger.info(f"Table {table_name}: {row_count} rows, LIMIT {limit}")
+
                 logger.debug("Entering second column loop")
 
                 prime_keys += go_over_prime_keys(prime_key)
                 samples, generate_count = go_over_columns(columns, table_name, limit, server, prime_keys, samples, generate_count, db_name, row_count)
 
-            logger.info(f"Sending samples to LLM for YAML generation \n{samples}")
+            logger.debug(f"Sending samples to LLM for YAML generation \n{samples}")
+
             yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count)
             logger.debug(f"Generated YAML:\n{yaml_str}")
             errors += yaml_generator.validate_yaml(db_name, yaml_str)
@@ -250,44 +260,13 @@ def main():
             
         finally:
             disconnect(db_server, server)
-    # elif db_server in ("PostgreSQL", "postgresql"):
-    #     template = schema_extractor.postgresql_query_template(db_name, None, "tables")
-    #     sql_query = llm_processor.generate_sql_query(template, db_server, db_name)
-    #     logger.debug(f"Generated SQL query for tables: {sql_query}")
-    #     tables = schema_extractor.execute_sql(server, sql_query)
-    #     if len(tables) == 0:
-    #         logger.error("Db has no data. Cannot generate YAML.")
-    #         disconnect(db_server, server)
-    #         return
-    #     logger.info(f"Found {len(tables)} tables in {db_name}")
-
-    #     samples = {}
-    #     for table in tables:
-    #         table_name = table[0]
-    #         samples[table_name] = {}
-    #         logger.info(f"Processing table: {table_name}")
-    #         column_template = schema_extractor.postgresql_query_template(db_name, table_name, "columns")
-    #         columns = schema_extractor.execute_sql(server, column_template)
-    #         logger.debug(f"Found columns in {table_name}: {[c[3] for c in columns]}")
-
-    #         for column in columns:
-    #             column_name = column[3]
-    #             template = data_sampler.data_samples_templates_postgresql(table_name, column_name)
-    #             result = schema_extractor.execute_sql(server, template)
-    #             samples[table_name][column_name] = result
-
-    #     logger.info("Sending samples to LLM for YAML generation")
-    #     yaml_str = llm_processor.generate_yaml(samples, "PostgreSQL", no_fix)
-    #     logger.debug(f"Generated YAML:\n{yaml_str}")
-    #     yaml_generator.validate_yaml(yaml_str)
-    #     disconnect(db_server, server)
-    
     
     elapsed = time.time() - start_time
     minutes = int(elapsed // 60)
     seconds = int(elapsed % 60)
-    logger.info(f"Total execution time: {minutes}m {seconds}s")
     logger.info("Done")
+    logger.info(f"Total execution time: {minutes}m {seconds}s")
+    
 
 if __name__ == "__main__":
     main()

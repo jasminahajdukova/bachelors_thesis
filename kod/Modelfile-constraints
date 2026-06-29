@@ -23,48 +23,59 @@ PARAMETER temperature 0.1
 PARAMETER num_predict 512
 
 
-MESSAGE user """Generate constraints for:
-types:
-  Stations:
-    station_id: 'seq(1,6,1)'
-    region_code:
-      - BLOCKS
-      - NORD
-      - SUED
-      - WEST
-    station_name: 'str_len([cC] 10,30)'
-    altitude_m: 'interval(380,1245)'
-    is_automated: 'bool'"""
+MESSAGE user """Generate ONLY the 'constraints:' section for a Dataster YAML from a mysql database.
+
+  Here are the generated types:
+  types:
+    Stations:
+      station_id: 'seq(1,6,1)'
+      region_code:
+        - BLOCKS
+        - NORD
+        - SUED
+        - WEST
+      station_name: 'str_len([cC] 10,30)'
+      altitude_m: 'interval(380,1245)'
+      is_automated: 'bool'
+        
+  Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no meaningful constraints can be inferred.
+"""
 
 MESSAGE assistant """constraints: []"""
 
 
-MESSAGE user """Generate constraints for:
-types:
-  Suppliers:
-    supplier_id: 'seq(1,8,1)'
-    supplier_name: 'str_len([cC] 10,30)'
-    country_code: countries_cs
-    rating: 'finterval(3.8,4.2)'
-    contract_signed: 'dinterval(2020-7-25,2022-6-21)'
-  Products:
-    product_id: 'seq(1,12,1)'
-    supplier_id: 'interval(1,8)'
-    category:
-      - BLOCKS
-      - CABLES
-      - PAINT
-      - TOOLS
-    min_stock_level: 'interval(5,20)'
-    max_stock_level: 'interval(50,100)'
-    unit_price: 'finterval(5.25,12.4)'
-    product_name: 'str_len([cC] 10,40)'
-  Orders:
-    order_id: 'seq(1,10,1)'
-    product_id: 'interval(1,12)'
-    quantity: 'interval(1,5)'
-    order_date: 'dinterval(2024-1-10,2024-3-18)'
-    delivery_date: 'dinterval(2024-1-17,2024-3-27)'"""
+MESSAGE user """Generate ONLY the 'constraints:' section for a Dataster YAML from a mysql database.
+
+    Here are the generated types:
+    types:
+      Suppliers:
+        supplier_id: 'seq(1,8,1)'
+        supplier_name: 'str_len([cC] 10,30)'
+        country_code: countries_cs
+        rating: 'finterval(3.8,4.2)'
+        contract_signed: 'dinterval(2020-7-25,2022-6-21)'
+      Products:
+        product_id: 'seq(1,12,1)'
+        supplier_id: 'interval(1,8)'
+        category:
+          - BLOCKS
+          - CABLES
+          - PAINT
+          - TOOLS
+        min_stock_level: 'interval(5,20)'
+        max_stock_level: 'interval(50,100)'
+        unit_price: 'finterval(5.25,12.4)'
+        product_name: 'str_len([cC] 10,40)'
+      Orders:
+        order_id: 'seq(1,10,1)'
+        product_id: 'interval(1,12)'
+        quantity: 'interval(1,5)'
+        order_date: 'dinterval(2024-1-10,2024-3-18)'
+        delivery_date: 'dinterval(2024-1-17,2024-3-27)'
+        
+  Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no meaningful constraints can be inferred.
+"""
+
 
 MESSAGE assistant """constraints:
   - 'Products.min_stock_level < Products.max_stock_level'

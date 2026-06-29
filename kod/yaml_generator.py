@@ -9,8 +9,12 @@ from dataclasses import dataclass
 from datetime import datetime
 import csv
 handler = colorlog.StreamHandler()
+# handler.setFormatter(colorlog.ColoredFormatter(
+# 	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
+#     datefmt='%Y-%m-%d %H:%M:%S'))
+
 handler.setFormatter(colorlog.ColoredFormatter(
-	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
+	'%(asctime)s %(log_color)s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'))
 
 logging.getLogger("mysql.connector").setLevel(logging.WARNING)
@@ -53,7 +57,9 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
     
     
     yaml_str = remove_markdown(yaml_str)
-    logger.info(f"YAML STR: \n{yaml_str}")
+    
+    save_original_yaml(yaml_str, db_name)
+
     try:
         stream = yaml.safe_load(yaml_str)
         if stream:
@@ -94,7 +100,7 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
         save_yaml(yaml_str, db_name)
     else:
         logger.error(f"Found critical error")    
-    logger.info(f"ERRORS = {errors}")
+    logger.warning(f"ERRORS = {errors}")
     return errors
 
 def validate_seq(db_name, generate, types) -> list[YAML_result]:
@@ -105,7 +111,6 @@ def validate_seq(db_name, generate, types) -> list[YAML_result]:
             continue
 
         part_split = part.split("=")
-        logger.info(f"parts_split = {part_split}")
         gen_name = part_split[0].strip()
 
         if gen_name not in types:
@@ -114,7 +119,6 @@ def validate_seq(db_name, generate, types) -> list[YAML_result]:
             continue
 
         types_value = list(types[gen_name].values())
-        logger.info(f"TYPES_VALUE = {types_value}")
         
         for value in types_value:
            
@@ -125,7 +129,6 @@ def validate_seq(db_name, generate, types) -> list[YAML_result]:
 
             nums = re.findall(r"\d+", value)
 
-            logger.info(f"Exctracted numbers from seq {nums}")
             try:
                 if len(nums) >= 2:
                     gen_num = int(part_split[1].strip())
@@ -533,9 +536,19 @@ def validate_constraints(db_name, constraints: str, types_ds) -> list[YAML_resul
     return errors
 
 def save_yaml(yaml_string: str, db_name: str):
-    with open(f"results/dataster_config-{db_name}.yaml", "a") as f:
+    with open(f"results/dataster/dataster_config-{db_name}.yaml", "a") as f:
         f.write(yaml_string)
         f.write("\n----------------------------------------------------------------------\n")
+    
+    logger.info(f"Final yaml saved into results/dataster/dataster_config-{db_name}.yaml")
+
+
+def save_original_yaml(yaml_string: str, db_name: str):
+    with open(f"results/original_yaml/dataster_config-{db_name}.yaml", "a") as f:
+        f.write(yaml_string)
+        f.write("\n----------------------------------------------------------------------\n")
+
+    logger.info(f"Original yaml saved into results/original_yaml/dataster_config-{db_name}.yaml")
 
 
 def save_csv(errors: list[YAML_result], db_name: str):
@@ -543,7 +556,7 @@ def save_csv(errors: list[YAML_result], db_name: str):
 
     writer_header = not os.path.exists(f"results/results-{db_name}.csv") or os.path.getsize(f"results/results-{db_name}.csv") == 0
 
-    with open(f"results/results-{db_name}.csv", mode="a", newline="", encoding="utf-8") as file:
+    with open(f"results/csv/results-{db_name}.csv", mode="a", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
         if writer_header:
             writer.writerow(field_names)
@@ -552,4 +565,4 @@ def save_csv(errors: list[YAML_result], db_name: str):
             writer.writerow([error.database, error.section, error.error_type, error.severity, error.detail])
         
     
-    logger.info("Results saved into results/results.csv")
+    logger.info("Results saved into results/csv/results.csv")

@@ -7,7 +7,7 @@ from decimal import Decimal
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
-	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
+	'%(asctime)s %(log_color)s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'))
 
 logging.getLogger("mysql.connector").setLevel(logging.WARNING)
@@ -21,10 +21,16 @@ logger.propagate = False
 
 
 def json_decimal(dec):
+
     if isinstance(dec, Decimal):
         return float(dec)
+    
     if isinstance(dec, (datetime.date, datetime.datetime)):
         return dec.isoformat()
+    
+    if isinstance(dec, datetime.timedelta):
+        return str(dec)
+    
     raise TypeError(f"Object of type {type(dec)} is not JSON serializable")
 
 
@@ -52,7 +58,7 @@ def build_types_prompt(samples, sql_server_type):
 
 def build_schema_prompt(types_section: str, sql_server_type: str):
     prompt = f"""Generate ONLY the 'schema:' section for a Dataster YAML from a {sql_server_type} database.
-    
+
     Here are the generated types:
     {types_section}
     
@@ -88,28 +94,14 @@ def build_generate_prompt(types_section, sql_server_type):
 
 
 
-def build_constraints_prompt(types_section, samples, sql_server_type):
-    json_data = json.dumps(samples, default=json_decimal)
+def build_constraints_prompt(types_section, sql_server_type):
     prompt = f"""Generate ONLY the 'constraints:' section for a Dataster YAML from a {sql_server_type} database.
 
     Here are the generated types:
     {types_section}
 
-    Here are real data samples from the database provided as a JSON structure:
-    {json_data}
-
-    Generate realistic constraints based on column names, inferred types, and sample values. 
-    Rules: 
-    - date relationships: from_date < to_date, hire_date <= from_date 
-    - numeric: salary > 0, age >= 18, price > 0 
-    - foreign keys usually don't need explicit constraints 
-
-    Return format: 
-    constraints: 
-      - 'table_name.column1 < table_name.column2' 
-      - 'table_name.column3 > 0' 
-
     Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no meaningful constraints can be inferred.
     """
+    
     logger.debug(f"Inside build constraints prompt \nPROMP = {prompt}\n")
     return prompt

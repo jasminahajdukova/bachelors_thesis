@@ -7,6 +7,13 @@ The expected format is
   Table name:
     table column name: typename.attribute name
 
+CRITICAL SCHEMA RULES:
+1. Every column in the schema section MUST reference EXACTLY ONE reference in the format 'tablename.column_name' (e.g., database_owner_name: Fingerprint_Databases.database_owner_name).
+2. NEVER combine multiple columns with spaces or custom formats in this section (NEVER do: 'Fingerprint_Databases.first_name Fingerprint_Databases.last_name'). Spacing and formatting are handled ONLY in the types section.
+3. If a column is a foreign key, use the FROM syntax: 'FROM parent_table.primary_key_column'.
+4. Schema table and column names must be EXACTLY the same as in the provided samples. Do NOT fix typos.
+5. NEVER put data types (like seq, interval, string, int) directly into the schema.
+6. Return ONLY the schema: section, nothing else, no markdown fences.
 
 SCHEMA RULES:
 - ALWAYS include schema section, NEVER omit it
@@ -27,7 +34,7 @@ PARAMETER num_predict 512
 
 
 MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.
-    
+
     Here are the generated types:
     types:
       Stations:
@@ -55,6 +62,14 @@ MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a m
         wind_kmh: 'interval(6,14)'
         measured_on: 'dinterval(2024-1-12,2024-3-1)'
     
+    Rules:
+    - Every column must reference a type as 'typename.attribute'
+    - Schema table names must match exactly the type names
+    - Foreign keys use FROM syntax: 'FROM tablename.column'
+    - NEVER put data types directly in schema
+    
+    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
+    
     Return ONLY the schema section starting with 'schema:', nothing else."""
 
 MESSAGE assistant """schema:
@@ -76,7 +91,7 @@ MESSAGE assistant """schema:
 
 
 MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.
-    
+
     Here are the generated types:
     types:
       airlines:
@@ -137,6 +152,14 @@ MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a m
         booked_on: 'dinterval(2024-6-10,2024-6-18)'
         checked_in: 'bool'
     
+    Rules:
+    - Every column must reference a type as 'typename.attribute'
+    - Schema table names must match exactly the type names
+    - Foreign keys use FROM syntax: 'FROM tablename.column'
+    - NEVER put data types directly in schema
+    
+    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
+    
     Return ONLY the schema section starting with 'schema:', nothing else."""
 
 MESSAGE assistant """schema:
@@ -178,3 +201,42 @@ MESSAGE assistant """schema:
     price_paid_eur: bookings.price_paid_eur
     booked_on: bookings.booked_on
     checked_in: bookings.checked_in"""
+
+
+
+MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.
+
+    Here are the generated types:
+    types:
+      bookings:
+        booking_id: 'seq(1,15,1)'
+        flight_id: 'interval(1,12)'
+        passenger_first: first_names_cs
+        passenger_last: last_names_cs
+        passenger_full_name:
+          format: '{} {}'
+          values:
+            - bookings.passenger_first
+            - bookings.passenger_last
+        seat_class:
+          - BLOCKS
+          - BUSINESS
+          - ECONOMY
+          - FIRST
+    
+    Rules:
+    - Every column must reference a type as 'typename.attribute'
+    - Schema table names must match exactly the type names
+    - Foreign keys use FROM syntax: 'FROM tablename.column'
+    - NEVER put data types directly in schema
+    
+    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
+    
+    Return ONLY the schema section starting with 'schema:', nothing else."""
+
+MESSAGE assistant """schema:
+  bookings:
+    booking_id: bookings.booking_id
+    flight_id: bookings.flight_id
+    passenger_full_name: bookings.passenger_full_name
+    seat_class: bookings.seat_class"""

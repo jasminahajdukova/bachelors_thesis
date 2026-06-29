@@ -5,7 +5,7 @@ import colorlog
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(colorlog.ColoredFormatter(
-	'%(asctime)s %(log_color)s %(levelname)s: %(name)s:%(message)s',
+	'%(asctime)s %(log_color)s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'))
 
 logging.getLogger("mysql.connector").setLevel(logging.WARNING)
@@ -68,7 +68,7 @@ def execute_sql(db_name: MySQLConnection, query):
         return myresult
     
     except mysql.connector.Error as err:
-        logger.error(f"Failed to execute query {err}")
+        logger.error(f"Failed to execute query =  {query} \n{err}")
         raise RuntimeError(f"Failed to execute query {err}") from err
     except Exception as e:
         logger.error(f"Unexpected failure: {e}") 
