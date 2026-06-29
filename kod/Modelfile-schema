@@ -1,4 +1,4 @@
-FROM qwen2.5:7b
+FROM qwen2.5:3b
 
 SYSTEM """
 You generate ONLY the schema: section of a Dataster YAML.
