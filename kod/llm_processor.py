@@ -1,29 +1,8 @@
 import re
-
 import ollama
 import httpx
-import logging
-import colorlog
 import prompts
-
-from concurrent.futures import ThreadPoolExecutor
-
-handler = colorlog.StreamHandler()
-handler.setFormatter(colorlog.ColoredFormatter(
-	'%(asctime)s %(log_color)s %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'))
-
-
-logging.getLogger("mysql.connector").setLevel(logging.WARNING)
-logging.getLogger("psycopg2").setLevel(logging.WARNING)
-
-logger = logging.getLogger("LLM_PROCESSOR")
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
-
-
-
+import logger_setup
 
 AVAILABLE_INCLUDES = [
     "psc_cs",               # postal codes of cities in Czech Republic
@@ -47,37 +26,17 @@ def get_response(type_name: str, prompt: str, model: str, thinking: bool = False
                             options={ "num_predict": 4096})
         
     except (httpx.TimeoutException, httpx.ReadTimeout) as exc:
-        logger.error(f"Ollama timed out after 180s during {type_name} generation {exc}") 
+        logger_setup.logger.error(f"Ollama timed out after 600s during {type_name} generation {exc}") 
         raise RuntimeError(f"{type_name} generation timed out {exc}")
     except ollama.ResponseError as exc:
-        logger.error(f"Ollama model error: {exc}")
+        logger_setup.logger.error(f"Ollama model error: {exc}")
         raise RuntimeError(f"{type_name} was not generated: {exc}") from exc
     except httpx.ConnectError as exc:
-        logger.error(f"Ollama is not running: {exc}")
+        logger_setup.logger.error(f"Ollama is not running: {exc}")
         raise RuntimeError(f"Ollama is not running: {exc}") from exc
     return response
 
-# pridaj rozsirenie dalsich llm
-# def generate_sql_query(template: str, sql_server_type: str, db_name: str, table_name: str | None, model: str = "yaml-generator-sql"):
-#     logger.info(f"Generating SQL query for {sql_server_type} for table_name {table_name}")
-
-    
-#     prompt = f"""Generate a valid {sql_server_type} SQL query based on this template.
-#             Database name = `{db_name}`
-#             Database server = `{sql_server_type}`
-#             Table name = `{table_name}`
-
-#             Template:
-#             {template}
-
-#             SQL query:"""
-#     logger.debug(f"Generate SQL query prompt = {prompt}")
-#     response = get_response("SQL query", prompt, model)
-#     logger.debug(f"Generated SQL query: {response.response}")
-#     return response.response
-
-
-def generate_sql_query(template, sql_server_type, db_name, table_name, model=...):
+def generate_sql_query(template, db_name, table_name):
     query = template.format(db_name=db_name, table_name=table_name)
     return query
 
@@ -102,20 +61,28 @@ def strip_markdown(content: str) -> str:
 
 
 def generate_yaml_prompt(samples, types_section, sql_server_type, model, section):
-    build_prompt = {
-        "schema": prompts.build_schema_prompt(types_section, sql_server_type),
-        "types": prompts.build_types_prompt(samples, sql_server_type),
-        "generate": prompts.build_generate_prompt(types_section, sql_server_type),
-        "constraints": prompts.build_constraints_prompt(types_section, sql_server_type)
-    }
-    logger.info(f"Generating YAML '{section}' section")
 
-    if section in build_prompt:
-        prompt = build_prompt[section]
+    logger_setup.logger.info(f"Generating YAML '{section}' section")
+    if section == "schema":
+        prompt = prompts.build_schema_prompt(types_section, sql_server_type)
+
+    elif section == "types":
+        prompt = prompts.build_types_prompt(samples, sql_server_type)
+    
+    elif section == "generate":
+        prompt = prompts.build_generate_prompt(types_section, sql_server_type)
+    
+    elif section == "constraints":
+        prompt = prompts.build_constraints_prompt(types_section, sql_server_type)
+
+    else: 
+        raise ValueError(f"Uknown section: {section}")
 
     response = get_response(f"YAML {section}", prompt, model)
     generated_yaml = strip_markdown(response.response)
+
     return generated_yaml
+
 
 
 def generate_yaml_include(type_content):
@@ -158,14 +125,19 @@ def filter_constraints(constraints_yaml) :
         if not stripped_line or line.strip().endswith(":"):
             filtered.append(line)
             continue
+
+        if  len(stripped_line) < 3:
+            logger_setup.logger.warning(f"Removing LLM output {line.strip()}")
+            continue
         
         if len(stripped_line) == 4 and stripped_line[0].strip("'\"") == stripped_line[3].strip("'\""):
-            logger.warning(f"Removing self-referencing constraint: {line.strip()}")
+            logger_setup.logger.warning(f"Removing self-referencing constraint: {line.strip()}")
             continue
 
         if any(op in line for op in invalid_operators):
-            logger.debug(f"Removing invalid constraint: {line.strip()}")
+            logger_setup.logger.debug(f"Removing invalid constraint: {line.strip()}")
             continue
+
         operator = stripped_line[1].lower()
         right_side = " ".join(stripped_line[2:]).strip("'\"")
 
@@ -176,7 +148,7 @@ def filter_constraints(constraints_yaml) :
                 filtered.append(line)
                 
             else:
-                logger.warning(f"Removing invalid 'in' constraint {line.strip()}")
+                logger_setup.logger.warning(f"Removing invalid 'in' constraint {line.strip()}")
             
             continue
 
@@ -184,7 +156,7 @@ def filter_constraints(constraints_yaml) :
         is_col_ref = '.' in right_side and len(right_side.split('.')) == 2
 
         if not is_numeric and not is_col_ref:
-            logger.warning(f"Removing invalid constraint: {line.strip()}")
+            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
             continue
 
         filtered.append(line)
@@ -196,7 +168,7 @@ def filter_constraints(constraints_yaml) :
 
 
 def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
-    logger.debug(f"schema_yaml repr:\n{repr(schema_yaml)}")
+    logger_setup.logger.debug(f"schema_yaml repr:\n{repr(schema_yaml)}")
     lines = schema_yaml.split('\n')
     result = []
     current_table = None
@@ -210,19 +182,19 @@ def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
             continue
 
         indent_count = len(line) - len(line.lstrip())
+
         if stripped.endswith(':') and indent_count == 2 and not stripped.startswith('-'):
             current_table = stripped[:-1]
             result.append(line)
             continue
         
 
-        if current_table and ':' in stripped and indent_count == 4:
+        if current_table and indent_count == 4 and ':' in stripped:
             col_name = stripped.split(':')[0].strip()
 
             if current_table in fk_map and col_name in fk_map[current_table]:
 
                 ref_table, ref_col = fk_map[current_table][col_name]
-
                 result.append(f"{' ' * indent_count}{col_name}: FROM {ref_table}.{ref_col}")
                 continue
 
@@ -239,7 +211,11 @@ def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
                         result.append(f"{' ' * indent_count}{col_name}: {current_table}.{col_name}")
                         continue
                 
-    
+                else:
+                    logger_setup.logger.warning(f"Form of from is wrong: {stripped}")
+                    result.append(line)
+                    continue
+
         result.append(line)
         
     
@@ -265,18 +241,17 @@ def sort_tables_multi_level(fk_map):
                 )
 
         if not made_progress:
-            raise ValueError(
-                "Detekovaná cyklická závislosť alebo chýbajúca materská tabuľka!"
-            )
+            raise ValueError("Cyclic dependency or missing parent table detected")
+        
     return sorted_tables
 
 def go_over_generate(gen_count, generate_content):
-    logger.debug(f"GEN COUNT = {gen_count}")
+    logger_setup.logger.debug(f"GEN COUNT = {gen_count}")
     generate_content = generate_content.split("\n")
 
     new_generate = []
     for line in generate_content:
-        if line == "generate:" or not line.strip():
+        if line == "generate:" or not line.strip() or line == "":
             new_generate.append(line)
             continue
         line_split = line.split("=")
@@ -284,7 +259,7 @@ def go_over_generate(gen_count, generate_content):
             line_split[0] = line_split[0].replace("-", "").replace(" ", "").replace("'", "")
             line_split[1] = int(line_split[1].replace("'", "").replace(" ",""))
         except (ValueError, IndexError):
-            logger.error("cannot convert to number")
+            logger_setup.logger.error("cannot convert to number")
             new_generate.append(line)
             continue
         if line_split[0] not in gen_count:
@@ -331,6 +306,8 @@ def go_over_schema(schemas, samples):
     schemas = schemas.split("\n")
 
     for line in schemas:
+        
+
         if line == "schema:" or not line.strip():
             new_schema.append(line)
             continue
@@ -343,12 +320,15 @@ def go_over_schema(schemas, samples):
                 new_schema.append(line)
                 continue
             else:
-                logger.warning(f"{table_name} is not part of {samples.keys()}")
+                logger_setup.logger.warning(f"{table_name} is not part of {samples.keys()}")
                 continue
        
         schema_name = line_split[0].strip(":")
+        if not current_table:
+            continue
+        
         if schema_name not in samples[current_table]:
-            logger.warning(f"This schema_name does not belong = {schema_name}")
+            logger_setup.logger.warning(f"This schema_name does not belong = {schema_name}")
             continue
 
         new_schema.append(line)
@@ -356,7 +336,7 @@ def go_over_schema(schemas, samples):
     new_schema = '\n'.join(new_schema)
     return new_schema
 
-def generate_yaml(samples, sql_server_type, fk_map, generate_count):
+def generate_yaml(samples, sql_server_type, fk_map, gen_count):
     sorted_table_names = sort_tables_multi_level(fk_map)
     sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
     
@@ -371,7 +351,7 @@ def generate_yaml(samples, sql_server_type, fk_map, generate_count):
     
     schema_content      = apply_fk_to_schema(schema_content, fk_map)
     schema_content      = go_over_schema(schema_content, samples)
-    generate_content    = go_over_generate(generate_count, generate_content)
+    generate_content    = go_over_generate(gen_count, generate_content)
     constraints_content = filter_constraints(constraints_content)
     
     
