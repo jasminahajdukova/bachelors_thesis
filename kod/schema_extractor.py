@@ -1,21 +1,5 @@
 from mysql.connector.connection import MySQLConnection
-import mysql.connector
-import logging
-import colorlog
-
-handler = colorlog.StreamHandler()
-handler.setFormatter(colorlog.ColoredFormatter(
-	'%(asctime)s %(log_color)s %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'))
-
-logging.getLogger("mysql.connector").setLevel(logging.WARNING)
-logging.getLogger("psycopg2").setLevel(logging.WARNING)
-
-logger = logging.getLogger("SCHEMA_EXTRACTOR")
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
-
+import logger_setup
 
 
 def error_check(types: str, table_name: str) -> None:
@@ -29,50 +13,58 @@ def error_check(types: str, table_name: str) -> None:
 def mysql_query_templates(types: str) -> str:
     
     templates_dict = {
+        # index 0 = table_name
         "tables":  """SELECT table_name 
                        FROM information_schema.tables 
                        WHERE table_schema = '{db_name}';""",
 
-        "columns": """SHOW COLUMNS 
-                       FROM `{table_name}` 
-                       FROM `{db_name}`;""",
 
-        "prime_keys":  """SHOW KEYS 
-                           FROM `{table_name}` 
-                           WHERE Key_name = 'PRIMARY';""",
+        # index 0 = column_name
+        "columns": """SELECT column_name 
+                       FROM information_schema.columns 
+                       WHERE table_schema = '{db_name}' AND table_name = '{table_name}'
+                       ORDER BY ordinal_position;""",
 
+        # index 0 = constraint_name 
+        # index 1 = column_name
+        "prime_keys":  """SELECT constraint_name, column_name 
+                           FROM information_schema.key_column_usage 
+                           WHERE table_schema = '{db_name}' 
+                             AND table_name = '{table_name}' 
+                             AND constraint_name = 'PRIMARY'
+                           ORDER BY ordinal_position;""",
+
+        # index 0 = column_name, index 1 = referenced_table_name, index 2 = referenced_column_name
         "foreign_keys": """SELECT column_name, referenced_table_name, referenced_column_name
                             FROM information_schema.KEY_COLUMN_USAGE
-                            WHERE table_schema = '{db_name}' AND table_name = '{table_name}' AND referenced_table_name IS NOT NULL; """,
+                            WHERE table_schema = '{db_name}' 
+                              AND table_name = '{table_name}' 
+                              AND referenced_table_name IS NOT NULL; """,
 
+        # index 0 = row_count
         "count":        "SELECT COUNT(*) FROM `{table_name}`;"
     }
 
-    logger.debug(f"Created SQL template: {templates_dict[types]}")
+    logger_setup.logger.debug(f"Created SQL template: {templates_dict[types]}")
     return templates_dict[types]
-
 
 
 def execute_sql(db_name: MySQLConnection, query):
     try:
-        logger.debug(query)
+        logger_setup.logger.debug(query)
         mycursor = db_name.cursor()
 
         mycursor.execute(query)
 
         myresult = mycursor.fetchall()
 
-        logger.debug(f"MY RESULT {myresult}")
-        logger.debug(f"Query returned {len(myresult)} rows")
+        logger_setup.logger.debug(f"MY RESULT {myresult}")
+        logger_setup.logger.debug(f"Query returned {len(myresult)} rows")
 
         return myresult
     
-    except mysql.connector.Error as err:
-        logger.error(f"Failed to execute query =  {query} \n{err}")
-        raise RuntimeError(f"Failed to execute query {err}") from err
-    except Exception as e:
-        logger.error(f"Unexpected failure: {e}") 
-        raise RuntimeError(f"Unexpected failure: {e}") from e
-
+    except Exception as err:
+        logger_setup.logger.error(f"Failed to execute query =  {query} \n{err}")
+        raise RuntimeError(f"Failed to execute query {err}") from err   
 
 
