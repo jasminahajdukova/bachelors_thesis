@@ -1,0 +1,8 @@
+Uvod
+
+Testovanie je neodelitelnou sucastou vyvoja softver ale rovnako dolezitou castou je aj kvalita testovacich dat. Prave tie nam odrazazaju kontext vyuzitia softveru a mozu nam lepsie ukazat chyby
+Jednym pristrojom na generovanie dat je Dataster, lenze na to potrebujeme pripravit yaml subor, co vyzaduje znalost databazy ako aj hodiny casu. Tu prichadza vyvoj mojho porgramu, ktory sa zaobera generovanim yaml pomocou large language models.
+
+
+Testovanie je neoddeliteľné od vývoja softvéru a kvalita testovacích dát rozhoduje o tom ake chyby budú v procese testovania odhalené. Vytváranie štruktúrovaných testovacích dát je časovo náročné a vyžaduje znalosť schémy, ale aj reálnych dát na ktorých podkladáme dáta testovacie. 
+Existujúce nástroje ako Dataster túto prácu výrazne zjednodušujú, ale vyžadujú ručnú prípravu YAML súborov. Cieľom tejto práce je nástroj, ktorý túto konfiguráciu generuje automaticky s využitím lokálnych large language models.
