@@ -1,4 +1,4 @@
-FROM qwen2.5:3b
+FROM qwen2.5:7b
 
 SYSTEM """
 You generate ONLY the schema: section of a Dataster YAML.
@@ -15,22 +15,11 @@ CRITICAL SCHEMA RULES:
 5. NEVER put data types (like seq, interval, string, int) directly into the schema.
 6. Return ONLY the schema: section, nothing else, no markdown fences.
 
-SCHEMA RULES:
-- ALWAYS include schema section, NEVER omit it
-- Schema table names must be EXACTLY the same as in the provided samples
-- Every column must reference a type as 'typename.attribute'
-- Foreign keys use FROM syntax: 'FROM tablename.column'
-- NEVER concatenate values with +
-- NEVER put seq(), interval(), string, int or any data type directly in schema — schema must always reference 'typename.attribute'
-- Use ONLY type names that exist in the provided types section
-- Return ONLY the schema: section, nothing else
-
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 """
 
 PARAMETER temperature 0.3
-PARAMETER num_predict 512
 
 
 MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.
@@ -63,14 +52,32 @@ MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a m
         measured_on: 'dinterval(2024-1-12,2024-3-1)'
     
     Rules:
-    - Every column must reference a type as 'typename.attribute'
-    - Schema table names must match exactly the type names
-    - Foreign keys use FROM syntax: 'FROM tablename.column'
-    - NEVER put data types directly in schema
+    - Every column must reference a type as 'typename.attribute'.
+    - Schema table names must match exactly the type names.
+    - Foreign keys MUST use the exact 'FROM tablename.column' syntax to point to the referenced primary key.
+    - NEVER put data types directly in the schema section.
     
-    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
+    MULTI-TABLE FEW-SHOT EXAMPLE:
+    If types contains:
+      types:
+        users:
+          id: seq(1,10,1)
+          name: string
+        orders:
+          order_id: seq(1,50,1)
+          user_id: int
     
-    Return ONLY the schema section starting with 'schema:', nothing else."""
+    Then the schema section MUST look exactly like this:
+    schema:
+      users:
+        id: users.id
+        name: users.name
+      orders:
+        order_id: orders.order_id
+        user_id: FROM users.id
+
+    Return ONLY the schema section starting with 'schema:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """schema:
   Stations:
@@ -153,14 +160,32 @@ MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a m
         checked_in: 'bool'
     
     Rules:
-    - Every column must reference a type as 'typename.attribute'
-    - Schema table names must match exactly the type names
-    - Foreign keys use FROM syntax: 'FROM tablename.column'
-    - NEVER put data types directly in schema
+    - Every column must reference a type as 'typename.attribute'.
+    - Schema table names must match exactly the type names.
+    - Foreign keys MUST use the exact 'FROM tablename.column' syntax to point to the referenced primary key.
+    - NEVER put data types directly in the schema section.
     
-    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
+    MULTI-TABLE FEW-SHOT EXAMPLE:
+    If types contains:
+      types:
+        users:
+          id: seq(1,10,1)
+          name: string
+        orders:
+          order_id: seq(1,50,1)
+          user_id: int
     
-    Return ONLY the schema section starting with 'schema:', nothing else."""
+    Then the schema section MUST look exactly like this:
+    schema:
+      users:
+        id: users.id
+        name: users.name
+      orders:
+        order_id: orders.order_id
+        user_id: FROM users.id
+
+    Return ONLY the schema section starting with 'schema:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """schema:
   airlines:
@@ -201,42 +226,3 @@ MESSAGE assistant """schema:
     price_paid_eur: bookings.price_paid_eur
     booked_on: bookings.booked_on
     checked_in: bookings.checked_in"""
-
-
-
-MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.
-
-    Here are the generated types:
-    types:
-      bookings:
-        booking_id: 'seq(1,15,1)'
-        flight_id: 'interval(1,12)'
-        passenger_first: first_names_cs
-        passenger_last: last_names_cs
-        passenger_full_name:
-          format: '{} {}'
-          values:
-            - bookings.passenger_first
-            - bookings.passenger_last
-        seat_class:
-          - BLOCKS
-          - BUSINESS
-          - ECONOMY
-          - FIRST
-    
-    Rules:
-    - Every column must reference a type as 'typename.attribute'
-    - Schema table names must match exactly the type names
-    - Foreign keys use FROM syntax: 'FROM tablename.column'
-    - NEVER put data types directly in schema
-    
-    Example: if types has 'users: id: seq(1,5,1)' then schema must have 'id: users.id'
-    
-    Return ONLY the schema section starting with 'schema:', nothing else."""
-
-MESSAGE assistant """schema:
-  bookings:
-    booking_id: bookings.booking_id
-    flight_id: bookings.flight_id
-    passenger_full_name: bookings.passenger_full_name
-    seat_class: bookings.seat_class"""

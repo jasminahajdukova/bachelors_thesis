@@ -51,7 +51,8 @@ MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a
     - Generate records for each table type using the exact format: 'typename = count' (e.g., users = 1000) under the 'generate:' key.
     - If you cannot deduce the exact count from the types, use a reasonable default (e.g., 1000 for main tables, 100 for dictionary/lookup tables).
     
-    Return ONLY the generate section starting with 'generate:', nothing else."""
+    Return ONLY the generate section starting with 'generate:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """generate:
 - 'Stations = 6'
@@ -125,7 +126,8 @@ MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a
     - Generate records for each table type using the exact format: 'typename = count' (e.g., users = 1000) under the 'generate:' key.
     - If you cannot deduce the exact count from the types, use a reasonable default (e.g., 1000 for main tables, 100 for dictionary/lookup tables).
     
-    Return ONLY the generate section starting with 'generate:', nothing else."""
+    Return ONLY the generate section starting with 'generate:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """generate:
 - 'airlines = 6'

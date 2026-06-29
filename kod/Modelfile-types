@@ -43,7 +43,7 @@ domain:
 TYPES RULES:
 - Generate types for EVERY table in the provided samples, no exceptions
 - Use sample MIN and MAX values to choose realistic ranges for intervals
-- Use dinterval for ALL date columns, format ALWAYS nepaddovaný: dinterval(YYYY-M-D,YYYY-M-D) — NEVER use leading zeros for single-digit months/days.
+- Use dinterval for ALL date columns, format ALWAYS non-padded: dinterval(YYYY-M-D,YYYY-M-D) — NEVER use leading zeros for single-digit months/days.
 - NEVER use: date, date(), datetime — these are INVALID types
 - str_len categories are ONLY: C (uppercase), c (lowercase), d (digits), s (whitespace), S (special chars)
 - NEVER use regex patterns inside str_len
@@ -66,24 +66,42 @@ OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 """
 
-PARAMETER temperature 0.1
-PARAMETER num_predict 1024
+PARAMETER temperature 0.3
 
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
     
     The database samples are provided as a JSON structure where each table contains its columns.
     
+    CRITICAL: CLOSED LIST OF ALLOWED DATASTER TYPES
+    You are STRICTLY FORBIDDEN from using any types other than this list:
+    - int: Basic integer.
+    - bigint: Large integer.
+    - float: Decimal numbers.
+    - bool: Boolean values.
+    - string: Plain text.
+    - seq(MIN,MAX,STEP): Numeric sequence (use ONLY for numeric primary keys).
+    - interval(MIN,MAX): Integer range (e.g., interval(18, 99)).
+    - finterval(MIN,MAX): Float range (e.g., finterval(0.0, 1.0)).
+    - dinterval('YYYY-MM-DD', 'YYYY-MM-DD'): Date range (e.g., dinterval('2020-01-01', '2026-12-31')).
+    - str_len(MIN, MAX): Text with character length bounds (e.g., str_len(2, 50)).
+    - regex('PATTERN'): Text matching a valid Python regular expression pattern.
+    
     Data structure rules for columns:
-    - If a column is a PRIMARY KEY, it is an object with: {"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"} or {"samples": [...]}
-      For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
-    - If a column is NOT a primary key, it is an object with: {"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}
-      Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type (e.g., str_len, interval, dataset, regex, etc.).
-      
+    1. If a column is a PRIMARY KEY, it is an object with: {{"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"}} or {{"samples": [...]}}
+       For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
+    2. If a column is NOT a primary key, it is an object with: {{"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}}
+       Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type from the allowed list above.
+    
+    FALLBACK / ALLOWANCE TO SAY "I DON'T KNOW":
+    If the 'samples' array for a column is EMPTY, or if there is not enough context to reliably infer a specific format (like interval or date), DO NOT GUESS OR HALUCINATE. 
+    Use 'string' as a safe, default fallback type for that column.
+
     Database samples:
     {"passenger_information": {"passenger_email": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["anna.benesova@uni.com", "david.cerny@uni.com", "eva.dvorakova@uni.com", "filip.fiala@uni.com", "hana.horakova@uni.com"]}, "passenger_full_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Anna Benesova", "David Cerna", "Eva Dvorakova", "Filip Fiala", "Hana Horak"]}}}
 
-    Return ONLY the types section starting with 'types:', nothing else."""
+    Return ONLY the types section starting with 'types:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """types:
   passenger_information:
@@ -104,20 +122,39 @@ MESSAGE assistant """types:
       - BLOCKS
       - uni.com"""
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
     
     The database samples are provided as a JSON structure where each table contains its columns.
     
+    CRITICAL: CLOSED LIST OF ALLOWED DATASTER TYPES
+    You are STRICTLY FORBIDDEN from using any types other than this list:
+    - int: Basic integer.
+    - bigint: Large integer.
+    - float: Decimal numbers.
+    - bool: Boolean values.
+    - string: Plain text.
+    - seq(MIN,MAX,STEP): Numeric sequence (use ONLY for numeric primary keys).
+    - interval(MIN,MAX): Integer range (e.g., interval(18, 99)).
+    - finterval(MIN,MAX): Float range (e.g., finterval(0.0, 1.0)).
+    - dinterval('YYYY-MM-DD', 'YYYY-MM-DD'): Date range (e.g., dinterval('2020-01-01', '2026-12-31')).
+    - str_len(MIN, MAX): Text with character length bounds (e.g., str_len(2, 50)).
+    - regex('PATTERN'): Text matching a valid Python regular expression pattern.
+    
     Data structure rules for columns:
-    - If a column is a PRIMARY KEY, it is an object with: {"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"} or {"samples": [...]}
-      For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
-    - If a column is NOT a primary key, it is an object with: {"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}
-      Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type (e.g., str_len, interval, dataset, regex, etc.).
-      
+    1. If a column is a PRIMARY KEY, it is an object with: {{"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"}} or {{"samples": [...]}}
+       For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
+    2. If a column is NOT a primary key, it is an object with: {{"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}}
+       Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type from the allowed list above.
+    
+    FALLBACK / ALLOWANCE TO SAY "I DON'T KNOW":
+    If the 'samples' array for a column is EMPTY, or if there is not enough context to reliably infer a specific format (like interval or date), DO NOT GUESS OR HALUCINATE. 
+    Use 'string' as a safe, default fallback type for that column.
+
     Database samples:
     {"car_models": {"model_code": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 10, 1)"}, "manufacturer_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["SKODA", "VW", "BMW", "AUDI", "TOYOTA"]}, "model_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Octavia", "Superb", "Golf", "Passat", "Rad 3"]}}}
     
-    Return ONLY the types section starting with 'types:', nothing else."""
+    Return ONLY the types section starting with 'types:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """types:
   car_models:
@@ -138,20 +175,39 @@ MESSAGE assistant """types:
       - 'Rad 3'"""
 
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
     
     The database samples are provided as a JSON structure where each table contains its columns.
     
+    CRITICAL: CLOSED LIST OF ALLOWED DATASTER TYPES
+    You are STRICTLY FORBIDDEN from using any types other than this list:
+    - int: Basic integer.
+    - bigint: Large integer.
+    - float: Decimal numbers.
+    - bool: Boolean values.
+    - string: Plain text.
+    - seq(MIN,MAX,STEP): Numeric sequence (use ONLY for numeric primary keys).
+    - interval(MIN,MAX): Integer range (e.g., interval(18, 99)).
+    - finterval(MIN,MAX): Float range (e.g., finterval(0.0, 1.0)).
+    - dinterval('YYYY-MM-DD', 'YYYY-MM-DD'): Date range (e.g., dinterval('2020-01-01', '2026-12-31')).
+    - str_len(MIN, MAX): Text with character length bounds (e.g., str_len(2, 50)).
+    - regex('PATTERN'): Text matching a valid Python regular expression pattern.
+    
     Data structure rules for columns:
-    - If a column is a PRIMARY KEY, it is an object with: {"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"} or {"samples": [...]}
-      For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
-    - If a column is NOT a primary key, it is an object with: {"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}
-      Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type (e.g., str_len, interval, dataset, regex, etc.).
-      
+    1. If a column is a PRIMARY KEY, it is an object with: {{"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"}} or {{"samples": [...]}}
+       For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
+    2. If a column is NOT a primary key, it is an object with: {{"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}}
+       Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type from the allowed list above.
+    
+    FALLBACK / ALLOWANCE TO SAY "I DON'T KNOW":
+    If the 'samples' array for a column is EMPTY, or if there is not enough context to reliably infer a specific format (like interval or date), DO NOT GUESS OR HALUCINATE. 
+    Use 'string' as a safe, default fallback type for that column.
+
     Database samples:
     {"Customer_Payments": {"customer_Payment_ID": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 15, 1)"}, "car_Sold_ID": {"is_pk": false, "distinct_count_in_sample": 15, "samples": [101, 105, 110, 115]}, "customer_ID": {"is_pk": false, "distinct_count_in_sample": 15, "samples": [501, 505, 510, 515]}, "payment_Status_Code": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["PAID", "OVERDUE", "PENDING"]}, "customer_Payment_Date_Due": {"is_pk": false, "distinct_count_in_sample": 12, "samples": ["2026-01-15", "2026-04-20", "2026-07-10"]}, "customer_Payment_Date_Made": {"is_pk": false, "distinct_count_in_sample": 10, "samples": ["2026-01-14", "2026-03-01", "2026-05-20"]}, "actual_Payment_Amount": {"is_pk": false, "distinct_count_in_sample": 15, "samples": [150.50, 3200.00, 99.99]}}}
     
-    Return ONLY the types section starting with 'types:', nothing else."""
+    Return ONLY the types section starting with 'types:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """types:
   Customer_Payments:
@@ -168,20 +224,39 @@ MESSAGE assistant """types:
     actual_Payment_Amount: 'float'"""
 
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
     
     The database samples are provided as a JSON structure where each table contains its columns.
     
+    CRITICAL: CLOSED LIST OF ALLOWED DATASTER TYPES
+    You are STRICTLY FORBIDDEN from using any types other than this list:
+    - int: Basic integer.
+    - bigint: Large integer.
+    - float: Decimal numbers.
+    - bool: Boolean values.
+    - string: Plain text.
+    - seq(MIN,MAX,STEP): Numeric sequence (use ONLY for numeric primary keys).
+    - interval(MIN,MAX): Integer range (e.g., interval(18, 99)).
+    - finterval(MIN,MAX): Float range (e.g., finterval(0.0, 1.0)).
+    - dinterval('YYYY-MM-DD', 'YYYY-MM-DD'): Date range (e.g., dinterval('2020-01-01', '2026-12-31')).
+    - str_len(MIN, MAX): Text with character length bounds (e.g., str_len(2, 50)).
+    - regex('PATTERN'): Text matching a valid Python regular expression pattern.
+    
     Data structure rules for columns:
-    - If a column is a PRIMARY KEY, it is an object with: {"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"} or {"samples": [...]}
-      For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
-    - If a column is NOT a primary key, it is an object with: {"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}
-      Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type (e.g., str_len, interval, dataset, regex, etc.).
-      
+    1. If a column is a PRIMARY KEY, it is an object with: {{"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"}} or {{"samples": [...]}}
+       For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
+    2. If a column is NOT a primary key, it is an object with: {{"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}}
+       Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type from the allowed list above.
+    
+    FALLBACK / ALLOWANCE TO SAY "I DON'T KNOW":
+    If the 'samples' array for a column is EMPTY, or if there is not enough context to reliably infer a specific format (like interval or date), DO NOT GUESS OR HALUCINATE. 
+    Use 'string' as a safe, default fallback type for that column.
+
     Database samples:
     {"Stations": {"station_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 6, 1)"}, "region_code": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["NORD", "SUED", "WEST"]}, "station_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Cheb Lowland", "Jeseniky Ridge", "Karlovy Vary Basin", "Novohradske Hory", "Snezka Peak"]}, "altitude_m": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [380, 459, 740, 980, 1245]}, "is_automated": {"is_pk": false, "distinct_count_in_sample": 2, "samples": [0, 1]}}, "Readings": {"reading_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 14, 1)"}, "station_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "weather_type": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["CLEAR", "CLOUDY", "RAIN", "SNOW"]}, "temperature_c": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [-12.3, -8.5, -4.7, 2.1, 4.9]}, "pressure_hpa": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1007.6, 1008.3, 1009.8, 1010.0, 1013.1]}, "humidity_pct": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [31, 35, 40, 44, 52]}, "wind_kmh": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [6, 7, 9, 12, 14]}, "measured_on": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2024-01-12", "2024-03-01"]}}}
     
-    Return ONLY the types section starting with 'types:', nothing else."""
+    Return ONLY the types section starting with 'types:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """types:
   Stations:
@@ -210,20 +285,39 @@ MESSAGE assistant """types:
     measured_on: 'dinterval(2024-1-12,2024-3-1)'"""
 
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
     
     The database samples are provided as a JSON structure where each table contains its columns.
     
+    CRITICAL: CLOSED LIST OF ALLOWED DATASTER TYPES
+    You are STRICTLY FORBIDDEN from using any types other than this list:
+    - int: Basic integer.
+    - bigint: Large integer.
+    - float: Decimal numbers.
+    - bool: Boolean values.
+    - string: Plain text.
+    - seq(MIN,MAX,STEP): Numeric sequence (use ONLY for numeric primary keys).
+    - interval(MIN,MAX): Integer range (e.g., interval(18, 99)).
+    - finterval(MIN,MAX): Float range (e.g., finterval(0.0, 1.0)).
+    - dinterval('YYYY-MM-DD', 'YYYY-MM-DD'): Date range (e.g., dinterval('2020-01-01', '2026-12-31')).
+    - str_len(MIN, MAX): Text with character length bounds (e.g., str_len(2, 50)).
+    - regex('PATTERN'): Text matching a valid Python regular expression pattern.
+    
     Data structure rules for columns:
-    - If a column is a PRIMARY KEY, it is an object with: {"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"} or {"samples": [...]}
-      For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
-    - If a column is NOT a primary key, it is an object with: {"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}
-      Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type (e.g., str_len, interval, dataset, regex, etc.).
-      
+    1. If a column is a PRIMARY KEY, it is an object with: {{"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"}} or {{"samples": [...]}}
+       For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
+    2. If a column is NOT a primary key, it is an object with: {{"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}}
+       Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type from the allowed list above.
+    
+    FALLBACK / ALLOWANCE TO SAY "I DON'T KNOW":
+    If the 'samples' array for a column is EMPTY, or if there is not enough context to reliably infer a specific format (like interval or date), DO NOT GUESS OR HALUCINATE. 
+    Use 'string' as a safe, default fallback type for that column.
+
     Database samples:
     {"airlines": {"airline_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 6, 1)"}, "iata_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["AF", "CSA", "FR2", "LH", "RYR"]}, "airline_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Air France Connect", "BudgetWings", "Czech airlines", "Lufthansa Group", "Ryanair Europe"]}, "country_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["CZE", "DEU", "FRA", "HUN", "IRL"]}, "is_lowcost": {"is_pk": false, "distinct_count_in_sample": 2, "samples": [0, 1]}}, "airports": {"airport_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 7, 1)"}, "iata_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["BUD", "CDG", "DUB", "FRA", "JFK"]}, "airport_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Budapest Ferenc Liszt", "Charles de Gaulle", "Dublin Airport", "Frankfurt Main", "John F Kennedy"]}, "city_country": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Budapest, Hungary", "Dublin, Ireland", "Frankfurt, Germany", "London, UK", "New York, USA"]}, "timezone_code": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["CET", "EST", "GMT"]}}, "aircraft": {"aircraft_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 8, 1)"}, "airline_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "aircraft_type": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["A320", "A321", "A350", "ATR72", "B737"]}, "seat_capacity": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [70, 180, 189, 230, 325]}, "max_range_km": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1500, 5400, 6100, 7400, 15000]}, "in_service": {"is_pk": false, "distinct_count_in_sample": 2, "samples": [0, 1]}}, "flights": {"flight_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 12, 1)"}, "aircraft_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "origin_airport": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "flight_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["AF0033", "CSA0421", "CSA0510", "FR2204", "FR2210"]}, "status": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["BOARDING", "CANCELLED", "DELAYED", "SCHEDULED"]}, "duration_hours": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1.6, 1.75, 1.9, 1.95, 2.05]}, "base_price_eur": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [39.99, 42.0, 49.99, 54.99, 59.5]}, "departure_date": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2024-07-01", "2024-07-10"]}}, "bookings": {"booking_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 15, 1)"}, "flight_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 5, 6]}, "seat_class": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["BUSINESS", "ECONOMY", "FIRST"]}, "baggage_kg": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [15.0, 16.0, 17.0, 18.0, 19.0]}, "price_paid_eur": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [42.0, 49.99, 54.99, 61.0, 129.0]}, "booked_on": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2024-06-10", "2024-06-18"]}, "checked_in": {"is_pk": false, "distinct_count_in_sample": 2, "samples": [0, 1]}}}
     
-    Return ONLY the types section starting with 'types:', nothing else."""
+    Return ONLY the types section starting with 'types:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """types:
   airlines:
@@ -285,20 +379,39 @@ MESSAGE assistant """types:
     checked_in: 'bool'"""
 
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
     
     The database samples are provided as a JSON structure where each table contains its columns.
     
+    CRITICAL: CLOSED LIST OF ALLOWED DATASTER TYPES
+    You are STRICTLY FORBIDDEN from using any types other than this list:
+    - int: Basic integer.
+    - bigint: Large integer.
+    - float: Decimal numbers.
+    - bool: Boolean values.
+    - string: Plain text.
+    - seq(MIN,MAX,STEP): Numeric sequence (use ONLY for numeric primary keys).
+    - interval(MIN,MAX): Integer range (e.g., interval(18, 99)).
+    - finterval(MIN,MAX): Float range (e.g., finterval(0.0, 1.0)).
+    - dinterval('YYYY-MM-DD', 'YYYY-MM-DD'): Date range (e.g., dinterval('2020-01-01', '2026-12-31')).
+    - str_len(MIN, MAX): Text with character length bounds (e.g., str_len(2, 50)).
+    - regex('PATTERN'): Text matching a valid Python regular expression pattern.
+    
     Data structure rules for columns:
-    - If a column is a PRIMARY KEY, it is an object with: {"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"} or {"samples": [...]}
-      For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
-    - If a column is NOT a primary key, it is an object with: {"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}
-      Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type (e.g., str_len, interval, dataset, regex, etc.).
-      
+    1. If a column is a PRIMARY KEY, it is an object with: {{"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"}} or {{"samples": [...]}}
+       For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
+    2. If a column is NOT a primary key, it is an object with: {{"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}}
+       Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type from the allowed list above.
+    
+    FALLBACK / ALLOWANCE TO SAY "I DON'T KNOW":
+    If the 'samples' array for a column is EMPTY, or if there is not enough context to reliably infer a specific format (like interval or date), DO NOT GUESS OR HALUCINATE. 
+    Use 'string' as a safe, default fallback type for that column.
+
     Database samples:
     {"Suppliers": {"supplier_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 8, 1)"}, "supplier_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["AlpineSupply", "AlpineSupply Sud", "BalticTrade", "BalticTrade East", "IberMaterials"]}, "country_code": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["AUT", "ESP", "POL", "SWE"]}, "rating": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [3.8, 3.95, 4.1, 4.2]}, "contract_signed": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2020-07-25", "2022-06-21"]}}, "Products": {"product_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 12, 1)"}, "supplier_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "category": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["CABLES", "PAINT", "SEALANT", "TOOLS"]}, "unit_price": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [5.25, 6.6, 7.8, 11.9, 12.4]}, "product_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Acrylic Blue 5L", "Acrylic Green 5L", "Acrylic White 5L", "Angle Grinder Pro", "Coaxial Cable 10m"]}}, "Orders": {"order_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 10, 1)"}, "product_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 4, 5]}, "status": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["DELIVERED", "PENDING", "SHIPPED"]}, "quantity": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [8, 10, 15, 30, 40]}, "order_date": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2024-01-10", "2024-03-18"]}, "delivery_date": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2024-01-17", "2024-03-27"]}}}
     
-    Return ONLY the types section starting with 'types:', nothing else."""
+    Return ONLY the types section starting with 'types:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """types:
   Suppliers:
@@ -331,20 +444,39 @@ MESSAGE assistant """types:
     delivery_date: 'dinterval(2024-1-17,2024-3-27)'"""
 
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
     
     The database samples are provided as a JSON structure where each table contains its columns.
     
+    CRITICAL: CLOSED LIST OF ALLOWED DATASTER TYPES
+    You are STRICTLY FORBIDDEN from using any types other than this list:
+    - int: Basic integer.
+    - bigint: Large integer.
+    - float: Decimal numbers.
+    - bool: Boolean values.
+    - string: Plain text.
+    - seq(MIN,MAX,STEP): Numeric sequence (use ONLY for numeric primary keys).
+    - interval(MIN,MAX): Integer range (e.g., interval(18, 99)).
+    - finterval(MIN,MAX): Float range (e.g., finterval(0.0, 1.0)).
+    - dinterval('YYYY-MM-DD', 'YYYY-MM-DD'): Date range (e.g., dinterval('2020-01-01', '2026-12-31')).
+    - str_len(MIN, MAX): Text with character length bounds (e.g., str_len(2, 50)).
+    - regex('PATTERN'): Text matching a valid Python regular expression pattern.
+    
     Data structure rules for columns:
-    - If a column is a PRIMARY KEY, it is an object with: {"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"} or {"samples": [...]}
-      For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
-    - If a column is NOT a primary key, it is an object with: {"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}
-      Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type (e.g., str_len, interval, dataset, regex, etc.).
-      
+    1. If a column is a PRIMARY KEY, it is an object with: {{"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"}} or {{"samples": [...]}}
+       For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
+    2. If a column is NOT a primary key, it is an object with: {{"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}}
+       Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type from the allowed list above.
+    
+    FALLBACK / ALLOWANCE TO SAY "I DON'T KNOW":
+    If the 'samples' array for a column is EMPTY, or if there is not enough context to reliably infer a specific format (like interval or date), DO NOT GUESS OR HALUCINATE. 
+    Use 'string' as a safe, default fallback type for that column.
+
     Database samples:
     {"Books": {"book_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 12, 1)"}, "catalog_number": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1000045, 1000046, 1000047, 1000048, 1000049]}, "genre": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["FICTION", "HISTORY", "POETRY", "SCIENCE"]}, "language_code": {"is_pk": false, "distinct_count_in_sample": 4, "samples": ["CZE", "ENG", "FRA", "GER"]}, "condition_state": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["GOOD", "NEW", "WORN"]}, "author_first": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Anna", "David", "Eva", "Hana", "Jakub"]}, "author_last": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Benesova", "Cerna", "Dvorakova", "Horak", "Kralova"]}, "title": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Der lange Weg", "Empires and Echoes", "Husitstvi a doba", "La nuit claire", "Physik der Sterne"]}, "shelf_code": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["A05", "A12", "A18", "A30", "B03"]}, "page_count": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [95, 110, 280, 320, 350]}, "rating": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [3.6, 3.7, 3.8, 3.9, 4.0]}, "is_available": {"is_pk": false, "distinct_count_in_sample": 2, "samples": [0, 1]}, "acquired_on": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["2017-09-22", "2019-12-01"]}}}
     
-    Return ONLY the types section starting with 'types:', nothing else."""
+    Return ONLY the types section starting with 'types:', nothing else. Do not wrap code in markdown block format.
+    """
 
 MESSAGE assistant """types:
   Books:
@@ -377,20 +509,38 @@ MESSAGE assistant """types:
     acquired_on: 'dinterval(2017-9-22,2019-12-1)'"""
     
 
-MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a mysql database.
+MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
     
     The database samples are provided as a JSON structure where each table contains its columns.
     
+    CRITICAL: CLOSED LIST OF ALLOWED DATASTER TYPES
+    You are STRICTLY FORBIDDEN from using any types other than this list:
+    - int: Basic integer.
+    - bigint: Large integer.
+    - float: Decimal numbers.
+    - bool: Boolean values.
+    - string: Plain text.
+    - seq(MIN,MAX,STEP): Numeric sequence (use ONLY for numeric primary keys).
+    - interval(MIN,MAX): Integer range (e.g., interval(18, 99)).
+    - finterval(MIN,MAX): Float range (e.g., finterval(0.0, 1.0)).
+    - dinterval('YYYY-MM-DD', 'YYYY-MM-DD'): Date range (e.g., dinterval('2020-01-01', '2026-12-31')).
+    - str_len(MIN, MAX): Text with character length bounds (e.g., str_len(2, 50)).
+    - regex('PATTERN'): Text matching a valid Python regular expression pattern.
+    
     Data structure rules for columns:
-    - If a column is a PRIMARY KEY, it is an object with: {"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"} or {"samples": [...]}
-      For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
-    - If a column is NOT a primary key, it is an object with: {"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}
-      Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type (e.g., str_len, interval, dataset, regex, etc.).
-      
+    1. If a column is a PRIMARY KEY, it is an object with: {{"is_pk": true, "data_type": "numeric"|"non-numeric", "seq": "seq(MIN,MAX,1)"}} or {{"samples": [...]}}
+       For numeric primary keys, ALWAYS use the provided 'seq' value directly as the Dataster type.
+    2. If a column is NOT a primary key, it is an object with: {{"is_pk": false, "distinct_count_in_sample": N, "samples": [value1, value2, ...]}}
+       Use the 'samples' array and 'distinct_count_in_sample' to infer the correct Dataster type from the allowed list above.
+    
+    FALLBACK / ALLOWANCE TO SAY "I DON'T KNOW":
+    If the 'samples' array for a column is EMPTY, or if there is not enough context to reliably infer a specific format (like interval or date), DO NOT GUESS OR HALUCINATE. 
+    Use 'string' as a safe, default fallback type for that column.
     Database samples:
     {"bookings": {"booking_id": {"is_pk": true, "data_type": "numeric", "seq": "seq(1, 15, 1)"}, "flight_id": {"is_pk": false, "distinct_count_in_sample": 5, "samples": [1, 2, 3, 5, 6]}, "passenger_full_name": {"is_pk": false, "distinct_count_in_sample": 5, "samples": ["Anna Benesova", "David Cerna", "Eva Dvorakova", "Filip Fiala", "Hana Horak"]}, "seat_class": {"is_pk": false, "distinct_count_in_sample": 3, "samples": ["BUSINESS", "ECONOMY", "FIRST"]}}}
     
-    Return ONLY the types section starting with 'types:', nothing else."""
+    Return ONLY the types section starting with 'types:', nothing else. Do not wrap code in markdown block format.
+    """
 
 
 
