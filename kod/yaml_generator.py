@@ -1,5 +1,4 @@
 import os
-
 import yaml
 import re
 import logger_setup
@@ -23,7 +22,7 @@ def remove_markdown(yaml_str):
 
     if "```" in yaml_str:
         yaml_part = yaml_str.split("```")
-        yaml_str = yaml_part[1].strip()
+        yaml_str  = yaml_part[1].strip()
         if yaml_str.startswith("yaml\n") or yaml_str.startswith("yml\n"):
             yaml_str = yaml_str.split("\n", 1)[1] 
     if yaml_str.endswith("```"):
@@ -37,6 +36,12 @@ def remove_markdown(yaml_str):
 def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
     
     errors = []
+    logger_setup.logger.warning(f"Original YAML: \n {yaml_str} \n")
+    if not isinstance(yaml_str, str):
+        logger_setup.logger.error(f"1 yaml_str = {yaml_str} \n 1 Expected dict for yaml got {type(yaml_str)}")
+        errors.append(YAML_result(db_name, "YAML", "invalid_yaml", 1, f"Expected str for yaml got {type(yaml_str)}"))
+        return errors
+
     yaml_str = yaml_str.strip()
     
     
@@ -51,8 +56,8 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
         else:
             raise RuntimeError("Loaded empty YAML file")
         
-    except (yaml.YAMLError, RuntimeError):
-        logger_setup.logger.error("Failed to load YAML")
+    except (yaml.YAMLError, RuntimeError) as err:
+        logger_setup.logger.error(f"Failed to load YAML: {err}")
         errors.append(YAML_result(db_name, "YAML load", "yaml_load", 1, "Failed to load YAML"))
         return errors
     
@@ -63,20 +68,20 @@ def validate_yaml(db_name: str, yaml_str: str) -> list[YAML_result]:
         errors.append(YAML_result(db_name, "YAML", "invalid_section", 1, "YAML contains invalid parts"))
     
     if "include" in stream_keys:
-        errors += validate_include(db_name, stream["include"])   
+        errors  += validate_include(db_name, stream["include"])   
         includes = stream["include"]
 
     if "types" in stream_keys:
-        errors += iterate_types(db_name, stream["types"], includes)
+        errors  += iterate_types(db_name, stream["types"], includes)
         types_ds = stream["types"]
 
     if "schema" in stream_keys:
-        errors += iterate_schemas(db_name, stream["schema"], types_ds)
+        errors  += iterate_schemas(db_name, stream["schema"], types_ds)
     
     if "generate" in stream_keys:
         generate = stream["generate"]
-        errors += validate_generate(db_name, generate, types_ds)
-        errors += validate_seq(db_name, generate, types_ds)
+        errors  += validate_generate(db_name, generate, types_ds)
+        errors  += validate_seq(db_name, generate, types_ds)
 
     if "constraints" in stream_keys:
         errors += validate_constraints(db_name, stream["constraints"], types_ds)
@@ -106,10 +111,15 @@ def validate_seq(db_name, generate, types) -> list[YAML_result]:
             errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, f"Generate tried to generate part {part_split} not included in TYPES section {list(types.keys())}"))
             continue
 
+        if not isinstance(types[gen_name], dict):
+            logger_setup.logger.error(f"5 types_value = {types[gen_name]} \n 1 Expected dict for table types got {type(types[gen_name])}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Expected dict for table types got {type(types[gen_name])}"))
+            continue
+
         types_value = list(types[gen_name].values())
         
         for value in types_value:
-           
+
             value = str(value)
         
             if not value.startswith("seq"):
@@ -193,6 +203,7 @@ def check_param(db_name, value) -> list[YAML_result]:
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside seq(x,y,z). Got {args}"))
 
     elif function_name == "str_len":
+
         try:
             
             min_val = args[0].strip() if args else ""
@@ -244,18 +255,18 @@ def check_param(db_name, value) -> list[YAML_result]:
     return errors
 
 def validate_types(db_name, each_type: str, includes) -> list[YAML_result]:
-    errors = []
-    basic_types: list[str] = ["int", "bool", "string", "float", "bigint"]
-    param_types: list[str] = ["seq", "interval", "dinterval", "finterval", "str_len", "regex"]
+    errors                   = []
+    basic_types: list[str]   = ["int", "bool", "string", "float", "bigint"]
+    param_types: list[str]   = ["seq", "interval", "dinterval", "finterval", "str_len", "regex"]
     dataset_types: list[str] = includes
 
     if not isinstance(each_type, dict): 
-        logger_setup.logger.error(f"Expected dict for table types got {type(each_type)}")
+        logger_setup.logger.error(f"1 EACH_TYPE = {each_type} \n 1 Expected dict for table types got {type(each_type)}")
         errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Expected dict for table types got {type(each_type)}"))
         return errors
     
     for column_name, value in each_type.items():
-    
+        logger_setup.logger.warning(f"value value {value} for column {column_name}")
         if value is None:
             logger_setup.logger.error(f"Column {column_name} has null type")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Column {column_name} has null type"))
@@ -288,6 +299,14 @@ def validate_types(db_name, each_type: str, includes) -> list[YAML_result]:
 def iterate_types(db_name, types: str, includes) -> list[YAML_result]:
     errors = []
 
+    if types is None:
+        return []
+    
+    if not isinstance(types, dict):
+        logger_setup.logger.error(f"2 Expected dict for table types got {type(types)}")
+        errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Expected dict for table types got {type(types)}"))
+        return errors
+    
     list_of_types: list[dict[str, str]] = list(types.keys())
     for part in list_of_types:
         if not isinstance(types[part], list):
@@ -298,11 +317,12 @@ def iterate_types(db_name, types: str, includes) -> list[YAML_result]:
 
 def validate_schema(db_name, each_schema: str, types_ds) -> list[YAML_result]:
     errors = []
+
     if types_ds is None:
         return []
     
     if not isinstance(each_schema, dict): 
-        logger_setup.logger.error(f"Expected dict for table types got {type(each_schema)}")
+        logger_setup.logger.error(f" 3 Expected dict for table types got {type(each_schema)}")
         errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Expected dict for table types got {type(each_schema)}"))
         return errors
 
@@ -335,8 +355,8 @@ def validate_schema(db_name, each_schema: str, types_ds) -> list[YAML_result]:
         col_ref   = split_fiction[1]
 
         if table_ref not in types_ds:
-            logger_setup.logger.error(f"Unknown table reference {table_ref} in schema for column {column_name}")
-            errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Unknown table reference {table_ref} in schema for column {column_name}"))
+            logger_setup.logger.warning(f"Unknown table reference {table_ref} in schema for column {column_name}")
+            errors.append(YAML_result(db_name, "schema", "invalid_schema", 2, f"Unknown table reference {table_ref} in schema for column {column_name}"))
             continue
         
         if col_ref not in types_ds[table_ref]:
@@ -348,7 +368,16 @@ def validate_schema(db_name, each_schema: str, types_ds) -> list[YAML_result]:
 
 def iterate_schemas(db_name, schema: str, types_ds) -> list[YAML_result]:
     errors = []
-    list_of_schemas: list[dict[str, str]] = list(schema.keys())
+
+    if types_ds is None:
+        return []
+    
+    if not isinstance(schema, dict):
+        logger_setup.logger.error(f"4 SCHEMA = {schema} \n Expected dict  got {type(schema)}")
+        errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Expected dict for table types got {type(schema)}"))
+        return errors
+    
+    list_of_schemas: list[dict[str, str]] = list(schema.keys()) 
     for part in list_of_schemas:
         errors += validate_schema(db_name, schema[part], types_ds)
 
@@ -443,10 +472,10 @@ def validate_rel_result(db_name, constraint, con_split, types_ds):
         errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Malformed constraint target: {constraint}"))
         return errors
 
-    table_name = typename[0]
+    table_name  = typename[0]
     column_name = typename[1] 
-    operator = con_split[1]
-    value = str(con_split[2]).strip() 
+    operator    = con_split[1]
+    value       = str(con_split[2]).strip() 
 
 
     if table_name not in types_ds:
@@ -460,8 +489,7 @@ def validate_rel_result(db_name, constraint, con_split, types_ds):
         return errors
 
     num_pattern = r"^[-+]?\d+(?:\.\d+)?$"
-    is_num = bool(re.match(num_pattern, value))
-
+    is_num      = bool(re.match(num_pattern, value))
     value_split = value.split(".") if ("." in value and not is_num) else []
 
 
