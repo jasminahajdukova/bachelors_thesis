@@ -4,6 +4,9 @@ import httpx
 import prompts
 import logger_setup
 
+class CyclicDependencyError(ValueError):
+    pass
+
 AVAILABLE_INCLUDES = [
     "psc_cs",               # postal codes of cities in Czech Republic
     "first_names_cs",       # first names that are used in Czech Republic
@@ -88,16 +91,16 @@ def generate_yaml_prompt(samples, types_section, sql_server_type, model, section
 def generate_yaml_include(type_content):
     if not type_content:
         return "include: []"
-    
+        
     cl_content = type_content
-    for char in [":", "[", "]", "(", ")", ",", "-", "\n", "\r"]:
+    
+    for char in [":", "[", "]", "(", ")", ",", "-", "\n", "\r", "'", "\""]:
         cl_content = cl_content.replace(char, " ")
     
     words_in_content = set(cl_content.split())
 
     includes = []
     for dataset in AVAILABLE_INCLUDES:
-    
         if dataset in words_in_content:
             includes.append(dataset)
 
@@ -115,34 +118,46 @@ def filter_constraints(constraints_yaml) :
     lines = constraints_yaml.split('\n')
     filtered = []
     
-    invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not NULL', 'IS NOT NULL', 'is null', 'IS NULL']
+    invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not null', 'is null']
+
 
     for line in lines:
         if line is None:
             continue
         
+        if line.strip() == "constraints: []":
+            filtered.append(line)
+            continue
+
         stripped_line = line.split()
+
+        if '-' in stripped_line:
+            stripped_line.remove('-')
+
         if not stripped_line or line.strip().endswith(":"):
             filtered.append(line)
             continue
+            
 
         if  len(stripped_line) < 3:
             logger_setup.logger.warning(f"Removing LLM output {line.strip()}")
             continue
+
+        left_side = stripped_line[0].strip("'\"")
+        operator = stripped_line[1].lower()
+        right_side = " ".join(stripped_line[2:]).strip("'\"") 
         
-        if len(stripped_line) == 4 and stripped_line[0].strip("'\"") == stripped_line[3].strip("'\""):
+        if len(stripped_line) == 3  and left_side == right_side:
             logger_setup.logger.warning(f"Removing self-referencing constraint: {line.strip()}")
             continue
 
-        if any(op in line for op in invalid_operators):
-            logger_setup.logger.debug(f"Removing invalid constraint: {line.strip()}")
+        full = " ".join(stripped_line[1:]).lower()
+        if any(full.startswith(inv_operator) for inv_operator in invalid_operators):
+            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
             continue
 
-        operator = stripped_line[1].lower()
-        right_side = " ".join(stripped_line[2:]).strip("'\"")
-
         if operator == 'in':
-            in_match = bool(re.match(r"^\w+\.\w+$", stripped_line[0]) and right_side.startswith('(') and right_side.endswith(')'))
+            in_match = bool(re.match(r"^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$", left_side) and right_side.startswith('(') and right_side.endswith(')'))
 
             if in_match:
                 filtered.append(line)
@@ -154,6 +169,7 @@ def filter_constraints(constraints_yaml) :
 
         is_numeric = bool(re.match(r'^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$', right_side))
         is_col_ref = '.' in right_side and len(right_side.split('.')) == 2
+
 
         if not is_numeric and not is_col_ref:
             logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
@@ -174,52 +190,33 @@ def apply_fk_to_schema(schema_yaml: str, fk_map: dict) -> str:
     current_table = None
     
     for line in lines:
-        stripped = line.strip()
-        
 
-        if stripped == 'schema:':
+        if not line.strip() or line.strip().startswith("schema:"):
             result.append(line)
             continue
 
-        indent_count = len(line) - len(line.lstrip())
-
-        if stripped.endswith(':') and indent_count == 2 and not stripped.startswith('-'):
-            current_table = stripped[:-1]
+        table_match = re.match(r"^(\s+)([a-zA-Z0-9_-]+):\s*$", line)
+        if table_match:
+            current_table = table_match.group(2)
             result.append(line)
             continue
-        
 
-        if current_table and indent_count == 4 and ':' in stripped:
-            col_name = stripped.split(':')[0].strip()
+        col_match = re.match(r"^(\s+)([a-zA-Z0-9_-]+):\s*(.*)", line)
+        if current_table and col_match and current_table in fk_map:
+            indent          = col_match.group(1)
+            col_name        = col_match.group(2)
+            rest_of_line    = col_match.group(3)
 
-            if current_table in fk_map and col_name in fk_map[current_table]:
 
+            if col_name in fk_map[current_table]:
                 ref_table, ref_col = fk_map[current_table][col_name]
-                result.append(f"{' ' * indent_count}{col_name}: FROM {ref_table}.{ref_col}")
+                result.append(f"{indent}{col_name}: FROM {ref_table}.{ref_col}")                   
                 continue
-
-            if 'FROM' in stripped:
-                value = stripped.split(":", 1)[1].strip()
-                value = value.strip("'\"")
-                value = value.replace("FROM ", "").strip()
-                value_split = value.split(".")
-
-                if len(value_split) == 2:
-                    ref_table, ref_col = value_split[0], value_split[1]
-
-                    if current_table.lower() == ref_table.lower():
-                        result.append(f"{' ' * indent_count}{col_name}: {current_table}.{col_name}")
-                        continue
-                
-                else:
-                    logger_setup.logger.warning(f"Form of from is wrong: {stripped}")
-                    result.append(line)
-                    continue
-
+            
         result.append(line)
-        
-    
-    return '\n'.join(result)
+
+    return "\n".join(result)
+
 
 
 def sort_tables_multi_level(fk_map):
@@ -241,12 +238,11 @@ def sort_tables_multi_level(fk_map):
                 )
 
         if not made_progress:
-            raise ValueError("Cyclic dependency or missing parent table detected")
+            raise CyclicDependencyError("Cyclic dependency or missing parent table detected")
         
     return sorted_tables
 
 def go_over_generate(gen_count, generate_content):
-    logger_setup.logger.debug(f"GEN COUNT = {gen_count}")
     generate_content = generate_content.split("\n")
 
     new_generate = []
@@ -276,24 +272,32 @@ def go_over_generate(gen_count, generate_content):
     
 def fix_regex_quoting(types_yaml):
     re_pattern = r"regex\([\\'](.*?)[\\']\)"
+    dinterval_pattern = r"dinterval\(\s*''?(.*?)''?\s*,\s*''?(.*?)''?\s*\)"
 
     results = []
-
     lines = types_yaml.splitlines()
 
     for line in lines:
-        if "regex(" not in line:
+        if "regex(" not in line and "dinterval(" not in line:
             results.append(line)
             continue
-        
+
         re_match = re.search(re_pattern, line)
+        dinterval_match = re.search(dinterval_pattern, line)
+
         if re_match:
             inner = re_match.group(1)
-
             inner = inner.replace("\\'", "'")
             inner = inner.replace("'", "''")
+            start, end = re_match.span()
+            fixed_line = line[:start] + f"regex(''{inner}'')" + line[end:]
+            results.append(fixed_line)
 
-            fixed_line = re.sub(re_pattern, f"regex(''{inner}'')", line)
+        elif dinterval_match:
+            date1 = re.split(r"[ T]", dinterval_match.group(1))[0]
+            date2 = re.split(r"[ T]", dinterval_match.group(2))[0]
+            start, end = dinterval_match.span()
+            fixed_line = line[:start] + f"dinterval({date1}, {date2})" + line[end:]
             results.append(fixed_line)
         else:
             results.append(line)
@@ -303,11 +307,11 @@ def fix_regex_quoting(types_yaml):
 def go_over_schema(schemas, samples):
     current_table = ""
     new_schema = []
-    schemas = schemas.split("\n")
+    schemas_split = schemas.split("\n")
+    checked_samples = []
 
-    for line in schemas:
-        
-
+    for line in schemas_split:
+    
         if line == "schema:" or not line.strip():
             new_schema.append(line)
             continue
@@ -327,13 +331,15 @@ def go_over_schema(schemas, samples):
         if not current_table:
             continue
         
-        if schema_name not in samples[current_table]:
+        checked_samples = list(value for value in samples[current_table])
+        if schema_name not in checked_samples:
             logger_setup.logger.warning(f"This schema_name does not belong = {schema_name}")
             continue
 
         new_schema.append(line)
 
     new_schema = '\n'.join(new_schema)
+ 
     return new_schema
 
 def generate_yaml(samples, sql_server_type, fk_map, gen_count):
@@ -354,6 +360,7 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count):
     generate_content    = go_over_generate(gen_count, generate_content)
     constraints_content = filter_constraints(constraints_content)
     
+    logger_setup.logger.debug(f"SAMPLES = {samples}")
     
     full_yaml = (
         f"{include_content}\n\n"
