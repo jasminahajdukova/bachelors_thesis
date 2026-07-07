@@ -172,6 +172,9 @@ def check_param(db_name, value) -> list[YAML_result]:
 
     if function_name == "interval":
         try:
+            if "." in [args[0], args[1]]:
+                raise ValueError
+            
             value1 = int(args[0])
             value2 = int(args[1])
         except (ValueError, IndexError):
@@ -266,7 +269,6 @@ def validate_types(db_name, each_type: str, includes) -> list[YAML_result]:
         return errors
     
     for column_name, value in each_type.items():
-        logger_setup.logger.warning(f"value value {value} for column {column_name}")
         if value is None:
             logger_setup.logger.error(f"Column {column_name} has null type")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Column {column_name} has null type"))
@@ -286,7 +288,8 @@ def validate_types(db_name, each_type: str, includes) -> list[YAML_result]:
         elif any(value.startswith(whatever) for whatever in param_types):
             errors += check_param(db_name, value)
             continue
-            
+        
+
         elif value in dataset_types:
             continue
         else:
@@ -334,6 +337,18 @@ def validate_schema(db_name, each_schema: str, types_ds) -> list[YAML_result]:
             continue
 
         if isinstance(value, str) and value.startswith("FROM "):
+            target = value.replace("FROM ", "").strip("'\"")
+            split_target = target.split(".")
+
+            if len(split_target) != 2:
+                logger_setup.logger.error(f"Wrong FROM format {value} for column {column_name}")
+                errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Wrong FROM format {value} for column {column_name}"))
+                continue
+
+            target_table, target_column = split_target[0], split_target[1]
+
+            if target_table not in types_ds or target_column not in types_ds[target_table]:
+                errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Trying to get FROM with non existent value"))
             continue
 
         if isinstance(value, (list, dict)):
@@ -356,7 +371,7 @@ def validate_schema(db_name, each_schema: str, types_ds) -> list[YAML_result]:
 
         if table_ref not in types_ds:
             logger_setup.logger.warning(f"Unknown table reference {table_ref} in schema for column {column_name}")
-            errors.append(YAML_result(db_name, "schema", "invalid_schema", 2, f"Unknown table reference {table_ref} in schema for column {column_name}"))
+            errors.append(YAML_result(db_name, "schema", "invalid_schema", 1, f"Unknown table reference {table_ref} in schema for column {column_name}"))
             continue
         
         if col_ref not in types_ds[table_ref]:
