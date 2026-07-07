@@ -31,6 +31,9 @@ jednohodnotový str_len (hraničný prípad validátora)
 generate > seq_len (hraničný prípad rozsahu)
 nedeterministickosť (ten istý vstup, dva rôzne výstupy)
        
+
+treba dat fix na include
+preco to odstranuje constraints [] - to je trochu na picu
 na testovanie:
 
 1. db bez tabuliek
@@ -53,6 +56,7 @@ ollama rm yaml-generator-schema
 ollama rm yaml-generator-generate
 ollama rm yaml-generator-constraints
 ollama rm yaml-generator-sql
+
  
 ollama create yaml-generator-types -f Modelfile-types
 ollama create yaml-generator-schema -f Modelfile-schema
