@@ -31,11 +31,11 @@ column_name:
   values:
     - tablename.first_name
     - tablename.last_name
-    - tablename._email_domains
-And add a hidden helper '_email_domains' column as a BLOCKS list.
+    - tablename.email_domains
+And add a hidden helper 'email_domains' column as a BLOCKS list.
 
 CRITICAL GROUNDING RULES FOR EMAILS:
-- NEVER invent domain names out of thin air. You MUST extract the real domains from the input samples (the part after @) and put them into the '_email_domains' BLOCKS helper column.
+- NEVER invent domain names out of thin air. You MUST extract the real domains from the input samples (the part after @) and put them into the 'email_domains' BLOCKS helper column.
 - NEVER put raw string literals (like 'gmail.com') directly into the 'values' list. Every item in 'values' must be a valid reference (tablename.column) or a built-in dataset.
 
 TYPES RULES:
@@ -117,7 +117,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
       users:
         user_id: seq(1,10,1)
         username: str_len(5,15)
-        _email_domains:
+        email_domains:
           - BLOCKS
           - uni.com
           - test.cz
@@ -125,7 +125,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
           format: '{{}}@{{}}'
           values:
             - users.username
-            - users._email_domains
+            - users.email_domains
 
     WRONG (CRASHES THE PIPELINE - Raw literals inside values are forbidden):
       email:
@@ -162,7 +162,7 @@ MESSAGE assistant """types:
   passenger_information:
     passenger_first: first_names_cs
     passenger_last: last_names_cs
-    _email_domains:
+    email_domains:
       - BLOCKS
       - uni.com
     passenger_full_name:
@@ -175,7 +175,7 @@ MESSAGE assistant """types:
       values:
         - passenger_information.passenger_first
         - passenger_information.passenger_last
-        - passenger_information._email_domains"""
+        - passenger_information.email_domains"""
 
 MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
     
@@ -220,7 +220,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
       users:
         user_id: seq(1,10,1)
         username: str_len(5,15)
-        _email_domains:
+        email_domains:
           - BLOCKS
           - uni.com
           - test.cz
@@ -228,7 +228,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
           format: '{{}}@{{}}'
           values:
             - users.username
-            - users._email_domains
+            - users.email_domains
 
     WRONG (CRASHES THE PIPELINE - Raw literals inside values are forbidden):
       email:
@@ -323,7 +323,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
       users:
         user_id: seq(1,10,1)
         username: str_len(5,15)
-        _email_domains:
+        email_domains:
           - BLOCKS
           - uni.com
           - test.cz
@@ -331,7 +331,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
           format: '{{}}@{{}}'
           values:
             - users.username
-            - users._email_domains
+            - users.email_domains
 
     WRONG (CRASHES THE PIPELINE - Raw literals inside values are forbidden):
       email:
@@ -422,7 +422,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
       users:
         user_id: seq(1,10,1)
         username: str_len(5,15)
-        _email_domains:
+        email_domains:
           - BLOCKS
           - uni.com
           - test.cz
@@ -430,7 +430,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
           format: '{{}}@{{}}'
           values:
             - users.username
-            - users._email_domains
+            - users.email_domains
 
     WRONG (CRASHES THE PIPELINE - Raw literals inside values are forbidden):
       email:
@@ -533,7 +533,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
       users:
         user_id: seq(1,10,1)
         username: str_len(5,15)
-        _email_domains:
+        email_domains:
           - BLOCKS
           - uni.com
           - test.cz
@@ -541,7 +541,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
           format: '{{}}@{{}}'
           values:
             - users.username
-            - users._email_domains
+            - users.email_domains
 
     WRONG (CRASHES THE PIPELINE - Raw literals inside values are forbidden):
       email:
@@ -675,7 +675,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
       users:
         user_id: seq(1,10,1)
         username: str_len(5,15)
-        _email_domains:
+        email_domains:
           - BLOCKS
           - uni.com
           - test.cz
@@ -683,7 +683,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
           format: '{{}}@{{}}'
           values:
             - users.username
-            - users._email_domains
+            - users.email_domains
 
     WRONG (CRASHES THE PIPELINE - Raw literals inside values are forbidden):
       email:
@@ -790,7 +790,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
       users:
         user_id: seq(1,10,1)
         username: str_len(5,15)
-        _email_domains:
+        email_domains:
           - BLOCKS
           - uni.com
           - test.cz
@@ -798,7 +798,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
           format: '{{}}@{{}}'
           values:
             - users.username
-            - users._email_domains
+            - users.email_domains
 
     WRONG (CRASHES THE PIPELINE - Raw literals inside values are forbidden):
       email:
@@ -905,7 +905,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
       users:
         user_id: seq(1,10,1)
         username: str_len(5,15)
-        _email_domains:
+        email_domains:
           - BLOCKS
           - uni.com
           - test.cz
@@ -913,7 +913,7 @@ MESSAGE user """Generate ONLY the 'types:' section for a Dataster YAML from a {s
           format: '{{}}@{{}}'
           values:
             - users.username
-            - users._email_domains
+            - users.email_domains
 
     WRONG (CRASHES THE PIPELINE - Raw literals inside values are forbidden):
       email:
