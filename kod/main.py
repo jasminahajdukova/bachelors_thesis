@@ -240,10 +240,9 @@ def main():
                 fk_map[table_name] = {}
 
                 if len(prime_keys) > 1:
-                    logger_setup.logger.warning( f"""Table {table_name} has composite pk {prime_keys} \n
-                                                This is excluded from generating as it is ouut of scope""")
+                    logger_setup.logger.warning( f"""Table {table_name} has composite pk {prime_keys}. This is excluded from generating as it is out of scope""")
                     
-                    errors.append(yaml_generator.YAML_result(db_name, "preprocessing", "composite_pk", 2, f"""Table {table_name} has composite pk {prime_keys}. This is excluded from generating as it is ouut of scope""" ))
+                    errors.append(yaml_generator.YAML_result(db_name, "preprocessing", "composite_pk", 2, f"""Table {table_name} has composite pk {prime_keys}. This is excluded from generating as it is out of scope""" ))
                     continue
                 
 
