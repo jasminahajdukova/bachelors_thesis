@@ -46,11 +46,16 @@ MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a
         wind_kmh: 'interval(6,14)'
         measured_on: 'dinterval(2024-1-12,2024-3-1)'
     
-    Rules:
-    - Identify all root table types defined in the types section.
-    - Generate records for each table type using the exact format: 'typename = count' (e.g., users = 1000) under the 'generate:' key.
-    - If you cannot deduce the exact count from the types, use a reasonable default (e.g., 1000 for main tables, 100 for dictionary/lookup tables).
-    
+    STRICT GENERATE RULES:
+    1. Define production count for every table present in the types section.
+    2. Format: '- table_name = COUNT' inside a list.
+    3. Derivate the COUNT from the primary key's seq(MIN, MAX, STEP) if available, otherwise use a sensible default (e.g., 100).
+
+    VALID EXAMPLE:
+    generate:
+      - 'users = 100'
+      - 'orders = 250'
+
     Return ONLY the generate section starting with 'generate:', nothing else. Do not wrap code in markdown block format.
     """
 
@@ -121,11 +126,16 @@ MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a
         booked_on: 'dinterval(2024-6-10,2024-6-18)'
         checked_in: 'bool'
     
-    Rules:
-    - Identify all root table types defined in the types section.
-    - Generate records for each table type using the exact format: 'typename = count' (e.g., users = 1000) under the 'generate:' key.
-    - If you cannot deduce the exact count from the types, use a reasonable default (e.g., 1000 for main tables, 100 for dictionary/lookup tables).
-    
+    STRICT GENERATE RULES:
+    1. Define production count for every table present in the types section.
+    2. Format: '- table_name = COUNT' inside a list.
+    3. Derivate the COUNT from the primary key's seq(MIN, MAX, STEP) if available, otherwise use a sensible default (e.g., 100).
+
+    VALID EXAMPLE:
+    generate:
+      - 'users = 100'
+      - 'orders = 250'
+
     Return ONLY the generate section starting with 'generate:', nothing else. Do not wrap code in markdown block format.
     """
 
