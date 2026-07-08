@@ -11,6 +11,7 @@ import httpx
 import logger_setup
 import os
 from llm_processor import CyclicDependencyError
+from prompts import json_decimal
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Generates Dataster YAML configuration using LLM"
@@ -84,14 +85,15 @@ def go_over_columns(columns, table_name, limit, server, prime_keys, samples, gen
     
 
     for column in columns:
-        column_name = column[0]
+        column_name  = column[0]
+        db_data_type = column[1] if len(column) > 1 else "unknown"
 
         if column_name not in prime_keys:
             template = data_sampler.data_samples_template(table_name, column_name, limit)
             result = schema_extractor.execute_sql(server, template) 
-            cl_rows = [row[0] for row in result if row and len(row) > 0 and row[0] is not None]
+            cl_rows = [json_decimal(row[0]) for row in result if row and len(row) > 0 and row[0] is not None]
             count_distinct_in_sample = len(set(cl_rows))
-            samples[table_name][column_name] = {"is_pk": False, "distinct_count_in_sample": count_distinct_in_sample, "samples": cl_rows[:10]}
+            samples[table_name][column_name] = {"is_pk": False, "db_type": db_data_type, "distinct_count_in_sample": count_distinct_in_sample, "samples": cl_rows[:10]}
 
             continue
 
@@ -112,7 +114,7 @@ def go_over_columns(columns, table_name, limit, server, prime_keys, samples, gen
         try:
             min_val = int(min_val)
             max_val = int(max_val)
-            samples[table_name][column_name] = {"is_pk": True, "data_type": "numeric", "seq": f"seq({min_val}, {max_val}, 1)"}
+            samples[table_name][column_name] = {"is_pk": True, "db_type": db_data_type, "data_type": "numeric", "seq": f"seq({min_val}, {max_val}, 1)"}
             generate_count[table_name] = max_val - min_val + 1
 
 
@@ -120,10 +122,10 @@ def go_over_columns(columns, table_name, limit, server, prime_keys, samples, gen
             sample_template = data_sampler.data_samples_template(table_name, column_name, limit)
             raw_samples = schema_extractor.execute_sql(server, sample_template)
 
-            cl_samples = [row[0] for row in raw_samples if row and len(row) > 0 and row[0] is not None]
+            cl_samples = [json_decimal(row[0]) for row in raw_samples if row and len(row) > 0 and row[0] is not None]
 
 
-            samples[table_name][column_name] = {"is_pk": True, "data_type": "non-numeric", "samples": cl_samples[:10]}
+            samples[table_name][column_name] = {"is_pk": True, "db_type": db_data_type, "data_type": "non-numeric", "samples": cl_samples[:10]}
             generate_count[table_name] = row_count
     
         except Exception as e:
@@ -294,12 +296,12 @@ def main():
                 errors.append(yaml_generator.YAML_result(db_name, "pipeline", "generation_skipped", 2, "All tables skipped or resulted in composite/invalid samples. Skipped llm generation"))
 
         else:
-            logger_setup.logger.debug(f"Sending samples to LLM for YAML generation \n{samples}")
+            logger_setup.logger.info(f"Sending samples to LLM for YAML generation \n{samples}")
 
             try:
-                yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count)
+                yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count, db_name)
                 logger_setup.logger.debug(f"Generated YAML:\n{yaml_str}")   
-                errors += yaml_generator.validate_yaml(db_name, yaml_str)
+                errors += yaml_generator.validate_yaml(db_name, yaml_str, samples)
                 yaml_was_generated = True
             except CyclicDependencyError as cde:
                 logger_setup.logger.error(f"Cylic FK dependency detected: {cde}")
