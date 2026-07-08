@@ -1,0 +1,20 @@
+python3 main.py  --host 127.0.0.1 --user root --db testdb --password heslo 2>&1 | tee results/logs/1log-testdb.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb2 --password heslo 2>&1 | tee results/logs/1log-testdb2.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb3 --password heslo 2>&1 | tee results/logs/1log-testdb3.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb4 --password heslo 2>&1 | tee results/logs/1log-testdb4.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb5 --password heslo 2>&1 | tee results/logs/1log-testdb5.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb6 --password heslo 2>&1 | tee results/logs/1log-testdb6.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb7 --password heslo 2>&1 | tee results/logs/1log-testdb7.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb8 --password heslo 2>&1 | tee results/logs/1log-testdb8.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb9 --password heslo 2>&1 | tee results/logs/1log-testdb9.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb10 --password heslo 2>&1 | tee results/logs/1log-testdb10.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb11 --password heslo 2>&1 | tee results/logs/1log-testdb11.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb12 --password heslo 2>&1 | tee results/logs/1log-testdb12.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb13 --password heslo 2>&1 | tee results/logs/1log-testdb13.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb14 --password heslo 2>&1 | tee results/logs/1log-testdb14.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb15 --password heslo 2>&1 | tee results/logs/1log-testdb15.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb16 --password heslo 2>&1 | tee results/logs/1log-testdb16.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb17 --password heslo 2>&1 | tee results/logs/1log-testdb17.txt
+python3 main.py  --host 127.0.0.1 --user root --db testdb18 --password heslo 2>&1 | tee results/logs/1log-testdb18.txt
+
+
