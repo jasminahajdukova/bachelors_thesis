@@ -51,7 +51,7 @@ MESSAGE user """Generate ONLY the 'constraints:' section for a Dataster YAML fro
       - orders.status in ('pending', 'shipped', 'delivered')
       - products.price > 0.0
 
-    Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no meaningful constraints can be inferred. Do not wrap code in markdown block format.
+    Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no logical constraints can be derived. Do not wrap code in markdown block format.
     """
 
 MESSAGE assistant """constraints: []"""
@@ -93,13 +93,13 @@ MESSAGE user """Generate ONLY the 'constraints:' section for a Dataster YAML fro
     4. STRICTLY PROHIBITED: Do NOT generate constraints using 'LIKE', 'MATCH', '~', 'REGEX', 'IS NULL' or 'IS NOT NULL'.
     5. AVOID self-referencing constraints (e.g., 'users.age = users.age' is invalid).
 
-  VALID EXAMPLE:
-  constraints:
-    - users.age >= 18
-    - orders.status in ('pending', 'shipped', 'delivered')
-    - products.price > 0.0
+    VALID EXAMPLE:
+    constraints:
+      - users.age >= 18
+      - orders.status in ('pending', 'shipped', 'delivered')
+      - products.price > 0.0
 
-  Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no meaningful constraints can be inferred. Do not wrap code in markdown block format.
+    Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no logical constraints can be derived. Do not wrap code in markdown block format.
     """
 
 
