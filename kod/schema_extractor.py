@@ -19,8 +19,8 @@ def mysql_query_templates(types: str) -> str:
                        WHERE table_schema = '{db_name}';""",
 
 
-        # index 0 = column_name
-        "columns": """SELECT column_name 
+        # index 0 = column_name, index 1 = column_type
+        "columns": """SELECT column_name, column_type
                        FROM information_schema.columns 
                        WHERE table_schema = '{db_name}' AND table_name = '{table_name}'
                        ORDER BY ordinal_position;""",
