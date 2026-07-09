@@ -12,7 +12,16 @@ import logger_setup
 import os
 from llm_processor import CyclicDependencyError
 from prompts import json_decimal
-def parse_arguments():
+from typing import List, Tuple, Dict, Set, Any
+
+
+def parse_arguments() -> argparse.Namespace:
+    """
+    Parser and validates CLI arguments
+
+    @return: Namespace object containing the parsed arguments
+    """
+
     parser = argparse.ArgumentParser(
         description="Generates Dataster YAML configuration using LLM"
     )
@@ -26,7 +35,12 @@ def parse_arguments():
     
 
 
-def check_ollama_models():
+def check_ollama_models() -> bool:
+    """
+    Checks if the Ollama service is running and checks if all required models exist
+    
+    @return: True is Ollama is available and all models exist, False otherwise
+    """
     try:
         response = ollama.list()        
     except (httpx.ConnectError, httpx.ConnectTimeout) as err:
@@ -50,7 +64,13 @@ def check_ollama_models():
     logger_setup.logger.info("Ollama is running with all required models")
     return True 
 
-def go_over_prime_keys(p_keys: list[tuple]):
+def go_over_prime_keys(p_keys: list[Any]) -> List[str]:
+    """
+    Processes the primary key information and extracts valid column names
+
+    @param p_keys: List of tuples or lists containing primary key information from the database
+    @return: Clean list of column names that form the primary key
+    """
     extracted_pks = []
     req_length = 2
     for pk in p_keys:
@@ -81,8 +101,26 @@ def go_over_prime_keys(p_keys: list[tuple]):
     return extracted_pks
 
 
-def go_over_columns(columns, table_name, limit, server, prime_keys, samples, generate_count, db_name, row_count):
-    
+def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
+                    server: Any, prime_keys: List[str],
+                    samples: Dict[str, Dict[str, Any]],
+                    generate_count: Dict[str, int],
+                    db_name: str, row_count: int) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, int]]:
+    """
+    Iterates over all table columns, separates primary keys and collects data samples
+
+    @param columns: List of column metadata extracted from the database schema
+    @param table_name: Name of the current table that is being procesed
+    @param limit: Maximum number of rows to query for samples
+    @param server: MySQL database connection server instance
+    @param prime_keys: List of column names that acts as primary keys for the table
+    @param samples: Data samples are stored into this
+    @param generate_count: Maps tables names to their expected generation row counts
+    @param db_name: Name of the target database
+    @param row_count: current total row count of the database table
+
+    @return: Tuple containing the updated samples and the generate_count
+    """
 
     for column in columns:
         column_name  = column[0]
@@ -134,7 +172,18 @@ def go_over_columns(columns, table_name, limit, server, prime_keys, samples, gen
             
     return samples, generate_count
 
-def go_over_foreign_keys(fk_result, fk_map, table_name, valid_tables):
+def go_over_foreign_keys(fk_result: List[Tuple[Any, ...]],
+                         fk_map: Dict[str, Dict[str, Tuple[str, str]]],
+                         table_name: str, valid_tables: Set[str]) -> Dict[str, Dict[str, Tuple[str, str]]]:
+    """
+    Processes the raw SQL foreign key query results and maps relationships, ignoring out-of-scope tables
+
+    @param fk_result: Raw SQL query result containing foreign key relationships
+    @param kf_map: Dict structure stroing table-to-table foreign key mappings
+    @param table_name: Name of the child whose foreign keys are being processed
+    @param valid_tables: Set of valid tables currently in scope for generation
+    @return: Updated fk_map structure filled with validated foreigh key relations
+    """
     for row in fk_result:
         local_col = row[0]
         ref_table = row[1]
@@ -153,7 +202,16 @@ def go_over_foreign_keys(fk_result, fk_map, table_name, valid_tables):
 
 
 
-def get_result(db_name, table_name, server, sql_type):
+def get_result(db_name: str, table_name: str | None, server: Any, sql_type: str) -> List[Any]:
+    """
+    Formats the requested SQL template, executed the query, and handles initial empty checks
+
+    @param db_name: Name of the target database
+    @param table_name: Optional table name
+    @param server: MySQL database connection server instance
+    @param sql_typ: Type of the SQL template query
+    @return: Reulting data rows returned from the executed SQL query
+    """
     schema_extractor.error_check(sql_type, table_name)
     template = schema_extractor.mysql_query_templates(sql_type)
     
@@ -169,8 +227,9 @@ def get_result(db_name, table_name, server, sql_type):
     return result
 
 def main():
-
-    
+    """
+    Manages database connection, schema extraction, sample compilation, LLM YAML generation and final configuration validation
+    """
     start_time  = time.time()
     args        = parse_arguments()
     host        = args.host
