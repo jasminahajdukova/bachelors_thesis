@@ -1072,6 +1072,54 @@ def remove_unused_types(yaml_str: str, samples: dict, repair_counts: dict) -> st
 
     return "\n".join(output_lines)
 
+def fix_pk_seq(yaml_str: str, samples: dict, fk_map: dict, repair_counts) -> str:
+    output_lines = []
+    current_section = None
+    current_table = None
+
+    lines = yaml_str.splitlines()
+
+    for line in lines:
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip())
+
+        # if in one of YAML sections
+        if stripped in ["types:", "schema:", "generate:", "constraints:", "include:"]:
+            current_section = stripped[:-1]
+            output_lines.append(line)
+            continue
+
+        # if in types and found table
+        if current_section == "types" and indent == 2 and stripped.endswith(":"):
+            current_table = stripped[:-1]
+            output_lines.append(line)
+            continue
+        
+        #if in types and found column
+        if current_section == "types" and current_table and indent == 4 and ":" in stripped and not stripped.startswith("-"):
+            column = stripped.split(":", 1)[0].strip()
+
+            # get information from samples
+            column_info = samples[current_table][column] if (current_table in samples and column in samples[current_table]) else {}
+            # check if foreign_key
+            is_fk = (column in fk_map[current_table]) if current_table in fk_map else False
+            #check if primary_key
+            is_pk = column_info["is_pk"] if "is_pk" in column_info else False
+            # get sequence
+            sequence = column_info["seq"] if "seq" in column_info else ""
+
+            if is_pk and not is_fk and sequence:
+                value = stripped.split(":", 1)[1].strip().strip("'\"")
+                if not value.startswith("seq"):
+                    repair_counts["fix_pk_seq"] += 1
+                    logger_setup.logger.warning(f"[Repair] PK {current_table}.{column}: {value} -> {sequence}")
+                    output_lines.append(f"    {column}: {sequence}")
+                    continue
+            
+        output_lines.append(line)
+    
+    return "\n".join(output_lines)
+
 
 def fix_generated_yaml(yaml_str: str, samples: dict, repair_counts) -> tuple[str, dict[str, int]]:
     # if no YAML was generated
@@ -1243,6 +1291,7 @@ def strip_yaml_comments(yaml_str: str) -> str:
 
 
 def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
+    logger_setup.logger.info(f"FK_MAP = {fk_map}")
     sorted_table_names = sort_tables_multi_level(fk_map)
     sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
 
@@ -1266,7 +1315,8 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
         "schema_missing_columns_fix": 0,
         "wrong_format_structure": 0,
         "unused_types_removed": 0,
-        "invalid_dataset_fix": 0       
+        "invalid_dataset_fix": 0,
+        "fix_pk_seq": 0       
     }
 
     types_raw       = generate_yaml_prompt(sorted_samples, None, sql_server_type, "yaml-generator-types", "types")
@@ -1305,10 +1355,8 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
         f"{constraints_filtered}"
     )
 
-    logger_setup.logger.warning(f"FILTERED YAML = \n{filtered_yaml}")
     fixed_yaml, repair_counts = fix_generated_yaml(filtered_yaml, samples, repair_counts)
-    logger_setup.logger.warning(f"FIXED YAML = \n{fixed_yaml}")
-
+    fixed_yaml = fix_pk_seq(fixed_yaml, samples, fk_map, repair_counts)
     yaml_generator.save_original_yaml(raw_yaml, db_name)
     save_repair_report_to_csv(repair_counts, db_name)
 
