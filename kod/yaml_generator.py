@@ -85,7 +85,7 @@ def validate_yaml(db_name: str, yaml_str: str, samples: dict) -> list[YAML_resul
     loaded_yaml, errors = load_yaml(yaml_str, db_name)
     if loaded_yaml is None:
         return errors
-
+    
     # checks yaml type and if it containts all necessarry sections
     errors += check_yaml(loaded_yaml, db_name) 
     if any(result.severity == 1 for result in errors):
@@ -668,30 +668,6 @@ def validate_include(db_name, includes: list[str]) -> list[YAML_result]:
 
 
 
-def validate_in(db_name, constraints, typename, types_section):
-    errors = []
-    typename_parts = typename.split(".")
-
-    # check if table.column or if table exitst in types and has column inside
-    if len(typename_parts) != 2 or typename_parts[0] not in types_section or typename_parts[1] not in types_section[typename_parts[0]]:
-        logger_setup.logger.error(f"Invalid 'in' constraint (type does not exist): {typename}")
-        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Constraint type does not exist in types section, {typename}"))
-        return errors
-
-    actual_type = types_section[typename_parts[0]][typename_parts[1]]
-
-    if isinstance(actual_type, list):
-        return errors
-    
-    # check if str, enum, or BLOCKS
-    if not isinstance(actual_type, str) or not (actual_type.startswith("enum") or "BLOCKS" in actual_type):
-        logger_setup.logger.error(f"Invalid type for 'in' operator: {typename} is {actual_type}. Expected enum or BLOCKS.")
-        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Invalid type for 'in' operator: {typename} is {actual_type}."))
-        return errors
-    
-    return errors
-
-
 def validate_rel_result(db_name, constraint, con_split, types_section):
     errors = []
     
@@ -800,6 +776,7 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
 def validate_constraints(db_name, constraints: str, types_section) -> list[YAML_result]:
 
     errors = []
+    supported_op = {"=", "!=", "<", ">", "<=", ">="}
 
     if not constraints or types_section is None:
         return []
@@ -812,19 +789,11 @@ def validate_constraints(db_name, constraints: str, types_section) -> list[YAML_
         if not constraint:
             continue
         
-
-        constraint_split = constraint.split(" ", 2)
-        # if constraint has in -> go over and check it
-        if len(constraint_split) >= 3 and constraint_split[1].lower() == "in":
-            errors += validate_in(db_name, constraint, constraint_split[0], types_section)
-            continue
-        
-
-        constraint_split = constraint.split(" ")
-        # if constraint has less than 3 parts it cannot be valid
-        if len(constraint_split) < 3:
+        constraint_split = constraint.split()
+        # if constraint does not have 3 parts it cannot be valid
+        if len(constraint_split) != 3 or constraint_split[1] not in supported_op:
             logger_setup.logger.error(f"Invalid constraint format: {constraint}")
-            errors.append(YAML_result(db_name, "constraints","invalid_constraint", 2, f"Invalid constraints format {constraint}"))
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid constraints format {constraint}"))
             continue
         
         # go over and validate
