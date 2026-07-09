@@ -5,3 +5,5 @@ testovanie/tabulky.xlsx
 kod/results/
 kod/run_all.sh
 kod/run_all.sh
+run_dataster.py
+test.yaml
