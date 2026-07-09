@@ -129,6 +129,7 @@ def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
         if column_name not in prime_keys:
             template = data_sampler.data_samples_template(table_name, column_name, limit)
             result = schema_extractor.execute_sql(server, template) 
+            
             cl_rows = [json_decimal(row[0]) for row in result if row and len(row) > 0 and row[0] is not None]
             count_distinct_in_sample = len(set(cl_rows))
             samples[table_name][column_name] = {"is_pk": False, "db_type": db_data_type, "distinct_count_in_sample": count_distinct_in_sample, "samples": cl_rows[:10]}
@@ -146,7 +147,7 @@ def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
         max_val = pk_result[0][1]
         
         if min_val is None or max_val is None:
-            logger_setup.logger.warning(f"Table {table_name} appears to be empty.")
+            logger_setup.logger.warning(f"Table {table_name} appears to be empty")
             continue
 
         try:
@@ -221,7 +222,7 @@ def get_result(db_name: str, table_name: str | None, server: Any, sql_type: str)
     result = schema_extractor.execute_sql(server, sql_query)
 
     if sql_type == "tables" and len(result) == 0:
-        logger_setup.logger.error("Db has no data. Cannot generate YAML.")
+        logger_setup.logger.error("Db has no data. Cannot generate YAML")
         return []
 
     return result
@@ -272,18 +273,24 @@ def main():
         fk_map = {}
         generate_count = {}
 
-        valid_tables = set()
+        valid_tables = []
         table_pk = {}
 
         for table in tables:
             t_name = table[0]
             try:
+                logger_setup.logger.info(f"Extracting prime keys for table: {t_name}")
                 pk_buff = get_result(db_name, t_name, server, "prime_keys")
                 prime_keys = go_over_prime_keys(pk_buff)
                 table_pk[t_name] = prime_keys
 
-                if len(prime_keys ) <= 1:
-                    valid_tables.add(t_name)
+                fk_buff = get_result(db_name, t_name, server, "foreign_keys")
+                fk_cols = {row[0] for row in fk_buff if row and row[0]}
+
+                is_pure_mn = len(prime_keys) > 1 and all (pk in fk_cols for pk in prime_keys)
+                if not is_pure_mn:
+                    if t_name not in valid_tables:
+                        valid_tables.append(t_name)
             except Exception as  exc:
                 logger_setup.logger.error(f"Prepass failed for table: {t_name}: {exc}")
                 errors.append(yaml_generator.YAML_result(db_name, f"prepass:{t_name}", "table_prepass_failed", 2, f"Prepass failed for table: {t_name}: {exc}"))
@@ -291,27 +298,26 @@ def main():
 
         for table in tables:
             table_name = table[0]
+            logger_setup.logger.info(f"Processing table: {table_name}")
             
             try:
 
                 prime_keys = table_pk[table_name]
 
                 fk_map[table_name] = {}
+                fk_result = get_result(db_name, table_name, server, "foreign_keys")
+                fk_columns = {row[0] for row in fk_result if row and row[0]}
 
-                if len(prime_keys) > 1:
-                    logger_setup.logger.warning( f"""Table {table_name} has composite pk {prime_keys}. This is excluded from generating as it is out of scope""")
+                if len(prime_keys) > 1 and all(pk in fk_columns for pk in prime_keys):
+                    logger_setup.logger.warning( f"""Table {table_name} is a pure M:N. This is excluded as it is out of scope""")
                     
                     errors.append(yaml_generator.YAML_result(db_name, "preprocessing", "composite_pk", 2, f"""Table {table_name} has composite pk {prime_keys}. This is excluded from generating as it is out of scope""" ))
                     continue
                 
 
                 samples[table_name] = {}
-                
-
-                logger_setup.logger.info(f"table: {table_name}")
-                
                 columns = get_result(db_name, table_name, server, "columns")
-                fk_result = get_result(db_name, table_name, server, "foreign_keys")
+                
 
                 for row in fk_result:
                     if row[1] and row[1] not in valid_tables:
@@ -354,7 +360,7 @@ def main():
                 errors.append(yaml_generator.YAML_result(db_name, "pipeline", "generation_skipped", 2, "All tables skipped or resulted in composite/invalid samples. Skipped llm generation"))
 
         else:
-            logger_setup.logger.info(f"Sending samples to LLM for YAML generation \n{samples}")
+            logger_setup.logger.info(f"Sending samples to LLM for YAML generation")
 
             try:
                 yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count, db_name)
