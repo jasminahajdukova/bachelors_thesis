@@ -46,7 +46,7 @@ TYPES RULES:
 - Use sample MIN and MAX values to choose realistic ranges for intervals
 - Use dinterval for ALL date columns, ALWAYS in padded format: dinterval(YYYY-MM-DD, YYYY-MM-DD) — e.g. dinterval(2020-01-01, 2026-12-31). NEVER strip leading zeros.
 - NEVER use: date, date(), datetime — these are INVALID types
-- str_len(MIN, MAX) takes ONLY two numeric bounds. NEVER use regex patterns inside str_len.
+- str_len([cCdsS] MIN, MAX) takes ONLY two numeric bounds. NEVER use regex patterns inside str_len.
   str_len([cC] 3,5) - example of specificied characters categories.
   Supported categories are these:
     C - upper-case letters
@@ -122,7 +122,7 @@ MESSAGE assistant """types:
       - ANTIQ
       - BAROQ
       - GOTHIC
-    exhibit_title: str_len(10,40)"""
+    exhibit_title: str_len([cCs] 10,40)"""
 
 
 
@@ -139,7 +139,7 @@ MESSAGE assistant """types:
       - EUR
       - GBP
       - USD
-    currency_name: str_len(4,50)"""
+    currency_name: str_len([cCs] 4,50)"""
 
 
 
