@@ -46,7 +46,14 @@ TYPES RULES:
 - Use sample MIN and MAX values to choose realistic ranges for intervals
 - Use dinterval for ALL date columns, ALWAYS in padded format: dinterval(YYYY-MM-DD, YYYY-MM-DD) — e.g. dinterval(2020-01-01, 2026-12-31). NEVER strip leading zeros.
 - NEVER use: date, date(), datetime — these are INVALID types
-- str_len(MIN, MAX) takes ONLY two numeric bounds. NEVER include character categories like [cC] and NEVER use regex patterns inside str_len.
+- str_len(MIN, MAX) takes ONLY two numeric bounds. NEVER use regex patterns inside str_len.
+  str_len([cC] 3,5) - example of specificied characters categories.
+  Supported categories are these:
+    C - upper-case letters
+    c - lower-case letters
+    d - digits
+    s - white spaces
+    S - special characters/symbols such as $, # ..
 - For regex, the pattern MUST be enclosed in SINGLE QUOTES inside the parentheses: regex('^[0-9]{3}$')
 - NEVER wrap the entire Dataster type definition in quotes:
   Correct:   birth_date: dinterval(1990-01-01, 2000-01-01)
