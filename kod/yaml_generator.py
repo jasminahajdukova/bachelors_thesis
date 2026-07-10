@@ -176,7 +176,8 @@ def check_types(db_name, types_section, samples):
                             err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid values inside BLOCKS for {table_name}.{column_name}"))
 
                 elif isinstance(column_def, str):
-                    
+                    if column_def in ["format", "value"]:
+                        continue
                     val_clean = column_def.strip().strip("'\"")
                     if (val_clean.lower() not in ["string", "blocks"] and val_clean not in AVAILABLE_INCLUDES and "(" not in val_clean):
                         logger_setup.logger.error(f"Invalid type {val_clean} in {table_name}.{column_def}")
@@ -389,51 +390,47 @@ def check_param(db_name, value) -> list[YAML_result]:
 
     #str_len([...] min, max)
     elif function_name == "str_len":
-        if len(args) != 2:
+        if len(args) < 1 or len(args) > 2:
             logger_setup.logger.error(f"Str_len got more arguments than expected. Got {len(args)}: {args}. Expected 2.")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Str_len got more arguments than expected. Got {len(args)}: {args}. Expected 2.")) 
+            return errors
+        
         try:
-            
+            bracket_match = re.search(r"\[(.*?)\]", args[0])
+
+            if bracket_match:
+                categories = bracket_match.group(1)
+                if re.search(r"[^cCsSd]", categories):
+                    raise ValueError(f"Invalid chars inside categoru inside []. Only c, C, d, s, S allowed")
+
+
+            min_clean = re.sub(r"\[.*?\]", "", args[0])
+            min_clean = re.sub(r"[><=]", "", min_clean)
+            min_clean = min_clean.strip()
+
+            if not min_clean.isdigit():
+                raise ValueError(f"Min values inside str_len must be a positive integer. Got {min_clean}")
             # extracts value if args empty -> both values also empty (error)
-            min_val = args[0].strip() if args else ""
-            max_val = args[1].strip()  if len(args) > 1 else ""
-
-            ### MIN CHECK ###
-            if not min_val:
-                raise ValueError
+            min_val = min_clean
+            max_val = ""
             
-            # str_len may include [Cc] or other, thats why its important to only get the number
-            min_re = re.search(r"(\d+)\s*$", min_val)
-            #if no num found
-            if not min_re:
-                raise ValueError
+            if len(args) == 2:
+
+                if re.search(r"[<>=]", args[0]):
+                    raise ValueError(f"Operators >, <, >=, <= are not allowed inside str_len with min, max values")
+
+                max_val = args[1].strip() 
+
+                if not max_val.isdigit():
+                    raise ValueError(f"Second value of str_len must be a positive integer. Got {max_val}")
+                
             
-            # get min value
-            value1 = int(min_re.group(1))
+            if max_val != "" and (int(min_val) > int(max_val)):
+                raise ValueError(f"Min value: {min_val} of str_len is greater than max value: {max_val}")
 
-            ### MAX CHECK ###
-            # if max val is empty, check if min is a positive int
-            if not max_val:
-                if value1 < 0:
-                    errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside str_len. Got {args}"))
-
-            else:
-                # if max value
-                # find it with re
-                max_re = re.search(r"(\d+)\s*$", max_val)
-
-                if not max_re:
-                    raise ValueError
-
-                value2 = int(max_re.group(1))
-
-                # in case str_len([...] nim, max), where min is greater than max both min or max are negative ints
-                if value1 > value2 or value1 < 0 or value2 < 0:
-                    errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside str_len. Got {args}"))
-
-
-        except ValueError:
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid str_len value. Got {args}"))
+        except ValueError as ve:
+            logger_setup.logger.error(f"Invalid str_len value. Got {args}: {ve}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid str_len value. Got {args}: {ve}"))
             return errors
         
         
