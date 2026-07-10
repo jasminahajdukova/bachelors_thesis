@@ -175,6 +175,11 @@ def check_types(db_name, types_section, samples):
                             logger_setup.logger.error(f"Invalid values inside BLOCKS for {table_name}.{column_name}")
                             err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid values inside BLOCKS for {table_name}.{column_name}"))
 
+                elif isinstance(column_def, str):
+                    
+                    val_clean = column_def.strip().strip("'\"")
+                    if (val_clean.lower() not in ["string", "blocks"] and val_clean not in AVAILABLE_INCLUDES and "(" not in val_clean):
+                        logger_setup.logger.error(f"Invalid type {val_clean} in {table_name}.{column_def}")
             
                 elif isinstance(column_def, dict):
                     keys = []
@@ -195,7 +200,7 @@ def check_types(db_name, types_section, samples):
                         err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid types for format (str) or values (list) in {table_name}.{column_name}"))
                         continue
                     
-            
+                        
                     format_count = len(re.findall(r'\{\}', format_str))
                     if format_count != len(values):
                         logger_setup.logger.error(f"Wrong number of {{}} in {table_name}.{column_name}: format has {format_count} {{}} but values has {len(values)}")
@@ -302,6 +307,7 @@ def check_param(db_name, value) -> list[YAML_result]:
     # sets function name and args
     function_name = value_split[0]
     args = value_split[1:]
+    args = [arg for arg in args if arg.strip()]
 
     if function_name == "regex":
         try:
@@ -322,25 +328,36 @@ def check_param(db_name, value) -> list[YAML_result]:
 
     # interval(min, max)
     elif function_name == "interval":
+        # get all arguments and skip " " 
+        
+        if len(args) != 2:
+            logger_setup.logger.error(f"Interval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Interval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")) 
         try:
             # checks if its a float or table.column
-            if "." in [args[0], args[1]]:
-                raise ValueError
+            if any("." in str(arg) for arg in  args):
+                logger_setup.logger.error(f"Interval contains float: {args}")
+                errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Interval contains float: {args}"))
+                return errors
             
             # converts to int -> error is thrown if it cannot be converted
             value1 = int(args[0])
             value2 = int(args[1])
         except (ValueError, IndexError):
+            logger_setup.logger.error(f"Interval expects two integers. Instead got {args}")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Interval expects two integers. Instead got {args}"))
             return errors
         
         # in case interval(min, max), where min is greater than max
         if value1 >= value2:
+            logger_setup.logger.error("Min value of interval exceeds the max value")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, "Min value of interval exceeds the max value"))
 
     # finterval(min, max)
     elif function_name == "finterval":
-
+        if len(args) != 2:
+            logger_setup.logger.error(f"Finterval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Finterval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")) 
         try:
             # converts to float -> error is thrown if it cannot be converted
             value1 = float(args[0])
@@ -355,6 +372,9 @@ def check_param(db_name, value) -> list[YAML_result]:
     
     # seq(min, max, step)
     elif function_name == "seq":
+        if len(args) != 3:
+            logger_setup.logger.error(f"Seq got more arguments than expected. Got {len(args)}: {args}. Expected 3.")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Seq got more arguments than expected. Got {len(args)}: {args}. Expected 3.")) 
         try:
             # converts to int -> error is thrown if it cannot be converted
             value1 = int(args[0])
@@ -369,7 +389,9 @@ def check_param(db_name, value) -> list[YAML_result]:
 
     #str_len([...] min, max)
     elif function_name == "str_len":
-
+        if len(args) != 2:
+            logger_setup.logger.error(f"Str_len got more arguments than expected. Got {len(args)}: {args}. Expected 2.")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Str_len got more arguments than expected. Got {len(args)}: {args}. Expected 2.")) 
         try:
             
             # extracts value if args empty -> both values also empty (error)
@@ -417,6 +439,9 @@ def check_param(db_name, value) -> list[YAML_result]:
         
     #dinterval(min, max)
     elif function_name == "dinterval":
+        if len(args) != 2:
+            logger_setup.logger.error(f"Dinterval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Dinterval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")) 
         try:
             # convert to date
             date1 = datetime.strptime(args[0].strip("'"), "%Y-%m-%d")
@@ -805,7 +830,7 @@ def save_yaml(yaml_string: str, db_name: str):
     filepath = f"results/dataster/dataster_config-{db_name}.yaml"
     with open(filepath, "a") as f:
         f.write(yaml_string)
-        f.write("\n----------------------------------------------------------------------\n")
+        # f.write("\n----------------------------------------------------------------------\n")
     
     logger_setup.logger.info(f"Final yaml saved into {filepath}")
 
@@ -814,7 +839,7 @@ def save_original_yaml(yaml_string: str, db_name: str):
     filepath = f"results/original_yaml/dataster_config-{db_name}.yaml" 
     with open(filepath, "a") as f:
         f.write(yaml_string)
-        f.write("\n----------------------------------------------------------------------\n")
+        # f.write("\n----------------------------------------------------------------------\n")
 
     logger_setup.logger.info(f"Original yaml saved into {filepath}")
 
