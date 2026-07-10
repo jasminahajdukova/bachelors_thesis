@@ -1264,7 +1264,7 @@ def fix_interval_number(types_yaml, repair_counts):
     lines = types_yaml.splitlines()
 
     for line in lines:
-        # go over lines and spplit tyhewm by :
+        # go over lines and split the by :
         line_split = line.split(":", 1)
 
         if len(line_split) < 2:
@@ -1339,7 +1339,7 @@ def fix_interval_number(types_yaml, repair_counts):
                         max_value = re.sub(r"[^\d]", "", max_raw).strip()
 
                         if not min_value or not max_value:
-                            logger_setup.logger.warning(f"No valid integers found. Replace with place holder values. interval(1,10). Please replace them if needed")
+                            logger_setup.logger.warning(f"No valid numbers found inside str_len. Replace with placeholder values str_len(1,10). Please replace them if needed")
                             min_value = "1"
                             max_value = "10"
 
@@ -1365,7 +1365,7 @@ def fix_interval_number(types_yaml, repair_counts):
                     if (int(min_value) > int(max_value)):
                         min_value, max_value = max_value, min_value
 
-                    if (int(step_value) < 0):
+                    if (int(step_value) <= 0):
                         step_value = "1"
                     is_valid = (int(min_value) < int(max_value)) and int(step_value) > 0
 
@@ -1394,9 +1394,10 @@ def fix_interval_number(types_yaml, repair_counts):
                 try:
                     if len(args_split) == 1:
                         max_value = str(int(min_value) + 1)
-
+             
                     if (int(min_value) > int(max_value)):
                         min_value, max_value = max_value, min_value
+        
                     is_valid = (int(min_value) < int(max_value))
                 except ValueError:
                     is_valid = False
@@ -1415,10 +1416,12 @@ def fix_interval_number(types_yaml, repair_counts):
             # if conversion passed or min < max add fixed line to the rest of lines
             if is_valid:
                 args_list = [value for value in [min_value, max_value, step_value] if value != ""]
+                # mention repairs only if it is worth mentioning (removal of whtespaces is not)
+                if args_split != args_list:
+                    logger_setup.logger.warning(f"[Repair] Fixed invalid numbers inside {data_type_name}")
+                    repair_counts["interval_num_fix"] += 1
                 fixed_line = f"{indent}{column_name}: {data_type_name}({','.join(args_list)})"
                 result.append(fixed_line)
-                logger_setup.logger.warning(f"[Repair] Fixed invalid numbers inside {data_type_name}")
-                repair_counts["interval_num_fix"] += 1
                 continue
         
 
