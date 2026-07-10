@@ -111,7 +111,7 @@ def filter_constraints(constraints_yaml, samples, repair_counts):
         return "constraints: []"
     lines = constraints_yaml.split('\n')
     filtered = []
-    invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not null', 'is null']
+    invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not null', 'is null', "in"]
 
     for line in lines:
         if line is None:
@@ -166,20 +166,12 @@ def filter_constraints(constraints_yaml, samples, repair_counts):
             logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
             continue
-
-        if operator == 'in':
-            in_match = bool(re.match(r"^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$", left_side) and right_side.startswith('(') and right_side.endswith(')'))
-            if in_match:
-                filtered.append(line)
-            else:
-                repair_counts["invalid_constraint_removed"] += 1 
-                logger_setup.logger.warning(f"Removing invalid 'in' constraint {line.strip()}")
-            continue
-
+     
         is_numeric = bool(re.match(r'^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$', right_side))
         is_col_ref = '.' in right_side and len(right_side.split('.')) == 2
 
         if not is_numeric and not is_col_ref:
+            repair_counts["invalid_constraint_removed"] += 1 
             logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
             continue
 
@@ -205,7 +197,7 @@ def apply_fk_to_schema(schema_yaml: str, fk_map: dict, repair_counts: dict) -> s
             continue
         col_match = re.match(r"^(\s+)([a-zA-Z0-9_-]+):\s*(.*)", line)
         if current_table and col_match and current_table in fk_map:
-            indent          = col_match.group(1)
+            indent             = col_match.group(1)
             column_name        = col_match.group(2)
             if column_name in fk_map[current_table]:
                 ref_table, ref_col = fk_map[current_table][column_name]
@@ -260,8 +252,9 @@ def go_over_generate(gen_count, generate_content, repair_counts):
     return "\n".join(new_generate)
     
 def fix_regex_quoting(types_yaml, repair_counts):
-    re_pattern = r"regex\([\\'](.*?)[\\']\)"
-    dinterval_pattern = r"dinterval\(\s*''?(.*?)''?\s*,\s*''?(.*?)''?\s*\)"
+
+    re_pattern = r"regex\(\s*['\"]?(.*?)['\"]?\s*\)"
+    dinterval_pattern = r"dinterval\(\s*''?(.*?)''?\s*\,\s*''?(.*?)''?\s*\)"
     results = []
     lines = types_yaml.splitlines()
 
@@ -273,11 +266,16 @@ def fix_regex_quoting(types_yaml, repair_counts):
         dinterval_match = re.search(dinterval_pattern, line)
 
         if re_match:
-            inner = re_match.group(1).replace("\\'", "'").replace("'", "''")
+            inner = re_match.group(1)
+
+            inner = inner.replace("\\'", "'")
+            inner = inner.replace("'", "''")
+
             start, end = re_match.span()
-            fixed_line = line[:start] + f"regex(''{inner}'')" + line[end:]
+            fixed_line = line[:start] + f"regex('{inner}')" + line[end:]
             results.append(fixed_line)
             repair_counts["regex_quoting_fix"] +=1
+
         elif dinterval_match:
             date1 = re.split(r"[ T]", dinterval_match.group(1))[0]
             date2 = re.split(r"[ T]", dinterval_match.group(2))[0]
@@ -443,7 +441,7 @@ def fix_references(line: str, stripped: str, current_table: str, samples: dict, 
             # if valid -> fix it
             line = f"{indent}- {current_table}.{raw_value}"
             repair_counts["unfinished_reference_fix"] += 1
-            logger_setup.logger.info(f"[Repair] Fixed unqualified reference: '{raw_value}' -> '{current_table}.{raw_value}'")
+            logger_setup.logger.warning(f"[Repair] Fixed unqualified reference: '{raw_value}' -> '{current_table}.{raw_value}'")
 
     # handle domain names
     elif "." in raw_value and not raw_value.endswith("_cs") and not raw_value.endswith("_en") and not raw_value.startswith(f"{current_table}."):
@@ -469,7 +467,7 @@ def fix_references(line: str, stripped: str, current_table: str, samples: dict, 
             state["has_refs_in_block"] = True
             # increment repair_count
             repair_counts["email_format_fix"] += 1
-            logger_setup.logger.info(f"[Repair] Found domain '{domain_clean}' and injected template reference.")
+            logger_setup.logger.warning(f"[Repair] Found domain '{domain_clean}' and injected template reference.")
             repaired_lines.append(line)
         else:
             #increment repair_count
@@ -584,7 +582,7 @@ def fix_types_and_schema(line: str, stripped: str, current_section: str, current
     ### SECTION TYPES ###
 
     # if LLM generated text (with/out) quotes
-    if current_section == "types" and re.match(r"^['\"]?text['\"]?$", value.strip(), re.IGNORECASE):
+    if current_section == "types" and value and re.match(r"^['\"]?text['\"]?$", value.strip(), re.IGNORECASE):
         # increment repari_count
         repair_counts["text_to_string_fix"] += 1
         # fix data type to string
@@ -592,14 +590,13 @@ def fix_types_and_schema(line: str, stripped: str, current_section: str, current
     
     # kontrola
     if current_section == "types" and value:
+        if column_name.lower() in ["format", "values"]:
+            return line
         # remove quotes
         val_clean = value.strip().strip("'\"")
-        if ("(" not in val_clean and "." not in val_clean
-                and val_clean not in AVAILABLE_INCLUDES
-                and val_clean.lower() not in ["string", "blocks"]
-                and re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", val_clean)):
+        if (val_clean.lower() not in ["string", "blocks"] and val_clean not in AVAILABLE_INCLUDES and "(" not in val_clean):
             repair_counts["invalid_dataset_fix"] += 1
-            logger_setup.logger.warning(f"[Repair] Hallucinated dataset '{val_clean}' at '{current_table}.{column_name}' -> fallback")
+            logger_setup.logger.warning(f"[Repair] Hallucinated dataset '{val_clean}' at '{current_table}.{column_name}'. Will try to guess appropriate data type")
 
             fixed_data_type = guess_type_from_db(current_table, column_name, samples)
             return f"{indent}{column_name}: {fixed_data_type}"
@@ -961,7 +958,7 @@ def fill_in_missing_columns(yaml_str: str, samples: dict, repair_counts: dict) -
             
             # increment repair_counts
             repair_counts["schema_missing_columns_fix"] += 1
-            logger_setup.logger.info(f"[Repair] Missing column {table}.{column}, inserting")
+            logger_setup.logger.warning(f"[Repair] Missing column {table}.{column}, inserting")
             # if column not found in types -> add it
             if not is_in_types:
                 sections["types"] = add_new_line_to_table(sections["types"], table, f"    {column}: {guess_type_from_db(table, column, samples)}")
@@ -1261,6 +1258,119 @@ def fix_generated_yaml(yaml_str: str, samples: dict, repair_counts) -> tuple[str
     # return final_yaml and repair_counts
     return final_yaml, repair_counts
 
+def fix_interval_number(types_yaml, repair_counts):
+
+    result = []
+    lines = types_yaml.splitlines()
+
+    for line in lines:
+        # go over lines and spplit tyhewm by :
+        line_split = line.split(":", 1)
+
+        if len(line_split) < 2:
+            result.append(line)
+            continue
+        
+        # get column name and data type inside column name
+        column_name = line_split[0].strip()
+        data_type = line_split[1].strip().strip("'\"")
+        
+        # if found d/f/interval, seq or strl_len data type to check
+        if data_type.startswith(("interval(", "finterval(", "dinterval(", "seq(", "str_len(")):
+            # get name of data _type
+            data_type_name = data_type.split("(")[0]
+            # get index so it can get values inside brackets
+            start_index = data_type.find("(")
+            end_index  = data_type.find(")")
+            
+            inside_nums = data_type[start_index + 1: end_index]
+
+            # split numbers by , and remove whitespace
+            args_split = [arg.strip() for arg in inside_nums.split(",") if arg.strip()]
+            if len(args_split) < 2:
+                result.append(line)
+                continue
+
+            # get indent
+            indent = line[:line.find(column_name)]
+            # if data type has more than 2 arguments, LLM mixed it up with seq
+            is_valid = False
+            step_value = ""
+            min_value = args_split[0].replace(" ","")
+            max_value = args_split[1].replace(" ","")
+  
+                
+            if data_type_name == "str_len":
+                try:
+ 
+                    min_raw   = min_value.replace("[", "").replace("]", "").strip()
+                
+                    match  = re.match(r"^([cCdsS ]+)", min_raw)
+                    prefix = match.group(1).strip() if match else ""
+
+                    min_value = re.sub(r"[cCsSd ]", "", min_raw).strip()
+
+                    if int(min_value) > int(max_value):
+                        min_value, max_value = max_value, min_value
+                    
+                    is_valid = (int(min_value) <= int(max_value))
+                    if prefix:
+                        min_value = f"[{prefix}]{min_value}"
+                    
+                except ValueError:
+                    is_valid = False 
+
+            elif data_type_name == "seq":
+                step_value = args_split[2] if len(args_split) >= 3 else "1"
+                try:
+                    if (int(min_value) > int(max_value)):
+                        min_value, max_value = max_value, min_value
+                    if (int(step_value) < 0):
+                        step_value = "1"
+                    is_valid = (int(min_value) < int(max_value)) and int(step_value) > 0
+                except ValueError:
+                    is_valid = False
+            # if dates -> get min max values, compare them
+                
+            elif data_type_name == "dinterval":
+                if min_value > max_value:
+                    min_value, max_value = max_value, min_value
+                is_valid = (min_value < max_value)
+            #if int -> convert to int, get min max value and compare them
+                
+            elif data_type_name == "interval":
+                try:
+                    if (int(min_value) > int(max_value)):
+                        min_value, max_value = max_value, min_value
+                    is_valid = (int(min_value) < int(max_value))
+                except ValueError:
+                    is_valid = False
+            #if float -> convert to int, get min max value and compare them
+
+            else:
+                try:
+                    if (float(min_value) > float(max_value)):
+                        min_value, max_value = max_value, min_value
+                    is_valid = (float(min_value) < float(max_value))
+
+                except ValueError:
+                    is_valid = False
+            # if conversion passed or min < max add fixed line to the rest of lines
+            if is_valid:
+                args_list = [value for value in [min_value, max_value, step_value] if value != ""]
+                fixed_line = f"{indent}{column_name}: {data_type_name}({','.join(args_list)})"
+                result.append(fixed_line)
+                logger_setup.logger.warning(f"[Repair] Fixed invalid numbers inside {data_type_name}")
+                repair_counts["interval_num_fix"] += 1
+                continue
+        
+
+        result.append(line)
+
+    
+    return "\n".join(result)
+
+
 def save_repair_report_to_csv(repair_counts: dict[str, int], db_name: str):
 
     file_path = f"results/csv/repair_stats-{db_name}.csv"
@@ -1316,7 +1426,8 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
         "wrong_format_structure": 0,
         "unused_types_removed": 0,
         "invalid_dataset_fix": 0,
-        "fix_pk_seq": 0       
+        "fix_pk_seq": 0,
+        "interval_num_fix": 0      
     }
 
     types_raw       = generate_yaml_prompt(sorted_samples, None, sql_server_type, "yaml-generator-types", "types")
@@ -1335,6 +1446,7 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
 
     types_filtered = types_raw.replace(".format", "")
     types_filtered = fix_regex_quoting(types_filtered, repair_counts)
+    types_filtered = fix_interval_number(types_filtered, repair_counts)
     include_filtered = generate_yaml_include(types_filtered)
 
     if "include:" in include_filtered and "include: []" not in include_filtered:
