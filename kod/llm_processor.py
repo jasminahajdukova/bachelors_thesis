@@ -1304,18 +1304,27 @@ def fix_interval_number(types_yaml, repair_counts):
                 try:
  
                     min_raw   = min_value.replace("[", "").replace("]", "").strip()
+                    max_raw   = max_value.replace("[", "").replace("]", "").strip()
                 
                     match  = re.match(r"^([cCdsS ]+)", min_raw)
                     prefix = match.group(1).strip() if match else ""
 
-                    min_value = re.sub(r"[cCsSd ]", "", min_raw).strip()
+                    min_value = re.sub(r"[^\d]", "", min_raw).strip()
+                    max_value = re.sub(r"[^\d]", "", max_raw).strip()
+
+                    if not min_value or not max_value:
+                        logger_setup.logger.warning(f"No valid integers found. Replace with place holder values. interval(1,10). Please replace them if needed")
+                        min_value = "1"
+                        max_value = "10"
 
                     if int(min_value) > int(max_value):
                         min_value, max_value = max_value, min_value
                     
                     is_valid = (int(min_value) <= int(max_value))
                     if prefix:
-                        min_value = f"[{prefix}]{min_value}"
+                        prefix = prefix.replace(" ", "")
+                        if prefix:
+                            min_value = f"[{prefix}]{min_value}"
                     
                 except ValueError:
                     is_valid = False 
