@@ -1,5 +1,5 @@
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import re
 import yaml_generator
@@ -1277,7 +1277,7 @@ def fix_interval_number(types_yaml, repair_counts):
         
         # if found d/f/interval, seq or strl_len data type to check
         if data_type.startswith(("interval(", "finterval(", "dinterval(", "seq(", "str_len(")):
-            # get name of data _type
+            # get name of data_type
             data_type_name = data_type.split("(")[0]
             # get index so it can get values inside brackets
             start_index = data_type.find("(")
@@ -1287,7 +1287,7 @@ def fix_interval_number(types_yaml, repair_counts):
 
             # split numbers by , and remove whitespace
             args_split = [arg.strip() for arg in inside_nums.split(",") if arg.strip()]
-            if len(args_split) < 2:
+            if len(args_split) < 1:
                 result.append(line)
                 continue
 
@@ -1297,58 +1297,104 @@ def fix_interval_number(types_yaml, repair_counts):
             is_valid = False
             step_value = ""
             min_value = args_split[0].replace(" ","")
-            max_value = args_split[1].replace(" ","")
+            max_value = args_split[1].replace(" ","") if len(args_split) >= 2 else ""
   
                 
             if data_type_name == "str_len":
                 try:
- 
-                    min_raw   = min_value.replace("[", "").replace("]", "").strip()
-                    max_raw   = max_value.replace("[", "").replace("]", "").strip()
-                
-                    match  = re.match(r"^([cCdsS ]+)", min_raw)
-                    prefix = match.group(1).strip() if match else ""
-
-                    min_value = re.sub(r"[^\d]", "", min_raw).strip()
-                    max_value = re.sub(r"[^\d]", "", max_raw).strip()
-
-                    if not min_value or not max_value:
-                        logger_setup.logger.warning(f"No valid integers found. Replace with place holder values. interval(1,10). Please replace them if needed")
-                        min_value = "1"
-                        max_value = "10"
-
-                    if int(min_value) > int(max_value):
-                        min_value, max_value = max_value, min_value
                     
-                    is_valid = (int(min_value) <= int(max_value))
-                    if prefix:
-                        prefix = prefix.replace(" ", "")
+                    if len(args_split) == 1:
+                        arg_raw = args_split[0].strip()
+
+                        match = re.search(r"(\[[cCdsS\s]+\])", arg_raw)
+                        prefix = match.group(1).replace(" ", "") if match else ""
+
+                        value = re.sub(r"\[.*?\]", "", arg_raw).strip()
+
+                        operator_match = re.search(r"(>=|>|<=|<)", value)
+                        operator = operator_match.group(1) if operator_match else ""
+
+                        digit_match = re.search(r"(\d+)", value)
+                        if digit_match:
+                            number = digit_match.group(1)
+                            if prefix:
+                                full_value = f"{prefix} {operator}{number}".strip() 
+                            else:
+                                full_value = f"{operator}{number}"
+
+                            min_value = full_value
+                            is_valid = True
+                        else:
+                            min_value = "1"
+                            is_valid = True
+                    
+                    elif len(args_split) > 1:
+                        min_raw   = min_value.replace("[", "").replace("]", "").strip()
+                        match  = re.match(r"^([cCdsS ]+)", min_raw)
+                        prefix = match.group(1).strip() if match else ""
+
+                        min_value = re.sub(r"[^\d]", "", min_raw).strip()
+
+                        max_raw   = max_value.replace("[", "").replace("]", "").strip()
+                        max_value = re.sub(r"[^\d]", "", max_raw).strip()
+
+                        if not min_value or not max_value:
+                            logger_setup.logger.warning(f"No valid integers found. Replace with place holder values. interval(1,10). Please replace them if needed")
+                            min_value = "1"
+                            max_value = "10"
+
+                        if int(min_value) > int(max_value):
+                            min_value, max_value = max_value, min_value
+                        
+                        is_valid = (int(min_value) <= int(max_value))
                         if prefix:
-                            min_value = f"[{prefix}]{min_value}"
-                    
+                            prefix = prefix.replace(" ", "")
+                            if prefix:
+                                min_value = f"[{prefix}]{min_value}"
+                        
                 except ValueError:
                     is_valid = False 
 
             elif data_type_name == "seq":
                 step_value = args_split[2] if len(args_split) >= 3 else "1"
                 try:
+
+                    if len(args_split) == 1:
+                        max_value = str(int(min_value) + 1)
+
                     if (int(min_value) > int(max_value)):
                         min_value, max_value = max_value, min_value
+
                     if (int(step_value) < 0):
                         step_value = "1"
                     is_valid = (int(min_value) < int(max_value)) and int(step_value) > 0
+
                 except ValueError:
                     is_valid = False
             # if dates -> get min max values, compare them
                 
             elif data_type_name == "dinterval":
-                if min_value > max_value:
-                    min_value, max_value = max_value, min_value
-                is_valid = (min_value < max_value)
-            #if int -> convert to int, get min max value and compare them
-                
+                if len(args_split) == 1:
+                    try:
+                        date = datetime.strptime(min_value, "%Y-%m-%d")
+                        max_value = (date + timedelta(days = 1)).strftime("%Y-%m-%d")
+                        is_valid = True
+                    except ValueError:
+                        is_valid = False
+                else:
+                    is_valid = True
+
+                if is_valid:
+                    if min_value > max_value:
+                        min_value, max_value = max_value, min_value
+                    is_valid = (min_value < max_value)
+            
+            #if int -> convert to int, get min max value and compare them    
             elif data_type_name == "interval":
                 try:
+                    if len(args_split) == 1:
+                        max_value = str(int(min_value) + 1)
+
                     if (int(min_value) > int(max_value)):
                         min_value, max_value = max_value, min_value
                     is_valid = (int(min_value) < int(max_value))
@@ -1358,6 +1404,8 @@ def fix_interval_number(types_yaml, repair_counts):
 
             else:
                 try:
+                    if len(args_split) == 1:
+                        max_value = str(float(min_value) + 1.0)
                     if (float(min_value) > float(max_value)):
                         min_value, max_value = max_value, min_value
                     is_valid = (float(min_value) < float(max_value))
