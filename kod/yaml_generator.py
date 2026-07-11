@@ -128,8 +128,8 @@ def validate_yaml(db_name: str, yaml_str: str, samples: dict) -> list[YAML_resul
     # if no major errors occured during the validation -> yaml is saved
     if any(result.severity == 1 for result in errors):
         logger_setup.logger.error(f"Found critical error(s)")            
-    else:
-        save_yaml(yaml_str, db_name)
+    
+    save_yaml(yaml_str, db_name)
 
     return errors
 
