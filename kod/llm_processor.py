@@ -130,6 +130,16 @@ def filter_constraints(constraints_yaml, samples, repair_counts):
             repair_counts["invalid_constraint_removed"] += 1 
             continue
 
+        if " in " in line:
+            logger_setup.logger.warning(f"Removing LLM output {line.strip()}")
+            repair_counts["invalid_constraint_removed"] += 1 
+            continue
+
+        if re.search(r"\b\d{4}-\d{2}-\d{2}\b", line):
+            logger_setup.logger.warning(f"Removing LLM output {line.strip()}")
+            repair_counts["invalid_constraint_removed"] += 1 
+            continue
+
         left_side = stripped_line[0].strip("'\"")
         operator = stripped_line[1].lower()
         right_side = " ".join(stripped_line[2:]).strip("'\"") 
@@ -395,6 +405,13 @@ def fix_references(line: str, stripped: str, current_table: str, samples: dict, 
 
     # if inside block, copy line and move on
     if state.get("in_blocks_list", False):
+        
+        if stripped.startswith("-"):
+            
+            fixed_value = yaml_bool(raw_value, repair_counts)
+            if fixed_value != raw_value:
+                line = f"{indent}- {fixed_value}"
+
         repaired_lines.append(line)
         return
     
@@ -503,6 +520,24 @@ def fix_blocks(lines: list, i: int, line: str, stripped: str, current_table: str
     # if BLOCKS and other values under BLOCKS in one line
     is_just_one_line_blocks = ("BLOCKS" in value and "-" in value)
 
+    if not is_just_blocks and not is_just_one_line_blocks and value == "":
+        next_index = i + 1
+        dash_items = []
+
+
+        while next_index < len(lines) and lines[next_index].strip().startswith("-"):
+            dash_items.append((next_index, lines[next_index].strip()[1:].strip().strip("'\"")))
+            next_index += 1
+
+        if len(dash_items) == 1:
+            line_index, item_value = dash_items[0]
+            if item_value in AVAILABLE_INCLUDES:
+                repaired_lines.append(f"{indent}{column_name}: {item_value}")
+                repair_counts["single_item_list_fix"] += 1
+                logger_setup.logger.warning(f"[Repair] Moved single item list for {current_table}.{column_name}")
+                return next_index, True
+
+
     # if none of these -> skip and return index and False
     if not (is_just_blocks or is_just_one_line_blocks):
         return i, False
@@ -533,7 +568,8 @@ def fix_blocks(lines: list, i: int, line: str, stripped: str, current_table: str
         repaired_lines.append(f"{indent}{column_name}:")
         repaired_lines.append(f"{indent}  - BLOCKS")
         for vals in values_under_blocks:
-            repaired_lines.append(f"{indent}  - {vals}")
+            fixed_val = yaml_bool(vals, repair_counts)
+            repaired_lines.append(f"{indent}  - {fixed_val}")
         # increment repair_counts
         repair_counts["inline_blocks_fix"] += 1
         # return new idnex and True (as in something was changed)
@@ -552,7 +588,9 @@ def fix_blocks(lines: list, i: int, line: str, stripped: str, current_table: str
                 repaired_lines.append(f"{indent}  - BLOCKS")
                 for sample_val in db_samples:
                     if sample_val is not None and str(sample_val).strip() != "":
-                        repaired_lines.append(f"{indent}  - {str(sample_val).strip()}")
+                        fixed_sample = str(sample_val).strip()
+                        fixed_sample = yaml_bool(fixed_sample, repair_counts)
+                        repaired_lines.append(f"{indent}  - {fixed_sample}")
                 # increments repair_counts
                 repair_counts["filled_empty_blocks"] += 1
                 # return new idnex and True (as in something was changed)
@@ -815,13 +853,15 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
                 # if wrong format found
                 if wrong_count or invalid_refs_found:
                     # get indent
-                    indent = line[:line.find(column_name)]
+                    indent_str = line[:line.find(column_name)]
                     # change format to string
-                    output_lines.append(f"{indent}{column_name}: string")
+                    output_lines.append(f"{indent_str}{column_name}: string")
                     # increment repair_count
                     repair_counts["wrong_format_structure"] += 1
                     logger_setup.logger.warning(f"[Repair] Wrong format structure at '{current_table}.{column_name}' (Arity mismatch: {wrong_count}, Invalid ref: {invalid_refs_found}). Changed to 'string'.")
                     i = val_collect_index
+                    while i < len(lines) and lines[i].strip() and (len(lines[i]) - len(lines[i].lstrip())) > 4:
+                        i += 1
                     continue
         
         # if no errors found, add line to output and move on
@@ -1459,6 +1499,13 @@ def strip_yaml_comments(yaml_str: str) -> str:
         clean_lines.append(line)
     return "\n".join(clean_lines)
 
+def yaml_bool(value: str, repair_counts: dict) -> str:
+    yaml_bool_keywords = ["y", "n", "yes", "no", "true", "false", "on", "off"]
+    if value.lower() in yaml_bool_keywords:
+        repair_counts["yaml_bool"] += 1
+        value = value.strip("'\"")
+        return f"'{value}'"
+    return value
 
 def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
     logger_setup.logger.info(f"FK_MAP = {fk_map}")
@@ -1487,7 +1534,9 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
         "unused_types_removed": 0,
         "invalid_dataset_fix": 0,
         "fix_pk_seq": 0,
-        "interval_num_fix": 0      
+        "interval_num_fix": 0,
+        "yaml_bool": 0,
+        "single_item_list_fix": 0    
     }
 
     types_raw       = generate_yaml_prompt(sorted_samples, None, sql_server_type, "yaml-generator-types", "types")
