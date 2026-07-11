@@ -1705,7 +1705,7 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
     sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
 
     columns_in_tables = {} 
-    for table_name, table_data in samples.item():
+    for table_name, table_data in samples.items():
         columns_in_tables[table_name.lower()] = {column.lower(): column for column in table_data.keys()}
 
     db_table_names = {table.lower(): table for table in samples.keys()}
