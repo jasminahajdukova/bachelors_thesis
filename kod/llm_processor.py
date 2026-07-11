@@ -130,10 +130,6 @@ def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tab
             filtered.append(line)
             continue
 
-        if " is " in line:
-            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
-            repair_counts["invalid_constraint_removed"] += 1 
-            continue
 
         if len(stripped_line) < 3:
             logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
@@ -144,10 +140,12 @@ def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tab
         operator = stripped_line[1].lower()
         right_side = " ".join(stripped_line[2:]).strip("'\"") 
 
-        if (operator.strip().lower() in invalid_operators) or (re.search(r"\b\d{4}-\d{2}-\d{2}\b", line)):
+        if (operator.strip() in invalid_operators) or (re.search(r"\b\d{4}-\d{2}-\d{2}\b", line)):
             logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
             continue
+
+        is_valid_constraint = True
 
         if "." in left_side:
             left_table, left_column = left_side.split(".", 1)
@@ -162,15 +160,30 @@ def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tab
             if left_table_lower in columns_in_tables:
                 left_column_lower = left_column.lower()
                 if left_column_lower in columns_in_tables[left_table_lower]:
+
                     correct_column = columns_in_tables[left_table_lower][left_column_lower]
                     if correct_column != left_column:
                         left_column = correct_column
                         repair_counts["schema_value_casing"] += 1
+                
+                else:
+                    logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+                    repair_counts["invalid_constraint_removed"] += 1 
+                    is_valid_constraint = False
+
+            else:
+                logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+                repair_counts["invalid_constraint_removed"] += 1 
+                is_valid_constraint = False
 
             left_side = f"{left_table}.{left_column}"
-            line      = f"  - {left_side} {operator} {right_side}"
+        
+        if not is_valid_constraint:
+            continue
+        
+        is_numeric = bool(re.match(r'^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$', right_side))
 
-        if "." in right_side:
+        if "." in right_side and not is_numeric:
             right_table, right_column = right_side.split(".", 1)
 
             if right_table.title() in samples:
@@ -188,39 +201,43 @@ def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tab
                         right_column = correct_column
                         repair_counts["schema_value_casing"] += 1
 
+
+                else:
+                    logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+                    repair_counts["invalid_constraint_removed"] += 1 
+                    is_valid_constraint = False
+
+            else:
+                logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+                repair_counts["invalid_constraint_removed"] += 1 
+                is_valid_constraint = False
+
             right_side = f"{right_table}.{right_column}"
-            line      = f"  - {left_side} {operator} {right_side}"
-
-        stripped_line = line.split()
-        if '-' in stripped_line:
-            stripped_line.remove("-")
-        if len(stripped_line) < 3:
-            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
-            repair_counts["invalid_constraint_removed"] += 1 
+        
+        if not is_valid_constraint:
             continue
-
-        left_side  = stripped_line[0].strip("'\"")
-        operator   = stripped_line[1].lower()
-        right_side = " ".join(stripped_line[2:]).strip("'\"")
-
-
+        
         if left_side == right_side:
             logger_setup.logger.warning(f"Removing self-referencing constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
             continue
 
-        is_numeric = bool(re.match(r'^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$', right_side))
+        
         is_col_ref = '.' in right_side and len(right_side.split('.')) == 2
 
         if not is_numeric and not is_col_ref:
             repair_counts["invalid_constraint_removed"] += 1 
             logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
             continue
-
+        
+        line = f"  - {left_side} {operator} {right_side}"
         filtered.append(line)
+
+
     result = '\n'.join(filtered)
     if result.strip() == 'constraints:':
         return 'constraints: []'
+    
     return result
 
 def apply_fk_to_schema(schema_yaml: str, fk_map: dict, repair_counts: dict) -> str:
@@ -1506,8 +1523,8 @@ def fix_interval_number(types_yaml, repair_counts):
 
         is_valid = False
         step_value = ""
-        min_value = args_split[0].replace(" ","").strip("'\"")
-        max_value = args_split[1].replace(" ","").strip("'\"") if len(args_split) >= 2 else ""
+        min_value = args_split[0].strip("'\"")
+        max_value = args_split[1].strip("'\"") if len(args_split) >= 2 else ""
 
             
         if data_type_name == "str_len":
