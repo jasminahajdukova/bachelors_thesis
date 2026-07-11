@@ -107,11 +107,12 @@ def generate_yaml_include(type_content):
         return "include: []"
 
 def filter_constraints(constraints_yaml, samples, repair_counts):
+
     if not constraints_yaml:
         return "constraints: []"
     lines = constraints_yaml.split('\n')
     filtered = []
-    invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not null', 'is null', "in"]
+    invalid_operators = ['~', '=~', '!~', 'match', 'regex', 'is not null', 'is null', "in", "is"]
 
     for line in lines:
         if line is None:
@@ -236,29 +237,70 @@ def sort_tables_multi_level(fk_map):
             raise CyclicDependencyError("Cyclic dependency or missing parent table detected")
     return sorted_tables
 
-def go_over_generate(gen_count, generate_content, repair_counts):
+def go_over_generate(gen_count, samples, generate_content, repair_counts):
     generate_content = generate_content.split("\n")
     new_generate = []
+
+    columns = {}
+
     for line in generate_content:
         if line == "generate:" or not line.strip() or line == "":
             new_generate.append(line)
             continue
         line_split = line.split("=")
         try:
-            line_split[0] = line_split[0].replace("-", "").replace(" ", "").replace("'", "")
-            line_split[1] = int(line_split[1].replace("'", "").replace(" ",""))
+            table_name = line_split[0].replace("-", "").replace(" ", "").replace("'", "")
+            num_value = int(line_split[1].replace("'", "").replace(" ",""))
+            columns = samples.get(table_name, {})
+            pk_column = {}
+            for column_name, column_values in columns.items():
+                if column_values.get("is_pk", False) == True:
+                    pk_column = column_values
+                    break
+
         except (ValueError, IndexError):
             logger_setup.logger.error("cannot convert to number")
             new_generate.append(line)
             continue
-        if line_split[0] not in gen_count:
+
+        if table_name not in gen_count:
             new_generate.append(line)
             continue
-        if gen_count[line_split[0]] != line_split[1]:
-            new_generate.append(f"- '{line_split[0]} = {gen_count[line_split[0]]}'")
+        
+        target_value = gen_count[table_name]
+        is_changed = False
+
+        if pk_column and pk_column.get("data_type") == "numeric":
+
+            sequence = pk_column.get("seq", "")
+            if sequence and sequence.startswith("seq("):
+                try:
+                    seq_numbers = re.findall(r"\d+", sequence)
+
+                    if len(seq_numbers) >= 2:
+                        min_num = int(seq_numbers[0])
+                        max_num = int(seq_numbers[1])
+                        step    = int(seq_numbers[2]) if len(seq_numbers) == 3 else 1
+
+
+                        # count how many numbers inside seq
+                        seq_len = (max_num - min_num) // step + 1
+
+                        if target_value > seq_len or num_value > seq_len:
+                            target_value = min(target_value, seq_len)
+                            is_changed   = True
+                            
+                except (ValueError, IndexError, ZeroDivisionError) as viz:
+                    logger_setup.logger.error(f"Seq expected number. Got {sequence}: {viz}")
+
+        if num_value != target_value:
+            if is_changed:
+                logger_setup.logger.warning(f"[Repair] Number to generate for table '{table_name}' greater than sequence. Generate number adjusted to satisfy seq")
+            new_generate.append(f"- '{table_name} = {target_value}'")
             repair_counts["generate_row_count_fix"] += 1
         else:
-            new_generate.append(line)
+                new_generate.append(line)
+
     return "\n".join(new_generate)
     
 def fix_regex_quoting(types_yaml, repair_counts):
@@ -1565,7 +1607,7 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
 
     schema_filtered      = apply_fk_to_schema(schema_raw, fk_map, repair_counts)
     schema_filtered      = go_over_schema(schema_filtered, samples, repair_counts)
-    generate_filtered    = go_over_generate(gen_count, generate_raw, repair_counts)
+    generate_filtered    = go_over_generate(gen_count, samples, generate_raw, repair_counts)
     constraints_filtered = filter_constraints(constraints_raw, samples, repair_counts)
     
     filtered_yaml = (
