@@ -1,3 +1,8 @@
+ollama create yaml-generator-types -f Modelfile-types
+ollama create yaml-generator-schema -f Modelfile-schema
+ollama create yaml-generator-generate -f Modelfile-generate
+ollama create yaml-generator-constraints -f Modelfile-constraints
+
 python3 main.py  --host 127.0.0.1 --user root --db testdb --password heslo 2>&1 | tee results/logs/1log-testdb.txt
 python3 main.py  --host 127.0.0.1 --user root --db testdb2 --password heslo 2>&1 | tee results/logs/1log-testdb2.txt
 python3 main.py  --host 127.0.0.1 --user root --db testdb3 --password heslo 2>&1 | tee results/logs/1log-testdb3.txt
@@ -18,3 +23,7 @@ python3 main.py  --host 127.0.0.1 --user root --db testdb17 --password heslo 2>&
 python3 main.py  --host 127.0.0.1 --user root --db testdb18 --password heslo 2>&1 | tee results/logs/1log-testdb18.txt
 
 
+python3 main.py --host 127.0.0.1 --user root --db extreme_testdb --password heslo 2>&1 | tee results/logs/1log-extreme_testdb.txt
+python3 main.py --host 127.0.0.1 --user root --db extreme_testdb2 --password heslo 2>&1 | tee results/logs/1log-extreme_testdb2.txt
+python3 main.py --host 127.0.0.1 --user root --db extreme_testdb3 --password heslo 2>&1 | tee results/logs/1log-extreme_testdb3.txt
+python3 main.py --host 127.0.0.1 --user root --db extreme_testdb4 --password heslo 2>&1 | tee results/logs/1log-extreme_testdb4.txt
