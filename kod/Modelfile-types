@@ -111,13 +111,15 @@ MESSAGE assistant """types:
 
 
 MESSAGE user """Database samples:
-{"Museum_Exhibits": {"exhibit_id": {"is_pk": true, "db_type": "int", "data_type": "numeric", "seq": "seq(1, 10, 1)"}, "era_code": {"is_pk": false, "db_type": "varchar(6)", "distinct_count_in_sample": 3, "samples": ["ANTIQ", "BAROQ", "GOTHIC"]}, "exhibit_title": {"is_pk": false, "db_type": "varchar(40)", "distinct_count_in_sample": 2, "samples": ["Amber Room Fragment", "Bronze Age Axe"]}}}
+{"Museum_Exhibits": {"exhibit_id": {"is_pk": true, "db_type": "int", "data_type": "numeric", "seq": "seq(1, 10, 1)"}, "opening_times": {"is_pk": false, "db_type": "time", "distinct_count_in_sample": 3, "samples": ["08:00:00", "12:00:00", "13:25:00"]}, "era_code": {"is_pk": false, "db_type": "varchar(6)", "distinct_count_in_sample": 3, "samples": ["ANTIQ", "BAROQ", "GOTHIC"]}, "exhibit_title": {"is_pk": false, "db_type": "varchar(40)", "distinct_count_in_sample": 2, "samples": ["Amber Room Fragment", "Bronze Age Axe"]}}}
 
-Return ONLY the types section starting with 'types:', nothing else. Do not wrap code in markdown block format."""
+Return ONLY the types section starting with 'types:', nothing else.
+Do not wrap code in markdown block format."""
 
 MESSAGE assistant """types:
   Museum_Exhibits:
     exhibit_id: seq(1,10,1)
+    opening_times: regex('([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]')
     era_code:
       - BLOCKS
       - ANTIQ
