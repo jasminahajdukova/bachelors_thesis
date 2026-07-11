@@ -117,33 +117,32 @@ def filter_constraints(constraints_yaml, samples, repair_counts):
     for line in lines:
         if line is None:
             continue
+
         if line.strip() == "constraints: []":
             filtered.append(line)
             continue
+
         stripped_line = line.split()
         if '-' in stripped_line:
             stripped_line.remove('-')
+
         if not stripped_line or line.strip().endswith(":"):
             filtered.append(line)
             continue
+
         if len(stripped_line) < 3:
-            logger_setup.logger.warning(f"Removing LLM output {line.strip()}")
-            repair_counts["invalid_constraint_removed"] += 1 
-            continue
-
-        if " in " in line:
-            logger_setup.logger.warning(f"Removing LLM output {line.strip()}")
-            repair_counts["invalid_constraint_removed"] += 1 
-            continue
-
-        if re.search(r"\b\d{4}-\d{2}-\d{2}\b", line):
-            logger_setup.logger.warning(f"Removing LLM output {line.strip()}")
+            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
             continue
 
         left_side = stripped_line[0].strip("'\"")
         operator = stripped_line[1].lower()
         right_side = " ".join(stripped_line[2:]).strip("'\"") 
+
+        if (operator.strip() in invalid_operators) or (re.search(r"\b\d{4}-\d{2}-\d{2}\b", line)):
+            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+            repair_counts["invalid_constraint_removed"] += 1 
+            continue
 
         if "." in left_side:
             if left_side.split(".")[0] not in samples and left_side[:left_side.index(".")].title() in samples:
@@ -159,7 +158,7 @@ def filter_constraints(constraints_yaml, samples, repair_counts):
         if '-' in stripped_line:
             stripped_line.remove("-")
         if len(stripped_line) < 3:
-            logger_setup.logger.warning(f"Removing LLM output {line.strip()}")
+            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
             continue
 
@@ -167,17 +166,12 @@ def filter_constraints(constraints_yaml, samples, repair_counts):
         operator   = stripped_line[1].lower()
         right_side = " ".join(stripped_line[2:]).strip("'\"")
 
+
         if left_side == right_side:
             logger_setup.logger.warning(f"Removing self-referencing constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
             continue
 
-        full = " ".join(stripped_line[1:]).lower()
-        if any(full.startswith(inv_operator) for inv_operator in invalid_operators):
-            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
-            repair_counts["invalid_constraint_removed"] += 1 
-            continue
-     
         is_numeric = bool(re.match(r'^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$', right_side))
         is_col_ref = '.' in right_side and len(right_side.split('.')) == 2
 
@@ -292,6 +286,8 @@ def go_over_generate(gen_count, samples, generate_content, repair_counts):
                             
                 except (ValueError, IndexError, ZeroDivisionError) as viz:
                     logger_setup.logger.error(f"Seq expected number. Got {sequence}: {viz}")
+            elif sequence:
+                logger_setup.logger.warning(f"Wrong sequence format for table {table_name}: {sequence}")
 
         if num_value != target_value:
             if is_changed:
@@ -895,15 +891,25 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
                 # if wrong format found
                 if wrong_count or invalid_refs_found:
                     # get indent
+                    column_indent = len(line) - len(line.lstrip())
                     indent_str = line[:line.find(column_name)]
-                    # change format to string
-                    output_lines.append(f"{indent_str}{column_name}: string")
+
+                    guessed_type = guess_type_from_db(current_table, column_name, samples)
+                    output_lines.append(f"{indent_str}{column_name}: {guessed_type}")
                     # increment repair_count
                     repair_counts["wrong_format_structure"] += 1
-                    logger_setup.logger.warning(f"[Repair] Wrong format structure at '{current_table}.{column_name}' (Arity mismatch: {wrong_count}, Invalid ref: {invalid_refs_found}). Changed to 'string'.")
-                    i = val_collect_index
-                    while i < len(lines) and lines[i].strip() and (len(lines[i]) - len(lines[i].lstrip())) > 4:
-                        i += 1
+                    logger_setup.logger.warning(f"[Repair] Wrong format structure at '{current_table}.{column_name}' (Arity mismatch: {wrong_count}, Invalid ref: {invalid_refs_found}). Changed to  guessed type {guessed_type}.")
+                    
+                    index = val_collect_index
+                    while index < len(lines):
+                        if not lines[index].strip():
+                            index += 1
+                            continue
+                        current_indent = len(lines[index]) - len(lines[index].lstrip())
+                        if current_indent > column_indent:
+                            index += 1
+                        else:
+                            break
                     continue
         
         # if no errors found, add line to output and move on
@@ -946,7 +952,9 @@ def guess_type_from_db(table: str, columns: str, samples: dict) -> str:
     is_prime_key = column["is_pk"]
 
     is_numeric = any(type_db in db_type for type_db in ["int", "decimal", "float", "double", "numeric"])
+    
     # kontrola time
+    is_just_time = "time" in db_type and "date" not in db_type
     is_date = "date" in db_type or "time" in db_type
 
     # in case its dealing with numeric prime keys
@@ -957,6 +965,10 @@ def guess_type_from_db(table: str, columns: str, samples: dict) -> str:
             return sequence
         logger_setup.logger.warning("Couldn't get seq for prime keys. Inserted seq(1, 10, 1). Change it so it fits your table")
         return "seq(1, 10, 1)"
+    
+    if is_just_time:
+        logger_setup.logger.warning("Couldn't get the right values for time. Inserted regex to get 24H format time. Change it so it fits your table")
+        return "regex('([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]')"
 
     # if data type numeric
     if is_numeric:
@@ -991,7 +1003,7 @@ def guess_type_from_db(table: str, columns: str, samples: dict) -> str:
         date_samples = []
         # get date from samples
         for sample in column_samples:
-            match = re.match(r"^(\d{4}-\d{2}-\d{2})", str(sample))
+            match = re.search(r"^(\d{4}-\d{2}-\d{2})", str(sample).strip())
             if match:
                 date_sample = match.group(1)
                 date_samples.append(date_sample)
