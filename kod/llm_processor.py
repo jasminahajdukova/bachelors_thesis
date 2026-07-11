@@ -106,7 +106,7 @@ def generate_yaml_include(type_content):
     else:
         return "include: []"
 
-def filter_constraints(constraints_yaml, samples, repair_counts):
+def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tables, repair_counts):
 
     if not constraints_yaml:
         return "constraints: []"
@@ -130,6 +130,11 @@ def filter_constraints(constraints_yaml, samples, repair_counts):
             filtered.append(line)
             continue
 
+        if " is " in line:
+            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+            repair_counts["invalid_constraint_removed"] += 1 
+            continue
+
         if len(stripped_line) < 3:
             logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
@@ -139,20 +144,52 @@ def filter_constraints(constraints_yaml, samples, repair_counts):
         operator = stripped_line[1].lower()
         right_side = " ".join(stripped_line[2:]).strip("'\"") 
 
-        if (operator.strip() in invalid_operators) or (re.search(r"\b\d{4}-\d{2}-\d{2}\b", line)):
+        if (operator.strip().lower() in invalid_operators) or (re.search(r"\b\d{4}-\d{2}-\d{2}\b", line)):
             logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
             continue
 
         if "." in left_side:
-            if left_side.split(".")[0] not in samples and left_side[:left_side.index(".")].title() in samples:
-                left_side = left_side[:left_side.index(".")].title() + left_side[left_side.index("."):]
-                line = f"  - {left_side} {operator} {right_side}"
+            left_table, left_column = left_side.split(".", 1)
+
+            if left_table.title() in samples:
+                left_table = left_table.title()
+            
+            elif left_table.lower() in db_table_names:
+                left_table = db_table_names[left_table.lower()]
+
+            left_table_lower = left_table.lower()
+            if left_table_lower in columns_in_tables:
+                left_column_lower = left_column.lower()
+                if left_column_lower in columns_in_tables[left_table_lower]:
+                    correct_column = columns_in_tables[left_table_lower][left_column_lower]
+                    if correct_column != left_column:
+                        left_column = correct_column
+                        repair_counts["schema_value_casing"] += 1
+
+            left_side = f"{left_table}.{left_column}"
+            line      = f"  - {left_side} {operator} {right_side}"
 
         if "." in right_side:
-            if right_side.split(".")[0] not in samples and right_side[:right_side.index(".")].title() in samples:
-                right_side = right_side[:right_side.index(".")].title() + right_side[right_side.index("."):]
-                line = f"  - {left_side} {operator} {right_side}"
+            right_table, right_column = right_side.split(".", 1)
+
+            if right_table.title() in samples:
+                right_table = right_table.title()
+            
+            elif right_table.lower() in db_table_names:
+                right_table = db_table_names[right_table.lower()]
+
+            right_table_lower = right_table.lower()
+            if right_table_lower in columns_in_tables:
+                right_column_lower = right_column.lower()
+                if right_column_lower in columns_in_tables[right_table_lower]:
+                    correct_column = columns_in_tables[right_table_lower][right_column_lower]
+                    if correct_column != right_column:
+                        right_column = correct_column
+                        repair_counts["schema_value_casing"] += 1
+
+            right_side = f"{right_table}.{right_column}"
+            line      = f"  - {left_side} {operator} {right_side}"
 
         stripped_line = line.split()
         if '-' in stripped_line:
@@ -322,22 +359,29 @@ def fix_regex_quoting(types_yaml, repair_counts):
             start, end = re_match.span()
             fixed_line = line[:start] + f"regex('{inner}')" + line[end:]
             results.append(fixed_line)
-            repair_counts["regex_quoting_fix"] +=1
+            if fixed_line != line:
+                repair_counts["regex_quoting_fix"] +=1
 
         elif dinterval_match:
-            date1 = re.split(r"[ T]", dinterval_match.group(1))[0]
-            date2 = re.split(r"[ T]", dinterval_match.group(2))[0]
+            date1 = dinterval_match.group(1)
+            date2 = dinterval_match.group(2)
+
+            date1_clean = re.sub(r"['\"]?", "", date1).replace("T", " ").strip()
+            date2_clean = re.sub(r"['\"]?", "", date2).replace("T", " ").strip()
+
             start, end = dinterval_match.span()
-            fixed_line = line[:start] + f"dinterval({date1}, {date2})" + line[end:]
+
+            fixed_line = line[:start] + f"dinterval({date1_clean}, {date2_clean})" + line[end:]
             results.append(fixed_line)
-            repair_counts["regex_quoting_fix"] +=1
+            if date1_clean != date1 or date2_clean != date2:
+                repair_counts["regex_quoting_fix"] +=1
         else:
             results.append(line)
     return "\n".join(results)
 
 def go_over_schema(schemas, samples, repair_counts):
     current_table = ""
-    new_schema = []
+    new_schema = []           
     schemas_split = schemas.split("\n")
     checked_samples = []
 
@@ -635,7 +679,7 @@ def fix_blocks(lines: list, i: int, line: str, stripped: str, current_table: str
                 return i + 1, True
     return i, False
 
-def fix_types_and_schema(line: str, stripped: str, current_section: str, current_table: str, db_table_names: dict, samples: dict, repair_counts: dict) -> str:
+def fix_types_and_schema(line: str, stripped: str, current_section: str, current_table: str, db_table_names: dict, samples: dict, columns_in_tables: dict, repair_counts: dict) -> str:
 
     # not a column_name: value -> skip
     if ":" not in stripped:
@@ -699,29 +743,41 @@ def fix_types_and_schema(line: str, stripped: str, current_section: str, current
             elif ref_table.lower() in db_table_names:
                 target_table_correct = db_table_names[ref_table.lower()]
 
-            # if correct name is found and doesnt match referenced table name -> fix
-            if target_table_correct and target_table_correct != ref_table:
-                if is_from:
-                    # in case foreign key reference -> adds FROM 
-                    new_value = f"FROM {target_table_correct}.{ref_column}" 
-                else:
-                    new_value = f"{target_table_correct}.{ref_column}"
+            target_column_correct = ref_column
 
+            # if correct name is found and doesnt match referenced table name -> fix
+            if target_table_correct:
+                table_name_lower = target_table_correct.lower()
+
+                if table_name_lower in columns_in_tables:
+                    column_name_lower = ref_column.lower()
+                    if column_name_lower in columns_in_tables[table_name_lower]:
+                        target_column_correct = columns_in_tables[table_name_lower][column_name_lower]
+
+                if target_table_correct != ref_table or target_column_correct != ref_column:
+                    if is_from:
+                        new_value = f"FROM {target_table_correct}.{target_column_correct}"
+                    else:
+                        new_value = f"{target_table_correct}.{target_column_correct}"
+
+                    repair_counts["schema_value_casing"] += 1
+                    # return fixed line
+                    return f"{indent}{column_name}: {new_value}"
+                
+            if target_table_correct is None and current_table and not is_from:
+                current_table_lower = current_table.lower()
+                if current_table_lower in columns_in_tables:
+                    column_lower = ref_column.lower()
+                    if column_lower in columns_in_tables[current_table_lower]:
+                        target_column_correct = columns_in_tables[current_table_lower][column_lower]
+                
+                new_value = f"{current_table}.{target_column_correct}"
                 # increment repair count
                 repair_counts["schema_value_casing"] += 1
                 # return fixed line
                 return f"{indent}{column_name}: {new_value}"
             
-            # in case correct name of table not found 
-            # also not case of foreign key reference
-            if target_table_correct is None and current_table and not is_from:
-                # incerement repair_count
-                repair_counts["schema_value_casing"] +=1
-                # LLM must have made a mistake and fix is issued
-                logger_setup.logger.warning(f"[Repair] Unknown table '{ref_table}' in schema value -> '{current_table}'")
-                return f"{indent}{column_name}: {current_table}.{ref_column}"
-    
-    # line wet through all those checks nothing was fixed 
+    # line went through all those checks nothing was fixed 
     # so unchanged line is returned
     return line
 
@@ -849,23 +905,41 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
                 value_lines_indexes = []
                 val_collect_index = values_line_index + 1
                 # if any values found -> collect them and move onto the next one
+                expected_indent = None
+                if val_collect_index < len(lines) and lines[val_collect_index].strip().startswith("-"):
+                    expected_indent = len(lines[val_collect_index]) - len(lines[val_collect_index].lstrip()) 
+                
+                has_weird_indents = False
+
                 while val_collect_index < len(lines) and lines[val_collect_index].strip().startswith("-"):
-                    value_lines_indexes.append(val_collect_index)
+                    current_indent = len(lines[val_collect_index]) - len(lines[val_collect_index].lstrip()) 
+
+                    if expected_indent is not None:
+                        if current_indent == expected_indent:
+                            value_lines_indexes.append(val_collect_index)
+                        elif current_indent > expected_indent:
+                            has_weird_indents = True
+
                     val_collect_index += 1
                 
                 found_refs = []
+                has_blocks_placeholder = False
+
                 # go over found values under 'values:'
                 for index in value_lines_indexes:
                     # remove any whitespaces and quotes
                     val_raw = lines[index].strip()[1:].strip().strip("'\"")
                     # ignore BLOCKS and add to list of oxtracted refs
-                    if val_raw.upper() != "BLOCKS" and val_raw != "":
+                    if val_raw.upper() == "BLOCKS":
+                        has_blocks_placeholder = True
+                    elif val_raw != "":
                         found_refs.append(val_raw)
-                        
+                
+                num_format_filled = len(found_refs) + (1 if has_blocks_placeholder else 0)
                 # count number of {} inside format
                 exp_format_count = len(re.findall(r"\{\}", format_content))
                 # check if number of {} and number of values under 'values:' match
-                wrong_count = (exp_format_count > 0 and len(found_refs) != exp_format_count)
+                wrong_count = (exp_format_count > 0 and num_format_filled != exp_format_count) or has_weird_indents
                 
                 # go over every reference inside extracted refs
                 invalid_refs_found = False
@@ -881,9 +955,8 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
                     # kontrola ci je to spravne
                     else:
                         
-                        is_valid = (ref in AVAILABLE_INCLUDES) or \
-                                   (current_table in samples and ref in samples[current_table]) or \
-                                   (current_table in found_columns and ref in found_columns[current_table])
+                        is_valid = (ref in AVAILABLE_INCLUDES) or (current_table in samples and ref in samples[current_table]) or (current_table in found_columns and ref in found_columns[current_table])
+                        
                         if not is_valid:
                             invalid_refs_found = True
                             break
@@ -910,6 +983,7 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
                             index += 1
                         else:
                             break
+                    i = index
                     continue
         
         # if no errors found, add line to output and move on
@@ -1003,12 +1077,33 @@ def guess_type_from_db(table: str, columns: str, samples: dict) -> str:
         date_samples = []
         # get date from samples
         for sample in column_samples:
-            match = re.search(r"^(\d{4}-\d{2}-\d{2})", str(sample).strip())
-            if match:
-                date_sample = match.group(1)
-                date_samples.append(date_sample)
+            sample_str = str(sample).strip() if sample is not None else ""
+            if not sample_str:
+                continue
+
+            date_time_match = re.search(r"^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})", sample_str)
+            if date_time_match:
+                date_samples.append(f"{date_time_match.group(1)} {date_time_match.group(2)}")
+                continue
+
+            date_match = re.search(r"^(\d{4}-\d{2}-\d{2})", sample_str)
+            if date_match:
+                date_samples.append(date_match.group(1))
+
         if date_samples:
-            return f"dinterval({min(date_samples)}, {max(date_samples)})"
+            min_date = min(date_samples)
+            max_date = max(date_samples)
+
+            if min_date == max_date:
+                if " " in max_date:
+                    new_max_date = datetime.strptime(max_date, "%Y-%m-%d %H:%M:%S")
+                    max_date     = (new_max_date + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+
+                else:
+                    new_max_date = datetime.strptime(max_date, "%Y-%m-%d")
+                    max_date     = (new_max_date + timedelta(days=1)).strftime("%Y-%m-%d") 
+            return f"dinterval({min_date}, {max_date})"
+        
         logger_setup.logger.warning("Couldn't get values for dinterval. Inserted dinterval(2026-06-01, 2026-06-30). Change it so it fits your table")
         return "dinterval(2026-06-01, 2026-06-30)"
 
@@ -1072,8 +1167,12 @@ def fill_in_missing_columns(yaml_str: str, samples: dict, repair_counts: dict) -
 def remove_unused_types(yaml_str: str, samples: dict, repair_counts: dict) -> str:
     
     lines = yaml_str.splitlines()
-    used_in_schema = []
+    used_in_schema       = []
+    used_in_values       = []
+    used_in_constraints = []
     found_section = None
+
+    operators = ["<=", ">=", "!=", "=", "<", ">"]
 
     # go over lines in YAML
     for line in lines:
@@ -1096,12 +1195,33 @@ def remove_unused_types(yaml_str: str, samples: dict, repair_counts: dict) -> st
             # if table.column saves into used_in_schema
             if "." in value and value not in used_in_schema:
                 used_in_schema.append(value)
+        
+        elif found_section == "constraints" and section.startswith("-"):
+            line_clean = section.strip("- ")
 
-    # go over lines and find active values
-    used_in_values = []
-    for line in lines:
-        if line.strip().startswith("-"):
-            value = line.strip()[1:].strip().strip("'\"")
+            values_in_constraints = []
+            if not line_clean:
+                continue
+
+            for operator in operators:
+                if operator in line_clean:
+                    constraint_split = line_clean.split(operator, 1)
+                    values_in_constraints = [constraint_split[0].strip(), constraint_split[1].strip()]
+                    break
+
+            
+            if not values_in_constraints:
+                continue
+
+            for value in values_in_constraints:
+                value_clean = value.strip("'\"")
+
+                if "." in value_clean and value_clean not in used_in_constraints:
+                    used_in_constraints.append(value_clean)
+
+
+        elif found_section == "generate" and section.startswith("-"):
+            value = section[1:].strip().strip("'\"")
             if "." in value and value not in used_in_values:
                 used_in_values.append(value)
 
@@ -1150,7 +1270,9 @@ def remove_unused_types(yaml_str: str, samples: dict, repair_counts: dict) -> st
                 # does exist in values or email domains
                 is_in_refs = f"{current_table}.{column_name}" in used_in_values or column_name == "email_domains"
 
-                if not is_in_samples and not is_in_schema and not is_in_refs:
+                is_in_constraints = f"{current_table}.{column_name}" in used_in_constraints
+
+                if not is_in_samples and not is_in_schema and not is_in_refs and not is_in_constraints:
                     # increment repair_count
                     repair_counts["unused_types_removed"] += 1
                     logger_setup.logger.warning(f"[Repair] Removed redundant type: '{current_table}.{column_name}'")
@@ -1212,7 +1334,7 @@ def fix_pk_seq(yaml_str: str, samples: dict, fk_map: dict, repair_counts) -> str
     return "\n".join(output_lines)
 
 
-def fix_generated_yaml(yaml_str: str, samples: dict, repair_counts) -> tuple[str, dict[str, int]]:
+def fix_generated_yaml(yaml_str: str, samples: dict, columns_in_tables, repair_counts) -> tuple[str, dict[str, int]]:
     # if no YAML was generated
     if not yaml_str:
         return yaml_str, repair_counts
@@ -1335,7 +1457,7 @@ def fix_generated_yaml(yaml_str: str, samples: dict, repair_counts) -> tuple[str
                 continue
         
         # if not fixed aboove -> send to fix_types_and_schema
-        line = fix_types_and_schema(line, stripped, current_section, current_table, db_table_names, samples, repair_counts)   
+        line = fix_types_and_schema(line, stripped, current_section, current_table, db_table_names, samples, columns_in_tables, repair_counts)   
         repaired_lines.append(line)
         i += 1
 
@@ -1352,176 +1474,192 @@ def fix_generated_yaml(yaml_str: str, samples: dict, repair_counts) -> tuple[str
     # return final_yaml and repair_counts
     return final_yaml, repair_counts
 
+
+
 def fix_interval_number(types_yaml, repair_counts):
 
     result = []
     lines = types_yaml.splitlines()
 
+    param_pattern = r"(dinterval|finterval|interval|seq|str_len)\(([^)]*)\)"
+
     for line in lines:
         # go over lines and split the by :
-        line_split = line.split(":", 1)
+        line_match = re.search(param_pattern, line)
 
-        if len(line_split) < 2:
+        if not line_match:
             result.append(line)
             continue
-        
-        # get column name and data type inside column name
-        column_name = line_split[0].strip()
-        data_type = line_split[1].strip().strip("'\"")
+
+        data_type_name = line_match.group(1)
+        inside_nums = line_match.group(2)
         
         # if found d/f/interval, seq or strl_len data type to check
-        if data_type.startswith(("interval(", "finterval(", "dinterval(", "seq(", "str_len(")):
-            # get name of data_type
-            data_type_name = data_type.split("(")[0]
-            # get index so it can get values inside brackets
-            start_index = data_type.find("(")
-            end_index  = data_type.find(")")
+
+
+        # split numbers by , and remove whitespace
+        args_split = [arg.strip() for arg in inside_nums.split(",") if arg.strip()]
+
+        if len(args_split) < 1:
+            result.append(line)
+            continue
+
+        is_valid = False
+        step_value = ""
+        min_value = args_split[0].replace(" ","").strip("'\"")
+        max_value = args_split[1].replace(" ","").strip("'\"") if len(args_split) >= 2 else ""
+
             
-            inside_nums = data_type[start_index + 1: end_index]
-
-            # split numbers by , and remove whitespace
-            args_split = [arg.strip() for arg in inside_nums.split(",") if arg.strip()]
-            if len(args_split) < 1:
-                result.append(line)
-                continue
-
-            # get indent
-            indent = line[:line.find(column_name)]
-            # if data type has more than 2 arguments, LLM mixed it up with seq
-            is_valid = False
-            step_value = ""
-            min_value = args_split[0].replace(" ","")
-            max_value = args_split[1].replace(" ","") if len(args_split) >= 2 else ""
-  
+        if data_type_name == "str_len":
+            try:
                 
-            if data_type_name == "str_len":
-                try:
-                    
-                    if len(args_split) == 1:
-                        arg_raw = args_split[0].strip()
-
-                        match = re.search(r"(\[[cCdsS\s]+\])", arg_raw)
-                        prefix = match.group(1).replace(" ", "") if match else ""
-
-                        value = re.sub(r"\[.*?\]", "", arg_raw).strip()
-
-                        operator_match = re.search(r"(>=|>|<=|<)", value)
-                        operator = operator_match.group(1) if operator_match else ""
-
-                        digit_match = re.search(r"(\d+)", value)
-                        if digit_match:
-                            number = digit_match.group(1)
-                            if prefix:
-                                full_value = f"{prefix} {operator}{number}".strip() 
-                            else:
-                                full_value = f"{operator}{number}"
-
-                            min_value = full_value
-                            is_valid = True
-                        else:
-                            min_value = "1"
-                            is_valid = True
-                    
-                    elif len(args_split) > 1:
-                        min_raw   = min_value.replace("[", "").replace("]", "").strip()
-                        match  = re.match(r"^([cCdsS ]+)", min_raw)
-                        prefix = match.group(1).strip() if match else ""
-
-                        min_value = re.sub(r"[^\d]", "", min_raw).strip()
-
-                        max_raw   = max_value.replace("[", "").replace("]", "").strip()
-                        max_value = re.sub(r"[^\d]", "", max_raw).strip()
-
-                        if not min_value or not max_value:
-                            logger_setup.logger.warning(f"No valid numbers found inside str_len. Replace with placeholder values str_len(1,10). Please replace them if needed")
-                            min_value = "1"
-                            max_value = "10"
-
-                        if int(min_value) > int(max_value):
-                            min_value, max_value = max_value, min_value
-                        
-                        is_valid = (int(min_value) <= int(max_value))
-                        if prefix:
-                            prefix = prefix.replace(" ", "")
-                            if prefix:
-                                min_value = f"[{prefix}]{min_value}"
-                        
-                except ValueError:
-                    is_valid = False 
-
-            elif data_type_name == "seq":
-                step_value = args_split[2] if len(args_split) >= 3 else "1"
-                try:
-
-                    if len(args_split) == 1:
-                        max_value = str(int(min_value) + 1)
-
-                    if (int(min_value) > int(max_value)):
-                        min_value, max_value = max_value, min_value
-
-                    if (int(step_value) <= 0):
-                        step_value = "1"
-                    is_valid = (int(min_value) < int(max_value)) and int(step_value) > 0
-
-                except ValueError:
-                    is_valid = False
-            # if dates -> get min max values, compare them
-                
-            elif data_type_name == "dinterval":
                 if len(args_split) == 1:
-                    try:
-                        date = datetime.strptime(min_value, "%Y-%m-%d")
-                        max_value = (date + timedelta(days = 1)).strftime("%Y-%m-%d")
+                    arg_raw = args_split[0].strip()
+
+                    match = re.search(r"(\[[cCdsS\s]+\])", arg_raw)
+                    prefix = match.group(1).replace(" ", "") if match else ""
+
+                    value = re.sub(r"\[.*?\]", "", arg_raw).strip()
+
+                    operator_match = re.search(r"(>=|>|<=|<)", value)
+                    operator = operator_match.group(1) if operator_match else ""
+
+                    digit_match = re.search(r"(\d+)", value)
+                    if digit_match:
+                        number = digit_match.group(1)
+                        if prefix:
+                            full_value = f"{prefix} {operator}{number}".strip() 
+                        else:
+                            full_value = f"{operator}{number}"
+
+                        min_value = full_value
                         is_valid = True
-                    except ValueError:
-                        is_valid = False
-                else:
-                    is_valid = True
+                    else:
+                        min_value = "1"
+                        is_valid = True
+                
+                elif len(args_split) > 1:
+                    min_raw   = min_value.replace("[", "").replace("]", "").strip()
+                    match  = re.match(r"^([cCdsS ]+)", min_raw)
+                    prefix = match.group(1).strip() if match else ""
 
-                if is_valid:
-                    if min_value > max_value:
+                    min_value = re.sub(r"[^\d]", "", min_raw).strip()
+
+                    max_raw   = max_value.replace("[", "").replace("]", "").strip()
+                    max_value = re.sub(r"[^\d]", "", max_raw).strip()
+
+                    if not min_value or not max_value:
+                        logger_setup.logger.warning(f"No valid numbers found inside str_len. Replace with placeholder values str_len(1,10). Please replace them if needed")
+                        min_value = "1"
+                        max_value = "10"
+
+                    if int(min_value) > int(max_value):
                         min_value, max_value = max_value, min_value
-                    is_valid = (min_value < max_value)
+                    
+                    is_valid = (int(min_value) <= int(max_value))
+                    if prefix:
+                        prefix = prefix.replace(" ", "")
+                        if prefix:
+                            min_value = f"[{prefix}]{min_value}"
+                    
+            except ValueError:
+                is_valid = False 
+
+        elif data_type_name == "seq":
+            step_value = args_split[2] if len(args_split) >= 3 else "1"
+            try:
+
+                if len(args_split) == 1:
+                    max_value = str(int(min_value) + 1)
+
+                if (int(min_value) > int(max_value)):
+                    min_value, max_value = max_value, min_value
+
+                if (int(step_value) <= 0):
+                    step_value = "1"
+                is_valid = (int(min_value) < int(max_value)) and int(step_value) > 0
+
+            except ValueError:
+                is_valid = False
+        # if dates -> get min max values, compare them
             
-            #if int -> convert to int, get min max value and compare them    
-            elif data_type_name == "interval":
+        elif data_type_name == "dinterval":
+
+            if len(args_split) == 1:
                 try:
-                    if len(args_split) == 1:
-                        max_value = str(int(min_value) + 1)
-             
-                    if (int(min_value) > int(max_value)):
-                        min_value, max_value = max_value, min_value
-        
-                    is_valid = (int(min_value) < int(max_value))
+                    date = datetime.strptime(min_value, "%Y-%m-%d")
+                    max_value = (date + timedelta(days = 1)).strftime("%Y-%m-%d")
+                    is_valid = True
                 except ValueError:
                     is_valid = False
-            #if float -> convert to int, get min max value and compare them
-
             else:
-                try:
-                    if len(args_split) == 1:
-                        max_value = str(float(min_value) + 1.0)
-                    if (float(min_value) > float(max_value)):
-                        min_value, max_value = max_value, min_value
-                    is_valid = (float(min_value) < float(max_value))
+                min_value = re.sub(r"[T]", " ", min_value)
+                max_value = re.sub(r"[T]", " ", max_value)
+                is_valid = True
 
-                except ValueError:
-                    is_valid = False
-            # if conversion passed or min < max add fixed line to the rest of lines
             if is_valid:
-                args_list = [value for value in [min_value, max_value, step_value] if value != ""]
-                # mention repairs only if it is worth mentioning (removal of whtespaces is not)
-                if args_split != args_list:
-                    logger_setup.logger.warning(f"[Repair] Fixed invalid numbers inside {data_type_name}")
-                    repair_counts["interval_num_fix"] += 1
-                fixed_line = f"{indent}{column_name}: {data_type_name}({','.join(args_list)})"
-                result.append(fixed_line)
-                continue
+                if min_value > max_value:
+                    min_value, max_value = max_value, min_value
+                is_valid = (min_value < max_value)
         
-
-        result.append(line)
-
+        #if int -> convert to int, get min max value and compare them    
+        elif data_type_name == "interval":
+            try:
+                if len(args_split) == 1:
+                    max_value = str(int(min_value) + 1)
+            
+                if (int(min_value) > int(max_value)):
+                    min_value, max_value = max_value, min_value
     
+                is_valid = (int(min_value) < int(max_value))
+            except ValueError:
+                time_pattern = r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
+
+                is_min_time = bool(re.match(time_pattern, min_value))
+                is_max_time = bool(re.match(time_pattern, max_value)) if max_value else True
+
+                if is_min_time and is_max_time:
+                    time_regex = "'([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]'"
+                    fixed_line = f"regex({time_regex})"
+                    logger_setup.logger.warning(f"[Repair] Fixed hallucinated numbers inside {data_type_name}. Changed to time regex")
+                    repair_counts["interval_num_fix"] += 1
+
+                    start, end = line_match.span()
+                    fixed_line = line[:start] + fixed_line + line[end:]
+                    result.append(fixed_line)
+                    continue
+                else:
+                    result.append(line)
+                    continue
+        #if float -> convert to int, get min max value and compare them
+
+        else:
+            try:
+                if len(args_split) == 1:
+                    max_value = str(float(min_value) + 1.0)
+                if (float(min_value) > float(max_value)):
+                    min_value, max_value = max_value, min_value
+                is_valid = (float(min_value) < float(max_value))
+
+            except ValueError:
+                is_valid = False
+        # if conversion passed or min < max add fixed line to the rest of lines
+        if is_valid:
+            args_list = [value for value in [min_value, max_value, step_value] if value != ""]
+            # mention repairs only if it is worth mentioning (removal of whtespaces is not)
+            if args_split != args_list:
+                logger_setup.logger.warning(f"[Repair] Fixed invalid numbers inside {data_type_name}")
+                repair_counts["interval_num_fix"] += 1
+            
+            start, end = line_match.span()
+            fixed_line = f"{data_type_name}({','.join(args_list)})"
+            fixed_line = line[:start] + fixed_line + line[end:]
+            result.append(fixed_line)
+            continue
+        else:
+            result.append(line)
+    
+
     return "\n".join(result)
 
 
@@ -1565,6 +1703,12 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
     logger_setup.logger.info(f"FK_MAP = {fk_map}")
     sorted_table_names = sort_tables_multi_level(fk_map)
     sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
+
+    columns_in_tables = {} 
+    for table_name, table_data in samples.item():
+        columns_in_tables[table_name.lower()] = {column.lower(): column for column in table_data.keys()}
+
+    db_table_names = {table.lower(): table for table in samples.keys()}
 
     repair_counts = {
         "include_generated": 0,
@@ -1620,7 +1764,7 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
     schema_filtered      = apply_fk_to_schema(schema_raw, fk_map, repair_counts)
     schema_filtered      = go_over_schema(schema_filtered, samples, repair_counts)
     generate_filtered    = go_over_generate(gen_count, samples, generate_raw, repair_counts)
-    constraints_filtered = filter_constraints(constraints_raw, samples, repair_counts)
+    constraints_filtered = filter_constraints(constraints_raw, samples, db_table_names, columns_in_tables, repair_counts)
     
     filtered_yaml = (
         f"{include_filtered}\n"
@@ -1630,8 +1774,13 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
         f"{constraints_filtered}"
     )
 
-    fixed_yaml, repair_counts = fix_generated_yaml(filtered_yaml, samples, repair_counts)
+    fixed_yaml, repair_counts = fix_generated_yaml(filtered_yaml, samples, columns_in_tables, repair_counts)
+
+    fixed_yaml = fix_regex_quoting(fixed_yaml, repair_counts)
+    fixed_yaml = fix_interval_number(fixed_yaml, repair_counts)
+    
     fixed_yaml = fix_pk_seq(fixed_yaml, samples, fk_map, repair_counts)
+    
     yaml_generator.save_original_yaml(raw_yaml, db_name)
     save_repair_report_to_csv(repair_counts, db_name)
 
