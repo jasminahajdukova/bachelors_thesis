@@ -126,10 +126,10 @@ def validate_yaml(db_name: str, yaml_str: str, samples: dict) -> list[YAML_resul
         errors += validate_constraints(db_name, constraints_section, types_section)
     
     # if no major errors occured during the validation -> yaml is saved
-    if all(result.severity != 1 for result in errors):
-        save_yaml(yaml_str, db_name)
+    if any(result.severity == 1 for result in errors):
+        logger_setup.logger.error(f"Found critical error(s)")            
     else:
-        logger_setup.logger.error(f"Found critical error(s)")    
+        save_yaml(yaml_str, db_name)
 
     return errors
 
@@ -460,16 +460,30 @@ def check_param(db_name, value) -> list[YAML_result]:
             logger_setup.logger.error(f"Dinterval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Dinterval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")) 
             return errors
-        try:
-            # convert to date
-            date1 = datetime.strptime(args[0].strip("'"), "%Y-%m-%d")
-            date2 = datetime.strptime(args[1].strip("'"),"%Y-%m-%d")
-        except ValueError as ve:
-            logger_setup.logger.error(f"Invalid value inside dinterval. Got {args}. {ve}")
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside dinterval. Got {args}. {ve}"))
+        date1, date2 = None, None
+        
+        for date_format in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]:
+            try:
+                # convert to date
+                    date1 = datetime.strptime(args[0].strip("'\" "), date_format)
+                    break
+            except ValueError:
+                continue
+
+        for date_format in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]:
+            try:
+                # convert to date
+                    date2 = datetime.strptime(args[1].strip("'\" "), date_format)
+                    break
+            except ValueError:
+                continue
+
+        if date1 is None or date2 is None:
+            logger_setup.logger.error(f"Invalid value inside dinterval. Got {args}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside dinterval. Got {args}"))
             return errors
         # if first date is later than the second date or the same date
-        if date1 >= date2:
+        if  date1 >= date2:
             logger_setup.logger.error(f"Invalid value inside dinterval. Got {args}")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside dinterval. Got {args}"))
             return errors
