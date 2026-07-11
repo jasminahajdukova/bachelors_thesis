@@ -288,9 +288,12 @@ def main():
                 fk_cols = {row[0] for row in fk_buff if row and row[0]}
 
                 is_pure_mn = len(prime_keys) > 1 and all (pk in fk_cols for pk in prime_keys)
+        
                 if not is_pure_mn:
+
                     if t_name not in valid_tables:
                         valid_tables.append(t_name)
+
             except Exception as  exc:
                 logger_setup.logger.error(f"Prepass failed for table: {t_name}: {exc}")
                 errors.append(yaml_generator.YAML_result(db_name, f"prepass:{t_name}", "table_prepass_failed", 2, f"Prepass failed for table: {t_name}: {exc}"))
@@ -308,9 +311,9 @@ def main():
                 fk_result = get_result(db_name, table_name, server, "foreign_keys")
                 fk_columns = {row[0] for row in fk_result if row and row[0]}
 
+            
                 if len(prime_keys) > 1 and all(pk in fk_columns for pk in prime_keys):
                     logger_setup.logger.warning( f"""Table {table_name} is a pure M:N. This is excluded as it is out of scope""")
-                    
                     errors.append(yaml_generator.YAML_result(db_name, "preprocessing", "composite_pk", 2, f"""Table {table_name} has composite pk {prime_keys}. This is excluded from generating as it is out of scope""" ))
                     continue
                 
@@ -333,6 +336,12 @@ def main():
                     continue
 
                 row_count = count_result[0][0]
+
+                if row_count == 0:
+                    logger_setup.logger.warning(f"Table {table_name} appears to be empty. This table is excluded from generating as there is no data to analyse")
+                    errors.append(yaml_generator.YAML_result(db_name, "preprocessing", "empty_table", 2, f"Table {table_name} appears to be empty. This table is excluded from generating as there is no data to analyse"))
+                    continue
+
                 limit = data_sampler.calculate_limit(row_count)
 
                 logger_setup.logger.debug("Entering second column loop")
