@@ -7,12 +7,22 @@ import logger_setup
 def json_decimal(dec):
     if dec is None:
         return None
+    
     if isinstance(dec, Decimal):
         return float(dec)
-    if isinstance(dec, (datetime.date, datetime.datetime)):
+    
+    if isinstance(dec, datetime.datetime):
+        return dec.isoformat(sep=" ")
+    
+    if isinstance(dec, datetime.date):
         return dec.isoformat()
+    
     if isinstance(dec, datetime.timedelta):
-        return str(dec)
+        total_seconds = int(dec.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
     if isinstance(dec, (str, int, float)):
         return dec
     raise TypeError(f"Object of type {type(dec)} is not JSON serializable")
