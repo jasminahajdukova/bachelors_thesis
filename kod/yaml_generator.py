@@ -302,6 +302,31 @@ def validate_seq(db_name, generate, types) -> list[YAML_result]:
     
 def check_param(db_name, value) -> list[YAML_result]:
     errors = []
+    
+    value_raw = value.strip()
+
+    if value_raw.startswith("regex"):
+        start_index = value_raw.find("(")
+        end_index   = value_raw.rfind(")")
+
+        if start_index == -1 or end_index == -1:
+            logger_setup.logger.error(f"Invalid regex. Missing brackets in: {value}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid regex. Missing brackets in: {value}"))
+            return errors
+
+        re_pattern = value_raw[start_index + 1 : end_index].strip("'\"")
+        try:
+            # checks if at if there is at least one arg
+            if not re_pattern:
+                raise IndexError("Missing args")
+            #validates pattern -> in case its wrong an error is thrown
+            re.compile(re_pattern)
+        
+        except (re.error, IndexError) as eir:
+            logger_setup.logger.error(f"Invalid regex pattern inside regex. Got: {value}. {eir}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid regex pattern inside regex. Got: {value}. {eir}"))
+            return errors
+
     # splits value by commas and brackets
     value_split = re.split(r"\s*[\(\),]\s*", value)
 
@@ -310,25 +335,8 @@ def check_param(db_name, value) -> list[YAML_result]:
     args = value_split[1:]
     args = [arg for arg in args if arg.strip()]
 
-    if function_name == "regex":
-        try:
-            # checks if at if there is at least one arg
-            if not args or not args[0].strip():
-                raise IndexError("Missing args")
-            
-            #removes quotes from pattern
-            regex_pattern = args[0].strip("'\"")
-
-            #validates pattern -> in case its wrong an error is thrown
-            re.compile(regex_pattern)
-        
-        except (re.error, IndexError) as eir:
-            logger_setup.logger.error(f"Invalid regex pattern inside regex. Got: {args}. {eir}")
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid regex pattern inside regex. Got: {args}. {eir}"))
-            return errors
-
     # interval(min, max)
-    elif function_name == "interval":
+    if function_name == "interval":
         # get all arguments and skip " " 
         
         if len(args) != 2:
