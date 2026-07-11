@@ -314,7 +314,7 @@ def check_param(db_name, value) -> list[YAML_result]:
         try:
             # checks if at if there is at least one arg
             if not args or not args[0].strip():
-                raise IndexError
+                raise IndexError("Missing args")
             
             #removes quotes from pattern
             regex_pattern = args[0].strip("'\"")
@@ -322,9 +322,9 @@ def check_param(db_name, value) -> list[YAML_result]:
             #validates pattern -> in case its wrong an error is thrown
             re.compile(regex_pattern)
         
-        except (re.error, IndexError):
-            logger_setup.logger.error(f"Invalid regex pattern inside regex. Got: {args}")
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid regex pattern inside regex. Got: {args}" ))
+        except (re.error, IndexError) as eir:
+            logger_setup.logger.error(f"Invalid regex pattern inside regex. Got: {args}. {eir}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid regex pattern inside regex. Got: {args}. {eir}"))
             return errors
 
     # interval(min, max)
@@ -334,6 +334,7 @@ def check_param(db_name, value) -> list[YAML_result]:
         if len(args) != 2:
             logger_setup.logger.error(f"Interval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Interval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")) 
+            return errors
         try:
             # checks if its a float or table.column
             if any("." in str(arg) for arg in  args):
@@ -353,40 +354,51 @@ def check_param(db_name, value) -> list[YAML_result]:
         if value1 >= value2:
             logger_setup.logger.error("Min value of interval exceeds the max value")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, "Min value of interval exceeds the max value"))
+            return errors
 
     # finterval(min, max)
     elif function_name == "finterval":
         if len(args) != 2:
             logger_setup.logger.error(f"Finterval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Finterval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")) 
+            return errors
         try:
             # converts to float -> error is thrown if it cannot be converted
             value1 = float(args[0])
             value2 = float(args[1])
-        except (ValueError, IndexError):
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Finterval expects two floats. Instead got {args}"))
+        except (ValueError, IndexError) as vie:
+            logger_setup.logger.error(f"{str(vie)}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"{str(vie)}"))
             return errors
         
         # in case finterval(min, max), where min is greater than max
         if value1 >= value2:
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, "Min value of finterval exceeds the max value"))
+            logger_setup.logger.error(f"Min value: {value1} of finterval exceeds or is equal to the max value: {value2}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Min value: {value1} of finterval exceeds or is equal to the max value: {value2}"))
+            return errors
     
     # seq(min, max, step)
     elif function_name == "seq":
         if len(args) != 3:
             logger_setup.logger.error(f"Seq got more arguments than expected. Got {len(args)}: {args}. Expected 3.")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Seq got more arguments than expected. Got {len(args)}: {args}. Expected 3.")) 
+            return errors
+        
         try:
             # converts to int -> error is thrown if it cannot be converted
             value1 = int(args[0])
             value2 = int(args[1])
             value3 = int(args[2]) if len(args) > 2 else 1
         except (ValueError, IndexError):
+            logger_setup.logger.error(f"Seq expects three integers. Instead got {args}")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Seq expects three integers. Instead got {args}"))
             return errors
+        
         # in case seq(min, max, step), where min is greater than max or step is a negative number
         if value1 >= value2 or value3 <= 0:
+            logger_setup.logger.error(f"Invalid value inside seq(x,y,z). Got {args}")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside seq(x,y,z). Got {args}"))
+            return errors
 
     #str_len([...] min, max)
     elif function_name == "str_len":
@@ -439,16 +451,20 @@ def check_param(db_name, value) -> list[YAML_result]:
         if len(args) != 2:
             logger_setup.logger.error(f"Dinterval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Dinterval got more arguments than expected. Got {len(args)}: {args}. Expected 2.")) 
+            return errors
         try:
             # convert to date
             date1 = datetime.strptime(args[0].strip("'"), "%Y-%m-%d")
             date2 = datetime.strptime(args[1].strip("'"),"%Y-%m-%d")
-        except ValueError:
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside dinterval. Got {args}"))
+        except ValueError as ve:
+            logger_setup.logger.error(f"Invalid value inside dinterval. Got {args}. {ve}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside dinterval. Got {args}. {ve}"))
             return errors
         # if first date is later than the second date or the same date
         if date1 >= date2:
+            logger_setup.logger.error(f"Invalid value inside dinterval. Got {args}")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid value inside dinterval. Got {args}"))
+            return errors
 
     return errors
 
@@ -649,6 +665,7 @@ def validate_generate(db_name, generate: list, types_section) -> list[YAML_resul
         value = value.strip()
         # if empty row in generate
         if not value:
+            logger_setup.logger.error("Generate section contains an empty row")
             errors.append(YAML_result(db_name, "generate", "invalid_generate", 1, "Generate section contains an empty row"))
             continue
         
@@ -698,43 +715,44 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
     # expected table.column
     if len(typename) < 2:
         logger_setup.logger.error(f"Malformed constraint column format (missing dot): {constraint}")
-        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Malformed constraint target: {constraint}"))
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, f"Malformed constraint target: {constraint}"))
         return errors
     
 
     table_name  = typename[0]
     column_name = typename[1] 
     operator    = con_split[1]
-    value       = str(con_split[2]).strip() 
+    value       = str(con_split[2]).strip().strip("'\"")
 
     # check if table exists
     if table_name not in types_section:
         logger_setup.logger.error(f"Invalid constraint: table '{table_name}' not found in types section.")
-        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid constraint {constraint}"))
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, f"Invalid constraint {constraint}"))
         return errors
 
     #check if operator is valid
     if operator not in ["=", "!=", "<", ">", "<=", ">="]:
         logger_setup.logger.error(f"Invalid operator {operator}: {constraint}")
-        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid constraint {constraint}"))
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, f"Invalid constraint {constraint}"))
         return errors
 
     # checks if value is num
     num_pattern = r"^[-+]?\d+(?:\.\d+)?$"
     is_num      = bool(re.match(num_pattern, value))
+    is_date     = bool(re.match(r"^\d{4}-\d{2}-\d{2}$", value))
     # if not its probably another table.column
-    value_split = value.split(".") if ("." in value and not is_num) else []
+    value_split = value.split(".") if ("." in value and not is_num and not is_date) else []
 
     # if neither num or table.column
-    if not is_num and not value_split:
+    if not is_num and not value_split and not is_date:
         logger_setup.logger.error(f"Invalid constraint value (neither number nor column reference): {constraint}")
-        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid constraint value: {constraint}"))
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, f"Invalid constraint value: {constraint}"))
         return errors
      
     # check if column inside table
     if column_name not in types_section[table_name]:
         logger_setup.logger.error(f"Constraint column {column_name} does not exist in types section")
-        errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Constraint column {column_name} does not exist in types section"))
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Constraint column {column_name} does not exist in types section"))
         return errors
 
     # if other value was table.column
@@ -742,7 +760,7 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
         # but the format is not table.column
         if len(value_split) != 2:
             logger_setup.logger.error(f"Malformed column reference in constraint value: {value}")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Malformed reference: {value}"))
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, f"Malformed reference: {value}"))
             return errors
         
         # get table and column
@@ -752,7 +770,7 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
         # and check if table exists and column is inside talbe
         if val_table not in types_section or val_col not in types_section[val_table]:
             logger_setup.logger.error(f"Referenced constraint column {val_table}.{val_col} does not exist in types section")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 2, f"Constraint type {val_table}.{val_col} does not exist in types section"))
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Constraint type {val_table}.{val_col} does not exist in types section"))
             return errors
     
 
@@ -761,36 +779,39 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
     
     # if not string -> error
     if not isinstance(typename_value, str):
+        logger_setup.logger.error("Target column type definition is not a string")
         errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, "Target column type definition is not a string"))
         return errors
     
-    # is operator = and right side is not a number --> column equality
-    is_column_equality = (operator == "=" and bool(value_split) and not is_num)
-
-
+    if is_date:
+        logger_setup.logger.error(f"Invalid date value in constraint: {value}")
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, f"Invalid date value in constraint: {value}"))
+        return errors
+    
     valid_prefixes = ("int", "bigint", "float", "interval", "finterval", "dinterval", "bool")
     # valid types that can be compared
     # checks if left side type has correct data type
     if not typename_value.startswith(valid_prefixes):
-        # is seq severity = 2 (as it generates nums)
-        severity = 2 if typename_value.startswith("seq") else 1
-        # if it is comparison (=) of two columns, then data type can be what ever
-        if not is_column_equality:
-            logger_setup.logger.error(f"Invalid type of constraint: {table_name}.{column_name} is {typename_value}.")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", severity, f"Invalid type of constraint: {table_name}.{column_name} is {typename_value}."))
-            return errors
+        logger_setup.logger.error(f"Invalid type of constraint: {table_name}.{column_name} is {typename_value}.")
+        errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Invalid type of constraint: {table_name}.{column_name} is {typename_value}."))
+        return errors
 
     # if not equality and right side not number
-    if not is_column_equality and value_split:
+    if value_split:
         # get data type from right side
         value_val = types_section[value_split[0]][value_split[1]]
+
+        # check if right side is string
+        if not isinstance(value_val, str):
+            logger_setup.logger.error(f"Expected types str for {value_val}. Got {type(value_val)}")
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Expected types str for {value_val}. Got {type(value_val)}"))
+            return errors
+        
         # if not valid data type
         if not value_val.startswith(valid_prefixes):
             # is seq severity = 2 (as it generates nums)
-            severity = 2 if value_val.startswith("seq") else 1
-
             logger_setup.logger.error(f"Invalid type of constraint: {value} is {value_val}.")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", severity, f"Invalid type of constraint: {value} is {value_val}."))
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Invalid type of constraint: {value} is {value_val}."))
             return errors
     
     return errors
@@ -815,7 +836,7 @@ def validate_constraints(db_name, constraints: str, types_section) -> list[YAML_
         # if constraint does not have 3 parts it cannot be valid
         if len(constraint_split) != 3 or constraint_split[1] not in supported_op:
             logger_setup.logger.error(f"Invalid constraint format: {constraint}")
-            errors.append(YAML_result(db_name, "constraints", "invalid_constraint", 1, f"Invalid constraints format {constraint}"))
+            errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 1, f"Invalid constraints format {constraint}"))
             continue
         
         # go over and validate
