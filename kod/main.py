@@ -404,8 +404,7 @@ def main():
     elapsed = time.time() - start_time
     minutes = int(elapsed // 60)
     seconds = int(elapsed % 60)
-    logger_setup.logger.info("Done")
-    logger_setup.logger.info(f"Total execution time: {minutes}m {seconds}s")
+    logger_setup.logger.finish(f"Done. Total execution time: {minutes}m {seconds}s")
     
 
 if __name__ == "__main__":

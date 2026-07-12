@@ -36,7 +36,7 @@ def get_response(type_name: str, prompt: str, model: str, thinking: bool = False
             prompt_tokens   = getattr(response, 'prompt_eval_count', 'N/A')
             response_tokens = getattr(response, 'eval_count', 'N/A') 
 
-        logger_setup.logger.stage(f"[{type_name.upper()}] Prompt tokens: {prompt_tokens}, Response tokens: {response_tokens}")
+        logger_setup.logger.tokens(f"[{type_name.upper()}] Prompt tokens: {prompt_tokens}, Response tokens: {response_tokens}")
         return response
     except (httpx.TimeoutException, httpx.ReadTimeout) as exc:
         logger_setup.logger.error(f"Ollama timed out after 600s during {type_name} generation {exc}") 
