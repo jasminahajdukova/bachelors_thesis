@@ -406,9 +406,6 @@ def go_over_schema(schemas, samples, repair_counts):
 
     for line in schemas_split:
 
-        if line.strip().startswith("#"):
-            continue
-    
         if line == "schema:" or not line.strip():
             new_schema.append(line)
             continue
@@ -1195,9 +1192,17 @@ def remove_unused_types(yaml_str: str, samples: dict, repair_counts: dict) -> st
     for line in lines:
         section = line.strip()
 
+        if not section:
+            continue
+
         if section in ["types:", "schema:", "generate:", "constraints:", "include:"]:
             found_section = section[:-1]
             continue
+
+        if section.startswith("-") and "." in section:
+            value = section[1:].strip().strip("'\"")
+            if "." in value and value not in used_in_values:
+                used_in_values.append(value)
 
         # if inside section and found column
         if found_section == "schema" and ":" in section and not section.startswith("-"):
@@ -1252,6 +1257,11 @@ def remove_unused_types(yaml_str: str, samples: dict, repair_counts: dict) -> st
         stripped = line.strip()
         indent = len(line) - len(line.lstrip())
 
+        if not stripped:
+            output_lines.append(line)
+            i += 1
+            continue
+
         if stripped in ["types:", "schema:", "generate:", "constraints:", "include:"]:
             current_section = stripped[:-1]
             output_lines.append(line)
@@ -1271,13 +1281,20 @@ def remove_unused_types(yaml_str: str, samples: dict, repair_counts: dict) -> st
             column_name = stripped.split(":", 1)[0].strip()
 
             is_multiline = False
-            if i + 1 < len(lines):
+            next_index = i + 1
+            while next_index < len(lines):
                 # get next line 
-                next_line = lines[i + 1].strip()
+                next_line = lines[next_index].strip()
+
+                if not next_line:
+                    next_index += 1
+                    continue
+
                 # check if there is format/-/values -> this is checked by another function
                 if next_line.startswith("format:") or next_line.startswith("-") or next_line == "values:":
                     is_multiline = True
 
+                break
 
             if not is_multiline:
                 # does column exist in samples
