@@ -36,7 +36,7 @@ def get_response(type_name: str, prompt: str, model: str, thinking: bool = False
             prompt_tokens   = getattr(response, 'prompt_eval_count', 'N/A')
             response_tokens = getattr(response, 'eval_count', 'N/A') 
 
-        logger_setup.logger.info(f"[{type_name.upper()}] Prompt tokens: {prompt_tokens}, Response tokens: {response_tokens}")
+        logger_setup.logger.stage(f"[{type_name.upper()}] Prompt tokens: {prompt_tokens}, Response tokens: {response_tokens}")
         return response
     except (httpx.TimeoutException, httpx.ReadTimeout) as exc:
         logger_setup.logger.error(f"Ollama timed out after 600s during {type_name} generation {exc}") 
@@ -345,7 +345,7 @@ def go_over_generate(gen_count, samples, generate_content, repair_counts):
 
         if num_value != target_value:
             if is_changed:
-                logger_setup.logger.warning(f"[Repair] Number to generate for table '{table_name}' greater than sequence. Generate number adjusted to satisfy seq")
+                logger_setup.logger.repair(f" Number to generate for table '{table_name}' greater than sequence. Generate number adjusted to satisfy seq")
             new_generate.append(f"- '{table_name} = {target_value}'")
             repair_counts["generate_row_count_fix"] += 1
         else:
@@ -554,7 +554,7 @@ def fix_references(line: str, stripped: str, current_table: str, samples: dict, 
             # if valid -> fix it
             line = f"{indent}- {current_table}.{raw_value}"
             repair_counts["unfinished_reference_fix"] += 1
-            logger_setup.logger.warning(f"[Repair] Fixed unqualified reference: '{raw_value}' -> '{current_table}.{raw_value}'")
+            logger_setup.logger.repair(f" Fixed unqualified reference: '{raw_value}' -> '{current_table}.{raw_value}'")
 
     # handle domain names
     elif "." in raw_value and not raw_value.endswith("_cs") and not raw_value.endswith("_en") and not raw_value.startswith(f"{current_table}."):
@@ -580,7 +580,7 @@ def fix_references(line: str, stripped: str, current_table: str, samples: dict, 
             state["has_refs_in_block"] = True
             # increment repair_count
             repair_counts["email_format_fix"] += 1
-            logger_setup.logger.warning(f"[Repair] Found domain '{domain_clean}' and injected template reference.")
+            logger_setup.logger.repair(f" Found domain '{domain_clean}' and injected template reference.")
             repaired_lines.append(line)
         else:
             #increment repair_count
@@ -630,7 +630,7 @@ def fix_blocks(lines: list, i: int, line: str, stripped: str, current_table: str
             if item_value in AVAILABLE_INCLUDES:
                 repaired_lines.append(f"{indent}{column_name}: {item_value}")
                 repair_counts["single_item_list_fix"] += 1
-                logger_setup.logger.warning(f"[Repair] Moved single item list for {current_table}.{column_name}")
+                logger_setup.logger.repair(f" Moved single item list for {current_table}.{column_name}")
                 return next_index, True
 
 
@@ -730,7 +730,7 @@ def fix_types_and_schema(line: str, stripped: str, current_section: str, current
         val_clean = value.strip().strip("'\"")
         if (val_clean.lower() not in ["string", "blocks"] and val_clean not in AVAILABLE_INCLUDES and "(" not in val_clean):
             repair_counts["invalid_dataset_fix"] += 1
-            logger_setup.logger.warning(f"[Repair] Hallucinated dataset '{val_clean}' at '{current_table}.{column_name}'. Will try to guess appropriate data type")
+            logger_setup.logger.repair(f" Hallucinated dataset '{val_clean}' at '{current_table}.{column_name}'. Will try to guess appropriate data type")
 
             fixed_data_type = guess_type_from_db(current_table, column_name, samples)
             return f"{indent}{column_name}: {fixed_data_type}"
@@ -985,7 +985,7 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
                     output_lines.append(f"{indent_str}{column_name}: {guessed_type}")
                     # increment repair_count
                     repair_counts["wrong_format_structure"] += 1
-                    logger_setup.logger.warning(f"[Repair] Wrong format structure at '{current_table}.{column_name}' (Arity mismatch: {wrong_count}, Invalid ref: {invalid_refs_found}). Changed to  guessed type {guessed_type}.")
+                    logger_setup.logger.repair(f" Wrong format structure at '{current_table}.{column_name}' (Arity mismatch: {wrong_count}, Invalid ref: {invalid_refs_found}). Changed to  guessed type {guessed_type}.")
                     
                     index = val_collect_index
                     while index < len(lines):
@@ -1161,7 +1161,7 @@ def fill_in_missing_columns(yaml_str: str, samples: dict, repair_counts: dict) -
             
             # increment repair_counts
             repair_counts["schema_missing_columns_fix"] += 1
-            logger_setup.logger.warning(f"[Repair] Missing column {table}.{column}, inserting")
+            logger_setup.logger.repair(f" Missing column {table}.{column}, inserting")
             # if column not found in types -> add it
             if not is_in_types:
                 sections["types"] = add_new_line_to_table(sections["types"], table, f"    {column}: {guess_type_from_db(table, column, samples)}")
@@ -1309,7 +1309,7 @@ def remove_unused_types(yaml_str: str, samples: dict, repair_counts: dict) -> st
                 if not is_in_samples and not is_in_schema and not is_in_refs and not is_in_constraints:
                     # increment repair_count
                     repair_counts["unused_types_removed"] += 1
-                    logger_setup.logger.warning(f"[Repair] Removed redundant type: '{current_table}.{column_name}'")
+                    logger_setup.logger.repair(f" Removed redundant type: '{current_table}.{column_name}'")
                     # does not add to output lines and moves on
                     i += 1
                     continue
@@ -1359,7 +1359,7 @@ def fix_pk_seq(yaml_str: str, samples: dict, fk_map: dict, repair_counts) -> str
                 value = stripped.split(":", 1)[1].strip().strip("'\"")
                 if not value.startswith("seq"):
                     repair_counts["fix_pk_seq"] += 1
-                    logger_setup.logger.warning(f"[Repair] PK {current_table}.{column}: {value} -> {sequence}")
+                    logger_setup.logger.repair(f" PK {current_table}.{column}: {value} -> {sequence}")
                     output_lines.append(f"    {column}: {sequence}")
                     continue
             
@@ -1655,7 +1655,7 @@ def fix_interval_number(types_yaml, repair_counts):
                 if is_min_time and is_max_time:
                     time_regex = "'([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]'"
                     fixed_line = f"regex({time_regex})"
-                    logger_setup.logger.warning(f"[Repair] Fixed hallucinated numbers inside {data_type_name}. Changed to time regex")
+                    logger_setup.logger.repair(f" Fixed hallucinated numbers inside {data_type_name}. Changed to time regex")
                     repair_counts["interval_num_fix"] += 1
 
                     start, end = line_match.span()
@@ -1682,7 +1682,7 @@ def fix_interval_number(types_yaml, repair_counts):
             args_list = [value for value in [min_value, max_value, step_value] if value != ""]
             # mention repairs only if it is worth mentioning (removal of whtespaces is not)
             if args_split != args_list:
-                logger_setup.logger.warning(f"[Repair] Fixed invalid numbers inside {data_type_name}")
+                logger_setup.logger.repair(f" Fixed invalid numbers inside {data_type_name}")
                 repair_counts["interval_num_fix"] += 1
             
             start, end = line_match.span()
@@ -1734,7 +1734,7 @@ def yaml_bool(value: str, repair_counts: dict) -> str:
     return value
 
 def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
-    logger_setup.logger.info(f"FK_MAP = {fk_map}")
+
     sorted_table_names = sort_tables_multi_level(fk_map)
     sorted_samples = {table: samples[table] for table in sorted_table_names if table in samples}
 
@@ -1785,6 +1785,8 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
         f"{constraints_raw}"
     )
 
+    logger_setup.logger.stage(f"LLM successfully generating YAML. Looking for errors to fix")
+
     types_filtered = types_raw.replace(".format", "")
     types_filtered = fix_regex_quoting(types_filtered, repair_counts)
     types_filtered = fix_interval_number(types_filtered, repair_counts)
@@ -1817,5 +1819,5 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
     
     yaml_generator.save_original_yaml(raw_yaml, db_name)
     save_repair_report_to_csv(repair_counts, db_name)
-
+    logger_setup.logger.stage(f"YAML successfully fixed")
     return fixed_yaml

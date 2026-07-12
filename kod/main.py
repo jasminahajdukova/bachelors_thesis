@@ -260,6 +260,7 @@ def main():
     if server is None:
         raise RuntimeError("Couldn't connect to server")
     
+    logger_setup.logger.stage(f"Generating YAML FOR {db_name}")
 
     try:
         tables = get_result(db_name, None, server, "tables")
@@ -369,7 +370,7 @@ def main():
                 errors.append(yaml_generator.YAML_result(db_name, "pipeline", "generation_skipped", 2, "All tables skipped or resulted in composite/invalid samples. Skipped llm generation"))
 
         else:
-            logger_setup.logger.info(f"Sending samples to LLM for YAML generation")
+            logger_setup.logger.stage(f"Sending samples to LLM for YAML generation")
 
             try:
                 yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count, db_name)

@@ -79,7 +79,7 @@ def check_yaml(loaded_yaml, db_name):
 
 def validate_yaml(db_name: str, yaml_str: str, samples: dict) -> list[YAML_result]:
     errors = []
-    logger_setup.logger.warning(f"Validating YAML for database: {db_name}")
+    logger_setup.logger.stage(f"Validating YAML for database: {db_name}")
     
     # loads YAML
     loaded_yaml, errors = load_yaml(yaml_str, db_name)
