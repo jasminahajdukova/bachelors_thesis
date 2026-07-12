@@ -2,14 +2,14 @@ import logging
 import colorlog
 
 
-REPAIR = 25
+FIX = 25
 STAGE = 26
 TOKENS = 27
 FINISH = 28
 
-def repair(self, message, *args, **kwargs):
-        if self.isEnabledFor(REPAIR):
-            self._log(REPAIR, message, args, **kwargs)
+def FIX(self, message, *args, **kwargs):
+        if self.isEnabledFor(FIX):
+            self._log(FIX, message, args, **kwargs)
 
 def stage(self, message, *args, **kwargs):
         if self.isEnabledFor(STAGE):
@@ -23,14 +23,14 @@ def finish(self, message, *args, **kwargs):
         if self.isEnabledFor(FINISH):
             self._log(FINISH, message, args, **kwargs)
 
-logging.Logger.repair = repair
+logging.Logger.FIX = FIX
 logging.Logger.stage = stage
 logging.Logger.tokens = tokens
 logging.Logger.finish = finish
 
 def setup_logging():
 
-    logging.addLevelName(REPAIR, "REPAIR")
+    logging.addLevelName(FIX, "FIX")
     logging.addLevelName(STAGE, "STAGE")
     logging.addLevelName(TOKENS, "TOKENS")
     logging.addLevelName(FINISH, "FINISH")
@@ -56,7 +56,7 @@ def setup_logging():
         log_colors={
                 'DEBUG':    'colour3',
                 'INFO':     'colour83',
-                'REPAIR':   'bold_colour123',
+                'FIX':   'colour123',
                 'WARNING':  'colour26',
                 'ERROR':    'colour196',
                 'STAGE':    'colour211',
