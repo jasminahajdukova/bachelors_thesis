@@ -44,7 +44,7 @@ def setup_logging():
     colorlog.escape_codes.escape_codes['colour211'] = '\033[38;5;211m'
     colorlog.escape_codes.escape_codes['colour64'] = '\033[38;5;64m'
     colorlog.escape_codes.escape_codes['colour26'] = '\033[38;5;26m'
-    colorlog.escape_codes.escape_codes['colour46'] = '\033[38;5;46m'
+    colorlog.escape_codes.escape_codes['colour208'] = '\033[38;5;208m'
 
     colorlog.escape_codes.escape_codes['colour196'] = '\033[38;5;196m'
     colorlog.escape_codes.escape_codes['colour123'] = '\033[38;5;123m'
@@ -58,10 +58,10 @@ def setup_logging():
                 'INFO':     'colour83',
                 'REPAIR':   'bold_colour123',
                 'WARNING':  'colour26',
-                'ERROR':    'bold_colour196',
+                'ERROR':    'colour196',
                 'STAGE':    'colour211',
                 'TOKENS':   'colour64',
-                'FINISH':   'colour46'})
+                'FINISH':   'colour208'})
     
     handler.setFormatter(formatter)
 

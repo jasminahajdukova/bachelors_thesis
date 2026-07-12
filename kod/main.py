@@ -296,7 +296,7 @@ def main():
                         valid_tables.append(t_name)
 
             except Exception as  exc:
-                logger_setup.logger.error(f"Prepass failed for table: {t_name}: {exc}")
+                logger_setup.logger.warning(f"Prepass failed for table: {t_name}: {exc}")
                 errors.append(yaml_generator.YAML_result(db_name, f"prepass:{t_name}", "table_prepass_failed", 2, f"Prepass failed for table: {t_name}: {exc}"))
                 continue
 
@@ -325,6 +325,7 @@ def main():
 
                 for row in fk_result:
                     if row[1] and row[1] not in valid_tables:
+                        logger_setup.logger.warning( f"Table {table_name} references out of scope table {row[1]}")
                         errors.append(yaml_generator.YAML_result(db_name, "preprocessing", "excluded_dependency", 2, f"Table {table_name} references out of scope table {row[1]}"))
 
                 fk_map = go_over_foreign_keys(fk_result, fk_map, table_name, valid_tables)

@@ -23,5 +23,5 @@ def disconnect_from_mysql(mydb):
         mydb.close()
         logger_setup.logger.info("Connection to MySQL closed")
     except mysql.connector.Error as err:
-        logger_setup.logger.warning(f"Error while closing MySQL connection: {err}")
+        logger_setup.logger.error(f"Error while closing MySQL connection: {err}")
 

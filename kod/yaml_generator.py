@@ -773,7 +773,7 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
      
     # check if column inside table
     if column_name not in types_section[table_name]:
-        logger_setup.logger.error(f"Constraint column {column_name} does not exist in types section")
+        logger_setup.logger.warning(f"Constraint column {column_name} does not exist in types section")
         errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Constraint column {column_name} does not exist in types section"))
         return errors
 
@@ -791,7 +791,7 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
 
         # and check if table exists and column is inside talbe
         if val_table not in types_section or val_col not in types_section[val_table]:
-            logger_setup.logger.error(f"Referenced constraint column {val_table}.{val_col} does not exist in types section")
+            logger_setup.logger.warning(f"Referenced constraint column {val_table}.{val_col} does not exist in types section")
             errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Constraint type {val_table}.{val_col} does not exist in types section"))
             return errors
     
@@ -814,7 +814,7 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
     # valid types that can be compared
     # checks if left side type has correct data type
     if not typename_value.startswith(valid_prefixes):
-        logger_setup.logger.error(f"Invalid type of constraint: {table_name}.{column_name} is {typename_value}.")
+        logger_setup.logger.warning(f"Invalid type of constraint: {table_name}.{column_name} is {typename_value}.")
         errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Invalid type of constraint: {table_name}.{column_name} is {typename_value}."))
         return errors
 
@@ -825,14 +825,13 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
 
         # check if right side is string
         if not isinstance(value_val, str):
-            logger_setup.logger.error(f"Expected types str for {value_val}. Got {type(value_val)}")
+            logger_setup.logger.warning(f"Expected types str for {value_val}. Got {type(value_val)}")
             errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Expected types str for {value_val}. Got {type(value_val)}"))
             return errors
         
         # if not valid data type
         if not value_val.startswith(valid_prefixes):
-            # is seq severity = 2 (as it generates nums)
-            logger_setup.logger.error(f"Invalid type of constraint: {value} is {value_val}.")
+            logger_setup.logger.warning(f"Invalid type of constraint: {value} is {value_val}.")
             errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Invalid type of constraint: {value} is {value_val}."))
             return errors
     

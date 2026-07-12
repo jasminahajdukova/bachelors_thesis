@@ -79,7 +79,7 @@ def generate_yaml_prompt(samples, types_section, sql_server_type, model, section
     else: 
         raise ValueError(f"Unknown section: {section}")
 
-    response = get_response(f"YAML {section}", prompt, model)
+    response = get_response(f"{section}", prompt, model)
     generated_yaml = strip_markdown(response.response)
     return generated_yaml
 
@@ -132,7 +132,7 @@ def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tab
 
 
         if len(stripped_line) < 3:
-            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+            logger_setup.logger.repair(f"Removing invalid constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
             continue
 
@@ -141,7 +141,7 @@ def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tab
         right_side = " ".join(stripped_line[2:]).strip("'\"") 
 
         if (operator.strip() in invalid_operators) or (re.search(r"\b\d{4}-\d{2}-\d{2}\b", line)):
-            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+            logger_setup.logger.repair(f"Removing invalid constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
             continue
 
@@ -167,12 +167,12 @@ def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tab
                         repair_counts["schema_value_casing"] += 1
                 
                 else:
-                    logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+                    logger_setup.logger.repair(f"Removing invalid constraint: {line.strip()}")
                     repair_counts["invalid_constraint_removed"] += 1 
                     is_valid_constraint = False
 
             else:
-                logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+                logger_setup.logger.repair(f"Removing invalid constraint: {line.strip()}")
                 repair_counts["invalid_constraint_removed"] += 1 
                 is_valid_constraint = False
 
@@ -203,12 +203,12 @@ def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tab
 
 
                 else:
-                    logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+                    logger_setup.logger.repair(f"Removing invalid constraint: {line.strip()}")
                     repair_counts["invalid_constraint_removed"] += 1 
                     is_valid_constraint = False
 
             else:
-                logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+                logger_setup.logger.repair(f"Removing invalid constraint: {line.strip()}")
                 repair_counts["invalid_constraint_removed"] += 1 
                 is_valid_constraint = False
 
@@ -218,7 +218,7 @@ def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tab
             continue
         
         if left_side == right_side:
-            logger_setup.logger.warning(f"Removing self-referencing constraint: {line.strip()}")
+            logger_setup.logger.repair(f"Removing self-referencing constraint: {line.strip()}")
             repair_counts["invalid_constraint_removed"] += 1 
             continue
 
@@ -227,7 +227,7 @@ def filter_constraints(constraints_yaml, samples, db_table_names, columns_in_tab
 
         if not is_numeric and not is_col_ref:
             repair_counts["invalid_constraint_removed"] += 1 
-            logger_setup.logger.warning(f"Removing invalid constraint: {line.strip()}")
+            logger_setup.logger.repair(f"Removing invalid constraint: {line.strip()}")
             continue
         
         line = f"  - {left_side} {operator} {right_side}"
@@ -454,7 +454,7 @@ def go_over_schema(schemas, samples, repair_counts):
                 line = f"{indent}{schema_name}{rest_of_line}"
                 repair_counts["schema_column_fix"] += 1
             else:
-                logger_setup.logger.warning(f"This schema_name does not belong = {schema_name}")
+                logger_setup.logger.repair(f"Removing {schema_name}: {table_name}.{schema_name} from schema section")
                 repair_counts["invalid_schema_removed"] += 1
                 continue
 
@@ -1066,7 +1066,7 @@ def guess_type_from_db(table: str, columns: str, samples: dict) -> str:
             try:
                 num_samples.append(float(sample))
             except (ValueError, TypeError):
-                logger_setup.logger.warning(f"[FIX ERROR] Cannot convert sample {sample} to float for column '{table}.{columns}'. This value is skipped")
+                logger_setup.logger.warning(f"Cannot convert sample {sample} to float for column '{table}.{columns}'. This value is skipped")
                 pass
 
         if num_samples:
