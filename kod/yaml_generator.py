@@ -134,6 +134,22 @@ def validate_yaml(db_name: str, yaml_str: str, samples: dict) -> list[YAML_resul
     return errors
 
 
+def is_valid_type(val_str, includes):
+    basic_types = ["int", "bool", "string", "float", "bigint"]
+    param_types = ["seq", "interval", "dinterval", "finterval", "str_len", "regex"]
+
+    val_clean = val_str.strip().strip("'\"")
+
+    if val_clean.lower() in basic_types:
+        return True
+    if val_clean in includes:
+        return True
+    if any(val_clean.startswith(param) for param in param_types) and "(" in val_clean:
+        return True
+    
+    return False
+
+
 ### check_types ###
 
 def check_types(db_name, types_section, samples):
@@ -181,17 +197,28 @@ def check_types(db_name, types_section, samples):
                     val_clean = column_def.strip().strip("'\"")
                     if (val_clean.lower() not in ["string", "blocks"] and val_clean not in AVAILABLE_INCLUDES and "(" not in val_clean):
                         logger_setup.logger.error(f"Invalid type {val_clean} in {table_name}.{column_def}")
-            
+                        err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid type {val_clean} in {table_name}.{column_def}"))
+                
                 elif isinstance(column_def, dict):
-                    keys = []
-                    for key in column_def.keys():
-                        if key not in keys:
-                            keys.append(key)
-                    keys.sort()
-                    if keys != ["format", "values"]:
+                    keys = list(column_def.keys())
+                    
+                    if "format" not in keys or "values" not in keys:
                         logger_setup.logger.error(f"Format structure {table_name}.{column_name} must have format and values")
                         err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Format structure {table_name}.{column_name} must have format and values"))
                         continue
+
+                    for sub_key, sub_value in column_def.items():
+                        if sub_key in ["format", "values"]:
+                            continue
+
+                        if not isinstance(sub_value, str):
+                            logger_setup.logger.error(f"Invalid type {sub_value} in {table_name}.{column_name}.{sub_key}. Got {type(sub_value)}")
+                            err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid type {sub_value} in {table_name}.{column_name}.{sub_key}. Got {type(sub_value)}"))
+                            continue
+                        
+                        if not is_valid_type(sub_value, AVAILABLE_INCLUDES):
+                            logger_setup.logger.error(f"Invalid type {sub_value} in {table_name}.{column_name}.{sub_key}. Got {type(sub_value)}")
+                            err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid type {sub_value} in {table_name}.{column_name}.{sub_key}. Got {type(sub_value)}"))
                     
                     format_str = column_def["format"]
                     values = column_def["values"]
@@ -213,18 +240,30 @@ def check_types(db_name, types_section, samples):
                             logger_setup.logger.error(f"Wrong type for Value inside {table_name}.{column_name}. Got {type(value)}")
                             err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Wrong type for Value inside {table_name}.{column_name}. Got {type(value)}"))
                             continue
-                        
         
-                        if value not in AVAILABLE_INCLUDES:
-                            if "." not in value:
-                                logger_setup.logger.error(f"Wrong type of Value '{value}' inside {table_name}.{column_name}. Got {type(value)}")
-                                err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Wrong type of Value '{value}' inside {table_name}.{column_name}. Got {type(value)}"))
+                        
+                        if value == "string":
+                            continue
+                        
+                        if "." not in value:
+                            logger_setup.logger.error(f"Wrong type or value {value} inside {table_name}.{column_name}")
+                            err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Wrong type or value {value} inside {table_name}.{column_name}"))
+                            continue
+
+                        elif '.' in value:
+                            value_split = value.split(".")
+                            current = types_section
+                            valid_ref = True
+                            for part in value_split:
+                                if isinstance(current, dict) and part in current:
+                                    current = current[part]
+                                else:
+                                    valid_ref = False
+                                    break
                             
-                            else:
-                                table_ref, column_ref = value.split(".", 1)
-                                if table_ref not in types_section or column_ref not in types_section[table_ref]:
-                                    logger_setup.logger.error(f"Wrong table reference in Value '{value}' iniside {table_name}.{column_name}")
-                                    err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Wrong table reference in Value '{value}' iniside {table_name}.{column_name}"))
+                            if not valid_ref:
+                                logger_setup.logger.error(f"Wrong table reference in Value '{value}' iniside {table_name}.{column_name}")
+                                err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Wrong table reference in Value '{value}' iniside {table_name}.{column_name}"))
 
     return err
 
