@@ -7,6 +7,7 @@ import ollama
 import httpx
 import prompts
 import logger_setup
+import yaml
 
 class CyclicDependencyError(ValueError):
     pass
@@ -24,11 +25,23 @@ AVAILABLE_INCLUDES = [
 client = ollama.Client(timeout=600.0)
 
 def get_response(type_name: str, prompt: str, model: str, thinking: bool = False):
+    # testing: low (0, 0.2), high: (0.8, 1.2) appropriate: (0.3, 0.5) def: (0.1, 0.3, 0.3, 0.3)
+    default_temperatures = {
+        "yaml-generator-constraints": 0.0,
+        "yaml-generator-generate": 0.0,
+        "yaml-generator-schema": 0.0,
+        "yaml-generator-types": 0.0
+    }
+
     try: 
-        response = client.generate(model=model,
-                           prompt=prompt,
-                           think=thinking,
-                            options={ "num_predict": 4096, "num_ctx": 8192})
+        response = client.generate(
+                        model=model,
+                        prompt=prompt,
+                        think=thinking,
+                        options={
+                            "num_predict": 4096,
+                            "num_ctx": 8192,
+                            "temperature": default_temperatures[model]})
         if isinstance(response, dict):
             prompt_tokens   = response.get('prompt_eval_count', 'N/A')
             response_tokens = response.get('eval_count', 'N/A')
@@ -39,13 +52,12 @@ def get_response(type_name: str, prompt: str, model: str, thinking: bool = False
             response_tokens = getattr(response, 'eval_count', 'N/A') 
             total_duration  = getattr(response, 'total_duration', 0)
 
-        total_duration = total_duration / 1000000000
-        unit = "seconds"
-        if total_duration > 60.0:
-            total_duration = total_duration / 60.0
-            unit = "minutes"
-
-        logger_setup.logger.tokens(f"[{type_name.upper()}] Prompt tokens: {prompt_tokens}, Response tokens: {response_tokens}, Total duration: {total_duration:.2f} {unit}")
+        total_duration /= 1000000000
+        total_duration /= 60.0
+        minutes = int(total_duration)
+        seconds = int((total_duration - minutes) * 60 )
+        temperature = default_temperatures[model]
+        logger_setup.logger.tokens(f"[{type_name.upper()}] Temperature: {temperature} Prompt tokens: {prompt_tokens}, Response tokens: {response_tokens}, Total duration: {minutes}m {seconds}s")
         return response
     
     except (httpx.TimeoutException, httpx.ReadTimeout) as exc:
@@ -355,7 +367,7 @@ def go_over_generate(gen_count, samples, generate_content, repair_counts):
 
         if num_value != target_value:
             if is_changed:
-                logger_setup.logger.fix(f" Number to generate for table '{table_name}' greater than sequence. Generate number adjusted to satisfy seq")
+                logger_setup.logger.fix(f"Number to generate for table '{table_name}' greater than sequence. Generate number adjusted to satisfy seq")
             new_generate.append(f"- '{table_name} = {target_value}'")
             repair_counts["generate_row_count_fix"] += 1
         else:
@@ -464,7 +476,7 @@ def go_over_schema(schemas, samples, repair_counts):
                 line = f"{indent}{schema_name}{rest_of_line}"
                 repair_counts["schema_column_fix"] += 1
             else:
-                logger_setup.logger.fix(f"Removing {schema_name}: {table_name}.{schema_name} from schema section")
+                logger_setup.logger.fix(f"Removing {schema_name}: {current_table}.{schema_name} from schema section")
                 repair_counts["invalid_schema_removed"] += 1
                 continue
 
@@ -564,7 +576,7 @@ def fix_references(line: str, stripped: str, current_table: str, samples: dict, 
             # if valid -> fix it
             line = f"{indent}- {current_table}.{raw_value}"
             repair_counts["unfinished_reference_fix"] += 1
-            logger_setup.logger.fix(f" Fixed unqualified reference: '{raw_value}' -> '{current_table}.{raw_value}'")
+            logger_setup.logger.fix(f"Fixed unqualified reference: '{raw_value}' -> '{current_table}.{raw_value}'")
 
     # handle domain names
     elif "." in raw_value and not raw_value.endswith("_cs") and not raw_value.endswith("_en") and not raw_value.startswith(f"{current_table}."):
@@ -590,7 +602,7 @@ def fix_references(line: str, stripped: str, current_table: str, samples: dict, 
             state["has_refs_in_block"] = True
             # increment repair_count
             repair_counts["email_format_fix"] += 1
-            logger_setup.logger.fix(f" Found domain '{domain_clean}' and injected template reference.")
+            logger_setup.logger.fix(f"Found domain '{domain_clean}' and injected template reference.")
             repaired_lines.append(line)
         else:
             #increment repair_count
@@ -640,7 +652,7 @@ def fix_blocks(lines: list, i: int, line: str, stripped: str, current_table: str
             if item_value in AVAILABLE_INCLUDES:
                 repaired_lines.append(f"{indent}{column_name}: {item_value}")
                 repair_counts["single_item_list_fix"] += 1
-                logger_setup.logger.fix(f" Moved single item list for {current_table}.{column_name}")
+                logger_setup.logger.fix(f"Moved single item list for {current_table}.{column_name}")
                 return next_index, True
 
 
@@ -736,11 +748,12 @@ def fix_types_and_schema(line: str, stripped: str, current_section: str, current
     if current_section == "types" and value:
         if column_name.lower() in ["format", "values"]:
             return line
+        
         # remove quotes
         val_clean = value.strip().strip("'\"")
         if (val_clean.lower() not in ["string", "blocks"] and val_clean not in AVAILABLE_INCLUDES and "(" not in val_clean):
             repair_counts["invalid_dataset_fix"] += 1
-            logger_setup.logger.fix(f" Hallucinated dataset '{val_clean}' at '{current_table}.{column_name}'. Will try to guess appropriate data type")
+            logger_setup.logger.fix(f"Hallucinated dataset '{val_clean}' at '{current_table}.{column_name}'. Will try to guess appropriate data type")
 
             fixed_data_type = guess_type_from_db(current_table, column_name, samples)
             return f"{indent}{column_name}: {fixed_data_type}"
@@ -809,7 +822,11 @@ def go_over_found_columns(lines_list: list, samples: dict) -> dict:
     
     # creates empty list for every table in samples
     found_columns = {table: [] for table in samples.keys()}
+    
+    db_table_names = {table.lower(): table for table in samples.keys()}
+    
     curr_table = None
+    curr_table_columns = {}
 
 
     for line in lines_list:
@@ -821,23 +838,37 @@ def go_over_found_columns(lines_list: list, samples: dict) -> dict:
         # checks if name of table
         if stripped_line.endswith(":") and not stripped_line.startswith("-") and indent == 2:
             
-            table = stripped_line[:-1]
-            if table in samples:
-                curr_table = table
+            table_raw = stripped_line[:-1]
+            table_lower = table_raw.lower()
+
+            if table_lower in db_table_names:
+                curr_table = db_table_names[table_lower]
+                curr_table_columns = {column.lower(): column for column in samples[curr_table].keys()}
+            else:
+                curr_table = None
+                curr_table_columns = {}
 
         # checks if column inside table (without value)
         elif stripped_line.endswith(":") and not stripped_line.startswith("-") and indent == 4 and curr_table:
-            column = stripped_line[:-1]
-            # if column not in list of found_columns for the current table -> add to the list
-            if column not in found_columns[curr_table]:
-                found_columns[curr_table].append(column)
+            column_raw = stripped_line[:-1]
+            column_lower = column_raw.lower()
 
+            if column_lower in curr_table_columns:
+                column_real = curr_table_columns[column_lower]
+                if column_real not in found_columns[curr_table]:
+                    found_columns[curr_table].append(column_real)
+    
+   
         # checks if column inside table (with value) -> example: [age: int]
         elif ":" in stripped_line and not stripped_line.startswith("-") and indent == 4 and curr_table:
             # if column not in list of found_columns for the current table -> add to the list
-            column = stripped_line.split(":", 1)[0].strip()
-            if column not in found_columns[curr_table]:
-                found_columns[curr_table].append(column)
+            column_raw = stripped_line.split(":", 1)[0].strip()
+            column_lower = column_raw.lower()
+            if column_lower in curr_table_columns:
+                column_real = curr_table_columns[column_lower]
+                if column_real not in found_columns[curr_table]:
+                    found_columns[curr_table].append(column_real)
+
     # returned filled dict with found columns for every table
     return found_columns
 
@@ -923,6 +954,44 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
                     # found format structure
                     has_format_block = True
             
+            
+            if not has_format_block:
+                list_collect_index = i + 1
+                list_lines_indexes = []
+                while list_collect_index < len(lines) and lines[list_collect_index].strip().startswith("-"):
+                    list_lines_indexes.append(list_collect_index)
+                    list_collect_index += 1
+                
+                if list_lines_indexes:
+                    list_items_raw = [lines[idx].strip()[1:].strip().strip("'\"") for idx in list_lines_indexes]
+                    no_blocks = all(item.upper() != "BLOCKS" for item in list_items_raw)
+                    has_format_keywords = any("format:" in lines[idx] or "values:" in lines[idx] for idx in list_lines_indexes)
+                    
+                    if no_blocks and has_format_keywords:
+
+                        column_indent = len(line) - len(line.lstrip())
+                        indent_str = line[:line.find(column_name)]
+                        guessed_type = guess_type_from_db(current_table, column_name, samples)
+                        output_lines.append(f"{indent_str}{column_name}: {guessed_type}")
+                        
+                        repair_counts["wrong_format_structure"] += 1
+                        logger_setup.logger.fix(f"Deformed format list structure at '{current_table}.{column_name}'. Changed to guessed type {guessed_type}.")
+                        
+                     
+                        index = list_collect_index
+                        while index < len(lines):
+                            if not lines[index].strip():
+                                index += 1
+                                continue
+                            current_indent = len(lines[index]) - len(lines[index].lstrip())
+                            if current_indent > column_indent:
+                                index += 1
+                            else:
+                                break
+                        i = index
+                        continue
+
+
             # if format structure
             if has_format_block:
                 # go over values under 'values:'
@@ -995,7 +1064,7 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
                     output_lines.append(f"{indent_str}{column_name}: {guessed_type}")
                     # increment repair_count
                     repair_counts["wrong_format_structure"] += 1
-                    logger_setup.logger.fix(f" Wrong format structure at '{current_table}.{column_name}' (Arity mismatch: {wrong_count}, Invalid ref: {invalid_refs_found}). Changed to  guessed type {guessed_type}.")
+                    logger_setup.logger.fix(f"Wrong format structure at '{current_table}.{column_name}' (Arity mismatch: {wrong_count}, Invalid ref: {invalid_refs_found}). Changed to  guessed type {guessed_type}.")
                     
                     index = val_collect_index
                     while index < len(lines):
@@ -1017,16 +1086,73 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
     # return YAML as one string
     return "\n".join(output_lines)
 
+def fix_types_keys(types_yaml, table_names, collumns_in_table, repair_counts):
+    lines = types_yaml.splitlines()
+
+    output_lines = []
+    current_table = None
+    current_table_cols = {}
+
+    for line in lines:
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip())
+
+        if not stripped or stripped == "types:":
+            output_lines.append(line)
+            continue
+
+        if stripped.endswith(":") and not stripped.startswith("-")  and indent == 2:
+            table_raw = stripped[:-1]
+            table_lower = table_raw.lower()
+            
+            if table_lower in table_names:
+                current_table = table_names[table_lower]
+                current_table_cols = collumns_in_table.get(table_lower, {})
+                indent_str = line[:line.find(table_raw)]
+                output_lines.append(f"{indent_str}{current_table}:")
+            
+            else:
+                current_table = None
+                current_table_cols = {}
+                output_lines.append(line)
+            
+            continue
+        if ":" in stripped and not stripped.startswith("-") and indent == 4 and current_table:
+            parts = stripped.split(":", 1)
+            column_raw = parts[0].strip()
+            rest = parts[1]
+
+            if column_raw.lower() in ["format", "values"]:
+                output_lines.append(line)
+                continue
+
+            column_lower = column_raw.lower()
+            if column_lower in current_table_cols:
+                column_real = current_table_cols[column_lower]
+                if column_real != column_raw:
+                    indent_str = line[:line.find(column_raw)]
+                    output_lines.append(f"{indent_str}{column_real}:{rest}")
+                    repair_counts["schema_column_fix"] += 1
+                    continue
+                    
+        output_lines.append(line)
+    
+    return "\n".join(output_lines)
 
 def add_new_line_to_table(lines: list, table: str, new_line: str) -> list:
     output_lines = []
     inserted = False
+
+    table_lower = table.lower()
+
     for line in lines:
         output_lines.append(line)
         indent = len(line) - len(line.lstrip())
+
+        stripped = line.strip()
         
         # if new line not inserted yet and found table name
-        if not inserted and line.strip() == f"{table}:" and indent == 2:
+        if not inserted and stripped.endswith(":") and stripped[:-1].lower() == table_lower and indent == 2:
             output_lines.append(new_line)
             inserted = True
     
@@ -1171,7 +1297,7 @@ def fill_in_missing_columns(yaml_str: str, samples: dict, repair_counts: dict) -
             
             # increment repair_counts
             repair_counts["schema_missing_columns_fix"] += 1
-            logger_setup.logger.fix(f" Missing column {table}.{column}, inserting")
+            logger_setup.logger.fix(f"Missing column {table}.{column}, inserting")
             # if column not found in types -> add it
             if not is_in_types:
                 sections["types"] = add_new_line_to_table(sections["types"], table, f"    {column}: {guess_type_from_db(table, column, samples)}")
@@ -1319,7 +1445,7 @@ def remove_unused_types(yaml_str: str, samples: dict, repair_counts: dict) -> st
                 if not is_in_samples and not is_in_schema and not is_in_refs and not is_in_constraints:
                     # increment repair_count
                     repair_counts["unused_types_removed"] += 1
-                    logger_setup.logger.fix(f" Removed redundant type: '{current_table}.{column_name}'")
+                    logger_setup.logger.fix(f"Removed redundant type: '{current_table}.{column_name}'")
                     # does not add to output lines and moves on
                     i += 1
                     continue
@@ -1369,7 +1495,7 @@ def fix_pk_seq(yaml_str: str, samples: dict, fk_map: dict, repair_counts) -> str
                 value = stripped.split(":", 1)[1].strip().strip("'\"")
                 if not value.startswith("seq"):
                     repair_counts["fix_pk_seq"] += 1
-                    logger_setup.logger.fix(f" PK {current_table}.{column}: {value} -> {sequence}")
+                    logger_setup.logger.fix(f"PK {current_table}.{column}: {value} -> {sequence}")
                     output_lines.append(f"    {column}: {sequence}")
                     continue
             
@@ -1510,6 +1636,7 @@ def fix_generated_yaml(yaml_str: str, samples: dict, columns_in_tables, repair_c
     
     # send to check format
     validated_yaml = check_format(cleaned_yaml, samples, repair_counts)
+
     # send to fill in missing columns
     completed_yaml = fill_in_missing_columns(validated_yaml, samples, repair_counts)
     # send to remove unused types
@@ -1604,7 +1731,7 @@ def fix_interval_number(types_yaml, repair_counts):
                     if prefix:
                         prefix = prefix.replace(" ", "")
                         if prefix:
-                            min_value = f"[{prefix}]{min_value}"
+                            min_value = f"[{prefix}] {min_value}"
                     
             except ValueError:
                 is_valid = False 
@@ -1665,7 +1792,7 @@ def fix_interval_number(types_yaml, repair_counts):
                 if is_min_time and is_max_time:
                     time_regex = "'([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]'"
                     fixed_line = f"regex({time_regex})"
-                    logger_setup.logger.fix(f" Fixed hallucinated numbers inside {data_type_name}. Changed to time regex")
+                    logger_setup.logger.fix(f"Fixed hallucinated numbers inside {data_type_name}. Changed to time regex")
                     repair_counts["interval_num_fix"] += 1
 
                     start, end = line_match.span()
@@ -1673,7 +1800,23 @@ def fix_interval_number(types_yaml, repair_counts):
                     result.append(fixed_line)
                     continue
                 else:
-                    result.append(line)
+                    if ":" in line:
+                        columns_name = line.split(":", 1)[0].strip()
+                        
+                        value1 = min_value.strip("'\"")
+                        value2 = max_value.strip("'\"") if max_value else ""
+                        
+                        indent = line[:line.find(columns_name)]
+                        block_values = [f"{indent}{columns_name}:", f"{indent + ' ' * 2}- BLOCKS", f"{indent + ' ' * 2}- {value1}"]
+                        if value2:
+                            block_values.append(f"{indent + ' ' * 2}- {value2}")
+                        
+                        logger_setup.logger.fix(f"Fixed hallucinated values inside {data_type_name}. Changed to BLOCKS")
+                        repair_counts["interval_num_fix"] += 1
+
+                        result.append("\n".join(block_values))
+                    else:
+                        result.append(line)
                     continue
         #if float -> convert to int, get min max value and compare them
 
@@ -1692,7 +1835,7 @@ def fix_interval_number(types_yaml, repair_counts):
             args_list = [value for value in [min_value, max_value, step_value] if value != ""]
             # mention repairs only if it is worth mentioning (removal of whtespaces is not)
             if args_split != args_list:
-                logger_setup.logger.fix(f" Fixed invalid numbers inside {data_type_name}")
+                logger_setup.logger.fix(f"Fixed invalid numbers inside {data_type_name}")
                 repair_counts["interval_num_fix"] += 1
             
             start, end = line_match.span()
@@ -1742,6 +1885,192 @@ def yaml_bool(value: str, repair_counts: dict) -> str:
         value = value.strip("'\"")
         return f"'{value}'"
     return value
+
+
+def resolve_path(path, types_section):
+    if not path or not isinstance(types_section, dict):
+        return False
+    
+    current = types_section
+    parts = path.split(".")
+
+    for part in parts:
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        else:
+            return False
+    
+    return True
+
+
+def fix_format_values_ref(recipe_str: str, includes: list, repair_counts: dict) -> str:
+
+    try:
+        recipe_data = yaml.safe_load(recipe_str)
+        if not isinstance(recipe_data, dict):
+            recipe_data = {}
+    except Exception:
+        recipe_data = {}
+        
+    types_section = recipe_data.get("types", {})
+    if not isinstance(types_section, dict):
+        types_section = {}
+
+
+    lines = recipe_str.splitlines()
+    repaired_lines = []
+    
+    current_section = None
+    current_table = None
+    current_column = None
+    in_values_list = False
+    
+    table_indent = None
+    column_indent = None
+    values_indent = None
+    
+    processed_tables_count = 0
+    processed_columns_count = 0
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        
+        if not stripped or stripped.startswith("#"):
+            repaired_lines.append(line)
+            i += 1
+            continue
+            
+        indent = len(line) - len(line.lstrip())
+        
+        if indent == 0 and stripped in ["types:", "schema:", "generate:", "constraints:", "include:"]:
+            current_section = stripped[:-1]
+            repaired_lines.append(line)
+            i += 1
+            continue
+            
+        if current_section == "types":
+            
+            if table_indent is None and stripped.endswith(":") and not stripped.startswith("-"):
+                table_indent = indent
+            
+            if table_indent is not None and indent == table_indent and stripped.endswith(":") and not stripped.startswith("-"):
+                current_table = stripped[:-1].strip("'\"")
+                current_column = None
+                in_values_list = False
+                column_indent = None
+                values_indent = None
+                processed_tables_count += 1
+                repaired_lines.append(line)
+                i += 1
+                continue
+                
+            
+            if current_table:
+                if column_indent is None and indent > table_indent and stripped.endswith(":") and not stripped.startswith("-"):
+                    column_indent = indent
+                
+                if column_indent is not None and indent == column_indent and stripped.endswith(":") and not stripped.startswith("-"):
+                    current_column = stripped[:-1].strip("'\"")
+                    in_values_list = False
+                    values_indent = None
+                    processed_columns_count += 1
+                    repaired_lines.append(line)
+                    i += 1
+                    continue
+                    
+            
+            if current_column and column_indent is not None:
+                if values_indent is None and indent > column_indent and stripped.endswith(":") and not stripped.startswith("-"):
+                    values_indent = indent
+                    
+                if values_indent is not None and indent == values_indent:
+                    if stripped == "values:":
+                        in_values_list = True
+                        repaired_lines.append(line)
+                        i += 1
+                        continue
+                    elif stripped.endswith(":") and not stripped.startswith("-"):
+                        in_values_list = False
+                        repaired_lines.append(line)
+                        i += 1
+                        continue
+        
+            if current_column and in_values_list and values_indent is not None:
+                if stripped.startswith("-") and indent > values_indent:
+                    raw_item = stripped[1:].strip().strip("'\"")
+                    item_indent_str = line[:line.find("-")]
+                    
+                    is_numeric = bool(re.match(r'^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$', raw_item))
+                    is_bool = raw_item.lower() in ["true", "false"]
+                    
+                    if is_numeric or is_bool:
+                        repaired_lines.append(line)
+                        i += 1
+                        continue
+                    
+                   
+                    if raw_item == 'string' or resolve_path(raw_item, types_section):
+                        repaired_lines.append(line)
+                    
+                    
+                    elif '.' in raw_item and resolve_path(f"{current_table}.{raw_item}", types_section):
+                        prefixed_item = f"{current_table}.{raw_item}"
+                        repaired_lines.append(f"{item_indent_str}- {prefixed_item}")
+                        repair_counts["values_ref_prefixed"] += 1
+                        logger_setup.logger.fix(f"Added missing table prefix in values: '{raw_item}' -> '{prefixed_item}'")
+                  
+                    elif raw_item in includes:
+                        new_key = f"part_{raw_item}"
+                        
+
+                        column_dict = types_section.get(current_table, {}).get(current_column, {})
+                        existing_keys = list(column_dict.keys()) if isinstance(column_dict, dict) else []
+                        
+                      
+                        for prev_line in reversed(repaired_lines):
+                            prev_stripped = prev_line.strip()
+                            if not prev_stripped or prev_stripped.startswith("#"):
+                                continue
+                            if len(prev_line) - len(prev_line.lstrip()) <= column_indent:
+                                break
+                            if ":" in prev_line and not prev_stripped.startswith("-"):
+                                existing_keys.append(prev_stripped.split(":", 1)[0].strip())
+
+                        suffix = 2
+                        while new_key in existing_keys:
+                            new_key = f"part_{raw_item}_{suffix}"
+                            suffix += 1
+                        
+                       
+                        val_index = len(repaired_lines) - 1
+                        while val_index >= 0:
+                            if repaired_lines[val_index].strip() == "values:":
+                                break
+                            val_index -= 1
+                        
+                        prop_indent = " " * values_indent
+                        repaired_lines.insert(val_index, f"{prop_indent}{new_key}: {raw_item}")
+                        
+                        bound_item = f"{current_table}.{current_column}.{new_key}"
+                        repaired_lines.append(f"{item_indent_str}- {bound_item}")
+                        repair_counts["values_ref_dataset_bound"] += 1
+                        logger_setup.logger.fix(f"Created dataset-bound reference for include '{raw_item}' -> '{bound_item}'")
+                    
+                    else:
+                        repaired_lines.append(line)
+                    
+                    i += 1
+                    continue
+
+        repaired_lines.append(line)
+        i += 1
+        
+    if "types:" in recipe_str and (processed_tables_count == 0 or processed_columns_count == 0):
+        logger_setup.logger.warning(f"Processed tables: {processed_tables_count}, Columns: {processed_columns_count}. Check formatting.")
+        
+    return "\n".join(repaired_lines)
 
 def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
 
@@ -1795,11 +2124,12 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
         f"{constraints_raw}"
     )
 
-    logger_setup.logger.stage(f"LLM successfully generating YAML. Looking for errors to fix")
+    logger_setup.logger.stage(f"LLM successfully generated YAML. Looking for errors to fix")
 
     types_filtered = types_raw.replace(".format", "")
     types_filtered = fix_regex_quoting(types_filtered, repair_counts)
     types_filtered = fix_interval_number(types_filtered, repair_counts)
+    types_filtered = fix_types_keys(types_filtered, db_table_names, columns_in_tables, repair_counts)
     include_filtered = generate_yaml_include(types_filtered)
 
     if "include:" in include_filtered and "include: []" not in include_filtered:
@@ -1826,6 +2156,8 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
     fixed_yaml = fix_interval_number(fixed_yaml, repair_counts)
     
     fixed_yaml = fix_pk_seq(fixed_yaml, samples, fk_map, repair_counts)
+
+    fixed_yaml = fix_format_values_ref(fixed_yaml, AVAILABLE_INCLUDES, repair_counts)
     
     yaml_generator.save_original_yaml(raw_yaml, db_name)
     save_repair_report_to_csv(repair_counts, db_name)
