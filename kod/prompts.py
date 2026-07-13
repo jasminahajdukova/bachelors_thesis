@@ -100,15 +100,14 @@ def build_constraints_prompt(types_section, sql_server_type):
 
     STRICT CONSTRAINTS RULES:
     1. Only use valid column names and tables that exist in the types section above.
-    2. Format each constraint on a new line as: 'table.column OPERATOR value' or 'table.column in (val1, val2, ...)'.
-    3. ALLOWED OPERATORS: You are ONLY allowed to use these relational operators: =, !=, <, >, <=, >=, in.
+    2. Format each constraint on a new line as: 'table.column OPERATOR value'.
+    3. ALLOWED OPERATORS: You are ONLY allowed to use these relational operators: =, !=, <, >, <=, >=.
     4. STRICTLY PROHIBITED: Do NOT generate constraints using 'LIKE', 'MATCH', '~', 'REGEX', 'IS NULL' or 'IS NOT NULL'.
     5. AVOID self-referencing constraints (e.g., 'users.age = users.age' is invalid).
 
     VALID EXAMPLE:
     constraints:
       - users.age >= 18
-      - orders.status in ('pending', 'shipped', 'delivered')
       - products.price > 0.0
 
     Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no logical constraints can be derived. Do not wrap code in markdown block format.
