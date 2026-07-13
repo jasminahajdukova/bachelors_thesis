@@ -13,10 +13,6 @@ OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 """
 
-PARAMETER temperature 0.3
-PARAMETER num_predict 512
-
-
 MESSAGE user """Generate ONLY the 'generate:' section for a Dataster YAML from a mysql database.
     
     Here are the generated types:

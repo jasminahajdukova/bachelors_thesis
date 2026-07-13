@@ -80,9 +80,6 @@ DATASET FORMAT RULE:
 OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks """
 
-PARAMETER temperature 0.3
-
-
 
 MESSAGE user """Database samples:
 {"passenger_information": {"passenger_email": {"is_pk": false, "db_type": "varchar(30)", "distinct_count_in_sample": 2, "samples": ["anna.benesova@uni.com", "david.cerny@uni.com"]}, "passenger_full_name": {"is_pk": false, "db_type": "varchar(20)", "distinct_count_in_sample": 2, "samples": ["Anna Benesova", "David Cerna"]}}}

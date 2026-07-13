@@ -19,7 +19,6 @@ OUTPUT RULES:
 - Return ONLY raw YAML, no markdown fences, no ```yaml blocks
 """
 
-PARAMETER temperature 0.3
 
 
 MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.
