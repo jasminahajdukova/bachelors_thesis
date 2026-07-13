@@ -915,7 +915,7 @@ def save_yaml(yaml_string: str, db_name: str):
 
 
 def save_original_yaml(yaml_string: str, db_name: str):
-    filepath = f"results/original_yaml/dataster_config-{db_name}.yaml" 
+    filepath = f"results/original_yaml/original-dataster_config-{db_name}.yaml" 
     with open(filepath, "a") as f:
         f.write(yaml_string)
         f.write("\n\n")
