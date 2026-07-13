@@ -371,7 +371,7 @@ def main():
                 errors.append(yaml_generator.YAML_result(db_name, "pipeline", "generation_skipped", 2, "All tables skipped or resulted in composite/invalid samples. Skipped llm generation"))
 
         else:
-            logger_setup.logger.stage(f"Sending samples to LLM for YAML generation")
+            logger_setup.logger.stage(f"Sending samples to LLM for YAML generation:\n {samples}")
 
             try:
                 yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count, db_name)
