@@ -1,11 +1,11 @@
 import os
-import yaml
+import yaml # type: ignore
 import re
 import logger_setup
 from dataclasses import dataclass
 from datetime import datetime
 import csv
-from yaml.loader import SafeLoader
+from yaml.loader import SafeLoader # type: ignore
 
 
 AVAILABLE_INCLUDES = [
@@ -48,10 +48,12 @@ def load_yaml(yaml_str, db_name):
     except ValueError as ve:
         logger_setup.logger.error(f"YAML Duplicate Error: {str(ve)}")
         errors.append(YAML_result(db_name, "YAML", "invalid_yaml", 1, f"YAML Duplicate Error: {str(ve)}"))
+        save_yaml(yaml_str, db_name)
         return None, errors
     except Exception as e:
         logger_setup.logger.error(f"YAML Syntax Error: {str(e)}")
         errors.append(YAML_result(db_name, "YAML", "invalid_yaml", 1, f"YAML Syntax Error: {str(e)}"))
+        save_yaml(yaml_str, db_name)
         return None, errors
     
     return loaded_yaml, errors
@@ -115,7 +117,7 @@ def validate_yaml(db_name: str, yaml_str: str, samples: dict) -> list[YAML_resul
     # checks if generate exists in yaml
     if "generate" in loaded_yaml:
         generate_section = loaded_yaml["generate"]
-        # kontrola
+        
         errors  += validate_generate(db_name, generate_section, types_section)
         # checks if numbers inside seq match number if generate table
         errors  += validate_seq(db_name, generate_section, types_section)
@@ -192,7 +194,7 @@ def check_types(db_name, types_section, samples):
                             err.append(YAML_result(db_name, "types", "invalid_types", 1, f"Invalid values inside BLOCKS for {table_name}.{column_name}"))
 
                 elif isinstance(column_def, str):
-                    if column_def in ["format", "value"]:
+                    if column_def in ["format", "values"]:
                         continue
                     val_clean = column_def.strip().strip("'\"")
                     if (val_clean.lower() not in ["string", "blocks"] and val_clean not in AVAILABLE_INCLUDES and "(" not in val_clean):
@@ -596,7 +598,7 @@ def iterate_types(db_name, types: dict, includes) -> list[YAML_result]:
         if not isinstance(table_content, dict):
             logger_setup.logger.error(f"Expected dict for table types got {type(types)}")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Expected dict for table {table_name} content. Got {type(table_content)}"))
-            return errors
+            continue
     
         # sends table content for validation
         errors += validate_types(db_name, table_content, includes)
@@ -695,7 +697,7 @@ def iterate_schemas(db_name, schema: dict, types_section) -> list[YAML_result]:
         if not isinstance(table_content, dict):
             logger_setup.logger.error(f"Expected dict for table types got {type(schema)}")
             errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Expected dict for table {table_name} content. Got {type(table_content)}"))
-            return errors
+            continue
     
         # sends table content for validation
         errors += validate_schema(db_name, table_content, types_section)
@@ -828,7 +830,7 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
         val_table = value_split[0]
         val_col   = value_split[1]
 
-        # and check if table exists and column is inside talbe
+        # and check if table exists and column is inside table
         if val_table not in types_section or val_col not in types_section[val_table]:
             logger_setup.logger.warning(f"Referenced constraint column {val_table}.{val_col} does not exist in types section")
             errors.append(YAML_result(db_name, "constraints", "invalid_constraints", 2, f"Constraint type {val_table}.{val_col} does not exist in types section"))
@@ -876,7 +878,7 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
     
     return errors
 
-def validate_constraints(db_name, constraints: str, types_section) -> list[YAML_result]:
+def validate_constraints(db_name, constraints: list, types_section) -> list[YAML_result]:
 
     errors = []
     supported_op = {"=", "!=", "<", ">", "<=", ">="}
