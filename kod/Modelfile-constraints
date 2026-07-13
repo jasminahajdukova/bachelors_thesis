@@ -38,7 +38,7 @@ MESSAGE user """Generate ONLY the 'constraints:' section for a Dataster YAML fro
   STRICT CONSTRAINTS RULES:
     1. Only use valid column names and tables that exist in the types section above.
     2. Format each constraint on a new line as: 'table.column OPERATOR value'
-    3. ALLOWED OPERATORS: You are ONLY allowed to use these relational operators: =, !=, <, >, <=, >=, in.
+    3. ALLOWED OPERATORS: You are ONLY allowed to use these relational operators: =, !=, <, >, <=, >=.
     4. STRICTLY PROHIBITED: Do NOT generate constraints using 'LIKE', 'MATCH', '~', 'REGEX', 'IS NULL' or 'IS NOT NULL'.
     5. AVOID self-referencing constraints (e.g., 'users.age = users.age' is invalid).
 
@@ -85,7 +85,7 @@ MESSAGE user """Generate ONLY the 'constraints:' section for a Dataster YAML fro
   STRICT CONSTRAINTS RULES:
     1. Only use valid column names and tables that exist in the types section above.
     2. Format each constraint on a new line as: 'table.column OPERATOR value'.
-    3. ALLOWED OPERATORS: You are ONLY allowed to use these relational operators: =, !=, <, >, <=, >=, in.
+    3. ALLOWED OPERATORS: You are ONLY allowed to use these relational operators: =, !=, <, >, <=, >=.
     4. STRICTLY PROHIBITED: Do NOT generate constraints using 'LIKE', 'MATCH', '~', 'REGEX', 'IS NULL' or 'IS NOT NULL'.
     5. AVOID self-referencing constraints (e.g., 'users.age = users.age' is invalid).
 
