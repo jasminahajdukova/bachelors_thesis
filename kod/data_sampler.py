@@ -1,4 +1,3 @@
-from mysql.connector.connection import MySQLConnection
 import logger_setup
 def calculate_limit(row_count):
     limit = int(row_count * 0.25)
@@ -10,7 +9,13 @@ def prime_keys_template(table_name: str, column_name: str):
 
 def data_samples_template(table_name: str, column_name: str, limit: int = 5) -> str:
     
-    template = f"SELECT DISTINCT `{column_name}` FROM `{table_name}` ORDER BY `{column_name}` LIMIT {limit}"
+    half_limit_asc = (limit + 1) // 2
+    half_limit_desc = limit // 2
+
+    template = f"""(SELECT DISTINCT `{column_name}` FROM `{table_name}` WHERE `{column_name}` IS NOT NULL ORDER BY `{column_name}` ASC LIMIT {half_limit_asc})
+    UNION
+    (SELECT DISTINCT `{column_name}` FROM `{table_name}` WHERE `{column_name}` IS NOT NULL ORDER BY `{column_name}` DESC LIMIT {half_limit_desc})
+    ORDER BY `{column_name}` ASC;"""
 
     logger_setup.logger.debug(f"Creating SQL query: {template}")
     return template
