@@ -3,11 +3,11 @@ from datetime import datetime, timedelta
 import os
 import re
 import yaml_generator
-import ollama
-import httpx
+import ollama # type: ignore
+import httpx # type: ignore
 import prompts
 import logger_setup
-import yaml
+import yaml # type: ignore
 
 class CyclicDependencyError(ValueError):
     pass
@@ -70,7 +70,7 @@ def get_response(type_name: str, prompt: str, model: str, thinking: bool = False
         logger_setup.logger.error(f"Ollama is not running: {exc}")
         raise RuntimeError(f"Ollama is not running: {exc}") from exc
 
-def generate_sql_query(template, db_name, table_name):
+def format_sql_template(template, db_name, table_name):
     query = template.format(db_name=db_name, table_name=table_name)
     return query
 
@@ -517,7 +517,7 @@ def is_domain_valid(domain: str) -> bool:
     return True
 
 def fix_references(line: str, stripped: str, current_table: str, samples: dict, repaired_lines: list, found_domains: list, repair_counts: dict, state: dict):
-    # get raw value by removing whispaces and quotes
+    # get raw value by removing whitespaces and quotes
     raw_value = stripped[1:].strip().strip("'\"")
     indent = line[:line.find("-")]
 
@@ -563,7 +563,7 @@ def fix_references(line: str, stripped: str, current_table: str, samples: dict, 
             else:
                 # if reference already exists incement repair count
                 repair_counts["email_duplication_fix"] += 1
-                return repaired_lines
+                return 
         else:
             repaired_lines.append(line)
         return
@@ -611,13 +611,13 @@ def fix_references(line: str, stripped: str, current_table: str, samples: dict, 
         return
 
     repaired_lines.append(line)
-    return repaired_lines
+    return 
 
 def fix_blocks(lines: list, i: int, line: str, stripped: str, current_table: str, samples: dict, repaired_lines: list, repair_counts: dict, state: dict) -> tuple[int, bool]:
     
     # not a column -> skip
     if ":" not in stripped:
-        # return orignal index count, and False (as in no change)
+        # return original index count, and False (as in no change)
         return i, False
     
     # if there is a value after column name ( example: column_name: value)
@@ -690,7 +690,7 @@ def fix_blocks(lines: list, i: int, line: str, stripped: str, current_table: str
             repaired_lines.append(f"{indent}  - {fixed_val}")
         # increment repair_counts
         repair_counts["inline_blocks_fix"] += 1
-        # return new idnex and True (as in something was changed)
+        # return new index and True (as in something was changed)
         return next_index, True
 
     # in case there are no value under BLOCKS, it gets values from actual samples 
@@ -711,7 +711,7 @@ def fix_blocks(lines: list, i: int, line: str, stripped: str, current_table: str
                         repaired_lines.append(f"{indent}  - {fixed_sample}")
                 # increments repair_counts
                 repair_counts["filled_empty_blocks"] += 1
-                # return new idnex and True (as in something was changed)
+                # return new index and True (as in something was changed)
                 return i + 1, True
     return i, False
 
@@ -744,7 +744,7 @@ def fix_types_and_schema(line: str, stripped: str, current_section: str, current
         # fix data type to string
         return f"{indent}{column_name}: string"
     
-    # kontrola
+    
     if current_section == "types" and value:
         if column_name.lower() in ["format", "values"]:
             return line
@@ -1022,7 +1022,7 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
                 for index in value_lines_indexes:
                     # remove any whitespaces and quotes
                     val_raw = lines[index].strip()[1:].strip().strip("'\"")
-                    # ignore BLOCKS and add to list of oxtracted refs
+                    # ignore BLOCKS and add to list of extracted refs
                     if val_raw.upper() == "BLOCKS":
                         has_blocks_placeholder = True
                     elif val_raw != "":
@@ -1045,7 +1045,7 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
                             invalid_refs_found = True
                             break
                     # if not a reference check if its include
-                    # kontrola ci je to spravne
+                  
                     else:
                         
                         is_valid = (ref in AVAILABLE_INCLUDES) or (current_table in samples and ref in samples[current_table]) or (current_table in found_columns and ref in found_columns[current_table])
@@ -1086,7 +1086,7 @@ def check_format(yaml_str: str, samples: dict, repair_counts: dict) -> str:
     # return YAML as one string
     return "\n".join(output_lines)
 
-def fix_types_keys(types_yaml, table_names, collumns_in_table, repair_counts):
+def fix_types_keys(types_yaml, table_names, columns_in_table, repair_counts):
     lines = types_yaml.splitlines()
 
     output_lines = []
@@ -1107,7 +1107,7 @@ def fix_types_keys(types_yaml, table_names, collumns_in_table, repair_counts):
             
             if table_lower in table_names:
                 current_table = table_names[table_lower]
-                current_table_cols = collumns_in_table.get(table_lower, {})
+                current_table_cols = columns_in_table.get(table_lower, {})
                 indent_str = line[:line.find(table_raw)]
                 output_lines.append(f"{indent_str}{current_table}:")
             
@@ -1177,14 +1177,13 @@ def guess_type_from_db(table: str, columns: str, samples: dict) -> str:
 
     is_numeric = any(type_db in db_type for type_db in ["int", "decimal", "float", "double", "numeric"])
     
-    # kontrola time
+ 
     is_just_time = "time" in db_type and "date" not in db_type
     is_date = "date" in db_type or "time" in db_type
 
     # in case its dealing with numeric prime keys
     if is_prime_key and is_numeric:
-        if "seq" in column:
-            sequence = column["seq"] if "seq" in column else None
+        sequence = column.get("seq")
         if sequence:
             return sequence
         logger_setup.logger.warning("Couldn't get seq for prime keys. Inserted seq(1, 10, 1). Change it so it fits your table")
@@ -1751,7 +1750,23 @@ def fix_interval_number(types_yaml, repair_counts):
                 is_valid = (int(min_value) < int(max_value)) and int(step_value) > 0
 
             except ValueError:
-                is_valid = False
+                if ":" in line:
+                    columns_name = line.split(":", 1)[0].strip()
+                    
+                    value1 = min_value.strip("'\"")
+                    value2 = max_value.strip("'\"") if max_value else ""
+                    
+                    indent = line[:line.find(columns_name)]
+                    block_values = [f"{indent}{columns_name}:", f"{indent + ' ' * 2}- BLOCKS", f"{indent + ' ' * 2}- {value1}"]
+                    if value2:
+                        block_values.append(f"{indent + ' ' * 2}- {value2}")
+                    
+                    logger_setup.logger.fix(f"Fixed hallucinated values inside {data_type_name}. Changed to BLOCKS. Please check if it goes with your table")
+                    repair_counts["interval_num_fix"] += 1
+
+                    result.append("\n".join(block_values))
+                else:
+                    is_valid = False
         # if dates -> get min max values, compare them
             
         elif data_type_name == "dinterval":
@@ -1811,7 +1826,7 @@ def fix_interval_number(types_yaml, repair_counts):
                         if value2:
                             block_values.append(f"{indent + ' ' * 2}- {value2}")
                         
-                        logger_setup.logger.fix(f"Fixed hallucinated values inside {data_type_name}. Changed to BLOCKS")
+                        logger_setup.logger.fix(f"Fixed hallucinated values inside {data_type_name}. Changed to BLOCKS. Please check if it goes with your table")
                         repair_counts["interval_num_fix"] += 1
 
                         result.append("\n".join(block_values))
