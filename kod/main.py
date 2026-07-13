@@ -216,7 +216,7 @@ def get_result(db_name: str, table_name: str | None, server: Any, sql_type: str)
     schema_extractor.error_check(sql_type, table_name)
     template = schema_extractor.mysql_query_templates(sql_type)
     
-    sql_query = llm_processor.generate_sql_query(template=template, db_name=db_name, table_name=table_name, )
+    sql_query = llm_processor.format_sql_template(template=template, db_name=db_name, table_name=table_name, )
     
  
     result = schema_extractor.execute_sql(server, sql_query)
@@ -257,10 +257,14 @@ def main():
 
         
     server = db_connector.connect_to_mysql(host,user,password, db_name)
-    if server is None:
-        raise RuntimeError("Couldn't connect to server")
     
-    logger_setup.logger.stage(f"Generating YAML FOR {db_name}")
+    if server is None:
+        logger_setup.logger.error(f"Database connection error")
+        yaml_generator.save_csv([yaml_generator.YAML_result(db_name, "connection_error", "connection", 1, f"Database connection error: ")], db_name)
+        return 
+
+        
+    logger_setup.logger.stage(f"Connected to database: {db_name}. Ready to start generating YAML...")
 
     try:
         tables = get_result(db_name, None, server, "tables")
@@ -382,8 +386,8 @@ def main():
                 logger_setup.logger.error(f"Cylic FK dependency detected: {cde}")
                 errors.append(yaml_generator.YAML_result(db_name, "preprocessing", "cyclic_fk", 1, f"Cylic FK dependency detected: {cde}" ))
             except ValueError as ve:
-                logger_setup.logger.error(f"Internal generation errror: {ve}")
-                errors.append(yaml_generator.YAML_result(db_name, "pipeline", "generation_error", 1, f"Internal generation errror: {ve}"))
+                logger_setup.logger.error(f"Internal generation error: {ve}")
+                errors.append(yaml_generator.YAML_result(db_name, "pipeline", "generation_error", 1, f"Internal generation error: {ve}"))
             
         if yaml_was_generated and not any(e.severity == 1 for e in errors):
             errors.append(yaml_generator.YAML_result(db_name, "pipeline", "success", 0, "Successfully generated and validated YAML"))
