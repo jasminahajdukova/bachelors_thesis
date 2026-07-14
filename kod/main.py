@@ -1,3 +1,4 @@
+
 import argparse
 import getpass
 import db_connector
@@ -13,6 +14,15 @@ import os
 from llm_processor import CyclicDependencyError
 from prompts import json_decimal
 from typing import List, Tuple, Dict, Set, Any
+
+
+DBMS_PROMPT = {
+    "mysql": "MySQL",
+    "postgresql": "PostgreSQL"
+}
+
+def get_dbms(name: str) -> str:
+    return DBMS_PROMPT.get(name.lower(), name.capitalize())
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -31,6 +41,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--db", required=True, help="Database name")
     parser.add_argument("--no-password", action="store_true", help="Connect without password")
     parser.add_argument("--password", default=None, help="Database password")
+    parser.add_argument("--dbms", type=str, default="mysql", help="Target DBMS")
+    parser.add_argument("--port", type=int, default=None, help="Database port (optional)")
+
     return parser.parse_args()
     
 
@@ -89,12 +102,11 @@ def go_over_prime_keys(p_keys: list[Any]) -> List[str]:
             logger_setup.logger.error(f"Unexpected tuple length for prime keys")
             continue
         
-        key_name = pk[0]
         column_name = pk[1]
 
-        if key_name == "PRIMARY":
+        if isinstance(column_name, str):
             extracted_pks.append(column_name)
-            logger_setup.logger.info("Successful extraction of prime key")
+            logger_setup.logger.info(f"Successful extraction of prime key column: {column_name}")
         else:
             logger_setup.logger.warning(f"Unexpected prime key information {pk}")
 
@@ -127,7 +139,7 @@ def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
         db_data_type = column[1] if len(column) > 1 else "unknown"
 
         if column_name not in prime_keys:
-            template = data_sampler.data_samples_template(table_name, column_name, limit)
+            template = data_sampler.data_samples_template(server, table_name, column_name, limit)
             result = schema_extractor.execute_sql(server, template) 
             
             cl_rows = [json_decimal(row[0]) for row in result if row and len(row) > 0 and row[0] is not None]
@@ -136,7 +148,7 @@ def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
 
             continue
 
-        pk_template = data_sampler.prime_keys_template(table_name, column_name)
+        pk_template = data_sampler.prime_keys_template(server, table_name, column_name)
         pk_result   = schema_extractor.execute_sql(server, pk_template)
 
         if not pk_result or not pk_result[0]:
@@ -158,7 +170,7 @@ def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
 
 
         except (ValueError, TypeError):
-            sample_template = data_sampler.data_samples_template(table_name, column_name, limit)
+            sample_template = data_sampler.data_samples_template(server, table_name, column_name, limit)
             raw_samples = schema_extractor.execute_sql(server, sample_template)
 
             cl_samples = [json_decimal(row[0]) for row in raw_samples if row and len(row) > 0 and row[0] is not None]
@@ -214,13 +226,9 @@ def get_result(db_name: str, table_name: str | None, server: Any, sql_type: str)
     @return: Reulting data rows returned from the executed SQL query
     """
     schema_extractor.error_check(sql_type, table_name)
-    template = schema_extractor.mysql_query_templates(sql_type)
     
-    sql_query = llm_processor.format_sql_template(template=template, db_name=db_name, table_name=table_name, )
+    result = schema_extractor.query_templates(server, sql_type, table_name)
     
- 
-    result = schema_extractor.execute_sql(server, sql_query)
-
     if sql_type == "tables" and len(result) == 0:
         logger_setup.logger.error("Db has no data. Cannot generate YAML")
         return []
@@ -237,6 +245,8 @@ def main():
     user        = args.user
     db_name     = args.db
     no_password = args.no_password
+    dbms        = args.dbms
+    port        = args.port
     errors = []
 
     os.makedirs("results/dataster", exist_ok=True)
@@ -256,7 +266,7 @@ def main():
         password = getpass.getpass("Enter password: ")
 
         
-    server = db_connector.connect_to_mysql(host,user,password, db_name)
+    server = db_connector.connect_to_db(host, user, password, db_name, dbms, port)
     
     if server is None:
         logger_setup.logger.error(f"Database connection error")
@@ -378,10 +388,17 @@ def main():
             logger_setup.logger.stage(f"Sending samples to LLM for YAML generation:\n {samples}")
 
             try:
-                yaml_str = llm_processor.generate_yaml(samples, "MySQL", fk_map, generate_count, db_name)
+                db_dialect = server.dialect.name
+                
+                prompts_dbms = get_dbms(db_dialect)
+
+                logger_setup.logger.info(f"Detected dialect: {db_dialect}: using for LLM: {prompts_dbms}")
+
+                yaml_str = llm_processor.generate_yaml(samples, prompts_dbms, fk_map, generate_count, db_name)
                 logger_setup.logger.debug(f"Generated YAML:\n{yaml_str}")   
                 errors += yaml_generator.validate_yaml(db_name, yaml_str, samples)
                 yaml_was_generated = True
+
             except CyclicDependencyError as cde:
                 logger_setup.logger.error(f"Cylic FK dependency detected: {cde}")
                 errors.append(yaml_generator.YAML_result(db_name, "preprocessing", "cyclic_fk", 1, f"Cylic FK dependency detected: {cde}" ))
@@ -404,7 +421,7 @@ def main():
         yaml_generator.save_csv([yaml_generator.YAML_result(db_name, "critical_collapse", "pipeline_crash", 1, str(exc))], db_name)
         
     finally:
-        db_connector.disconnect_from_mysql(server)
+        db_connector.disconnect_from_db(server)
     
     elapsed = time.time() - start_time
     minutes = int(elapsed // 60)

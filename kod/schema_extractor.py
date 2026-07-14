@@ -1,6 +1,37 @@
-from mysql.connector.connection import MySQLConnection
-import logger_setup
 
+from sqlalchemy import inspect, text # type: ignore
+from sqlalchemy.engine import Engine # type: ignore
+from sqlalchemy.exc import SQLAlchemyError # type: ignore
+
+import logger_setup
+import data_sampler
+import re
+
+
+def fix_db_type(db_type: str) -> str:
+    if not db_type:
+        return "unknown"
+    
+    fixed = db_type.lower().strip()
+
+    fixed = re.sub(r'\s+character\s+set\s+("[^"]+"|\S+)', '', fixed)
+
+    fixed = re.sub(r'\s+collate\s+("[^"]+"|\S+)', '', fixed)
+
+    start_index = fixed.find("(")
+    end_index   = fixed.find(")")
+
+    if start_index != -1 and end_index != -1 and start_index < end_index:
+        inside = fixed[start_index + 1 : end_index].replace(" ", "")
+        fixed  = f"{fixed[:start_index]}({inside}){fixed[end_index + 1:]}"
+
+    fixed = re.sub(r"\s+\(", '(', fixed).strip()
+
+    fixed = re.sub(r"\s+", ' ', fixed).strip()
+
+    fixed = re.sub(r"\binteger\b", "int", fixed)
+
+    return fixed
 
 def error_check(types: str, table_name: str) -> None:
     if types not in ["tables","columns", "prime_keys", "foreign_keys", "count"]:
@@ -10,60 +41,58 @@ def error_check(types: str, table_name: str) -> None:
         raise ValueError("Table name is needed to search for columns/primary keys")
     
 
-def mysql_query_templates(types: str) -> str:
+
+
+def query_templates(engine: Engine, types: str, table_name: str):
+
+    error_check(types, table_name)
     
-    templates_dict = {
-        # index 0 = table_name
-        "tables":  """SELECT table_name 
-                       FROM information_schema.tables 
-                       WHERE table_schema = '{db_name}';""",
+
+    if types == "count":
+        query = data_sampler.count_template(engine, table_name)
+        return execute_sql(engine, query)
+
+    inspector = inspect(engine)
+    
+    if types == "tables":
+
+        tables = inspector.get_table_names()
+        return [(table,) for table in tables]
+
+    elif types == "columns":
+        columns_data = inspector.get_columns(table_name)
+        return [(col['name'], fix_db_type(str(col['type']))) for col in columns_data]
+
+    elif types == "prime_keys":
+        pk_data = inspector.get_pk_constraint(table_name)
+        constraint_name = pk_data.get('name') or 'PRIMARY'
+        return [(constraint_name, col) for col in pk_data.get('constrained_columns', [])]
+
+    elif types == "foreign_keys":
+        fk_data = inspector.get_foreign_keys(table_name)
+        result = []
+        for fk in fk_data:
+            for col, ref_col in zip(fk['constrained_columns'], fk['referred_columns']):
+                result.append((col, fk['referred_table'], ref_col))
+        return result
+
+    raise ValueError(f"Unknown types parameter: {types}")
 
 
-        # index 0 = column_name, index 1 = column_type
-        "columns": """SELECT column_name, column_type
-                       FROM information_schema.columns 
-                       WHERE table_schema = '{db_name}' AND table_name = '{table_name}'
-                       ORDER BY ordinal_position;""",
-
-        # index 0 = constraint_name 
-        # index 1 = column_name
-        "prime_keys":  """SELECT constraint_name, column_name 
-                           FROM information_schema.key_column_usage 
-                           WHERE table_schema = '{db_name}' 
-                             AND table_name = '{table_name}' 
-                             AND constraint_name = 'PRIMARY'
-                           ORDER BY ordinal_position;""",
-
-        # index 0 = column_name, index 1 = referenced_table_name, index 2 = referenced_column_name
-        "foreign_keys": """SELECT column_name, referenced_table_name, referenced_column_name
-                            FROM information_schema.KEY_COLUMN_USAGE
-                            WHERE table_schema = '{db_name}' 
-                              AND table_name = '{table_name}' 
-                              AND referenced_table_name IS NOT NULL; """,
-
-        # index 0 = row_count
-        "count":        "SELECT COUNT(*) FROM `{table_name}`;"
-    }
-
-    logger_setup.logger.debug(f"Created SQL template: {templates_dict[types]}")
-    return templates_dict[types]
-
-
-def execute_sql(db_name: MySQLConnection, query):
+def execute_sql(engine: Engine, query: str):
     try:
         logger_setup.logger.debug(query)
-        mycursor = db_name.cursor()
 
-        mycursor.execute(query)
-
-        myresult = mycursor.fetchall()
+        with engine.connect() as connection:
+            result = connection.execute(text(query))
+            myresult = result.fetchall()
 
         logger_setup.logger.debug(f"MY RESULT {myresult}")
         logger_setup.logger.debug(f"Query returned {len(myresult)} rows")
 
         return myresult
     
-    except Exception as err:
+    except SQLAlchemyError as err:
         logger_setup.logger.error(f"Failed to execute query =  {query} \n{err}")
         raise RuntimeError(f"Failed to execute query {err}") from err   
 
