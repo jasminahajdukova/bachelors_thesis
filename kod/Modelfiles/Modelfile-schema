@@ -1,0 +1,209 @@
+FROM qwen2.5:3b
+
+SYSTEM """
+You generate ONLY the schema: section of a Dataster YAML.
+
+The expected format is
+  Table name:
+    table column name: typename.attribute name
+
+CRITICAL SCHEMA RULES:
+1. Every column in the schema section MUST reference EXACTLY ONE reference in the format 'tablename.column_name' (e.g., database_owner_name: Fingerprint_Databases.database_owner_name).
+2. NEVER combine multiple columns with spaces or custom formats in this section (NEVER do: 'Fingerprint_Databases.first_name Fingerprint_Databases.last_name'). Spacing and formatting are handled ONLY in the types section.
+3. If a column is a foreign key, use the FROM syntax: 'FROM parent_table.primary_key_column'.
+4. Schema table and column names must be EXACTLY the same as in the provided samples. Do NOT fix typos.
+5. NEVER put data types (like seq, interval, string, int) directly into the schema.
+6. Return ONLY the schema: section, nothing else, no markdown fences.
+
+OUTPUT RULES:
+- Return ONLY raw YAML, no markdown fences, no ```yaml blocks
+"""
+
+
+
+MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.
+
+    Here are the generated types:
+    types:
+      Stations:
+        station_id: 'seq(1,6,1)'
+        region_code:
+          - BLOCKS
+          - NORD
+          - SUED
+          - WEST
+        station_name: 'str_len([cC] 10,30)'
+        altitude_m: 'interval(380,1245)'
+        is_automated: 'bool'
+      Readings:
+        reading_id: 'seq(1,14,1)'
+        station_id: 'interval(1,6)'
+        weather_type:
+          - BLOCKS
+          - CLEAR
+          - CLOUDY
+          - RAIN
+          - SNOW
+        temperature_c: 'finterval(-12.3,4.9)'
+        pressure_hpa: 'finterval(1007.6,1013.1)'
+        humidity_pct: 'interval(31,52)'
+        wind_kmh: 'interval(6,14)'
+        measured_on: 'dinterval(2024-1-12,2024-3-1)'
+    
+    CRITICAL SCHEMA RULES:
+    1. Every table and column defined in the types section above MUST appear in the schema section.
+    2. Format rules:
+       - For standard columns, assign the table name and column name: column_name: table_name.column_name
+       - For columns that represent relations (foreign keys), specify source table and column: column_name: FROM parent_table.parent_column
+    3. Return ONLY valid YAML syntax. Do not invent tables or columns.
+
+    VALID EXAMPLE:
+    schema:
+      users:
+        id: users.id
+        username: users.username
+      orders:
+        id: orders.id
+        user_id: FROM users.id
+
+    Return ONLY the schema section starting with 'schema:', nothing else. Do not wrap code in markdown block format.
+    """
+
+MESSAGE assistant """schema:
+  Stations:
+    station_id: Stations.station_id
+    region_code: Stations.region_code
+    station_name: Stations.station_name
+    altitude_m: Stations.altitude_m
+    is_automated: Stations.is_automated
+  Readings:
+    reading_id: Readings.reading_id
+    station_id: 'FROM Stations.station_id'
+    weather_type: Readings.weather_type
+    temperature_c: Readings.temperature_c
+    pressure_hpa: Readings.pressure_hpa
+    humidity_pct: Readings.humidity_pct
+    wind_kmh: Readings.wind_kmh
+    measured_on: Readings.measured_on"""
+
+
+MESSAGE user """Generate ONLY the 'schema:' section for a Dataster YAML from a mysql database.
+
+    Here are the generated types:
+    types:
+      airlines:
+        airline_id: 'seq(1,6,1)'
+        iata_code: 'str_len([cC] 2,3)'
+        airline_name: 'str_len([cC] 10,30)'
+        country_code: countries_cs
+        is_lowcost: 'bool'
+      airports:
+        airport_id: 'seq(1,7,1)'
+        iata_code: 'str_len([cC] 3,3)'
+        airport_name: 'str_len([cC] 10,40)'
+        city_country: 'str_len([cC] 10,30)'
+        timezone_code:
+          - BLOCKS
+          - CET
+          - EST
+          - GMT
+      aircraft:
+        aircraft_id: 'seq(1,8,1)'
+        airline_id: 'interval(1,6)'
+        aircraft_type:
+          - BLOCKS
+          - A320
+          - A321
+          - A350
+          - ATR72
+          - B737
+        seat_capacity: 'interval(70,325)'
+        max_range_km: 'interval(1500,15000)'
+        in_service: 'bool'
+      flights:
+        flight_id: 'seq(1,12,1)'
+        aircraft_id: 'interval(1,8)'
+        origin_airport: 'interval(1,7)'
+        flight_code: 'regex(''[A-Z]{2,3}[0-9]{4}'')'
+        status:
+          - BLOCKS
+          - BOARDING
+          - CANCELLED
+          - DELAYED
+          - SCHEDULED
+        duration_hours: 'finterval(1.6,2.05)'
+        base_price_eur: 'finterval(39.99,59.5)'
+        departure_date: 'dinterval(2024-7-1,2024-7-10)'
+      bookings:
+        booking_id: 'seq(1,15,1)'
+        flight_id: 'interval(1,12)'
+        passenger_first: first_names_cs
+        passenger_last: last_names_cs
+        seat_class:
+          - BLOCKS
+          - BUSINESS
+          - ECONOMY
+          - FIRST
+        baggage_kg: 'finterval(15.0,19.0)'
+        price_paid_eur: 'finterval(42.0,129.0)'
+        booked_on: 'dinterval(2024-6-10,2024-6-18)'
+        checked_in: 'bool'
+    
+    CRITICAL SCHEMA RULES:
+    1. Every table and column defined in the types section above MUST appear in the schema section.
+    2. Format rules:
+       - For standard columns, assign the table name and column name: column_name: table_name.column_name
+       - For columns that represent relations (foreign keys), specify source table and column: column_name: FROM parent_table.parent_column
+    3. Return ONLY valid YAML syntax. Do not invent tables or columns.
+
+    VALID EXAMPLE:
+    schema:
+      users:
+        id: users.id
+        username: users.username
+      orders:
+        id: orders.id
+        user_id: FROM users.id
+
+    Return ONLY the schema section starting with 'schema:', nothing else. Do not wrap code in markdown block format.
+    """
+
+MESSAGE assistant """schema:
+  airlines:
+    airline_id: airlines.airline_id
+    iata_code: airlines.iata_code
+    airline_name: airlines.airline_name
+    country_code: airlines.country_code
+    is_lowcost: airlines.is_lowcost
+  airports:
+    airport_id: airports.airport_id
+    iata_code: airports.iata_code
+    airport_name: airports.airport_name
+    city_country: airports.city_country
+    timezone_code: airports.timezone_code
+  aircraft:
+    aircraft_id: aircraft.aircraft_id
+    airline_id: 'FROM airlines.airline_id'
+    aircraft_type: aircraft.aircraft_type
+    seat_capacity: aircraft.seat_capacity
+    max_range_km: aircraft.max_range_km
+    in_service: aircraft.in_service
+  flights:
+    flight_id: flights.flight_id
+    aircraft_id: 'FROM aircraft.aircraft_id'
+    origin_airport: 'FROM airports.airport_id'
+    flight_code: flights.flight_code
+    status: flights.status
+    duration_hours: flights.duration_hours
+    base_price_eur: flights.base_price_eur
+    departure_date: flights.departure_date
+  bookings:
+    booking_id: bookings.booking_id
+    flight_id: 'FROM flights.flight_id'
+    passenger_first: bookings.passenger_first
+    passenger_last: bookings.passenger_last
+    seat_class: bookings.seat_class
+    baggage_kg: bookings.baggage_kg
+    price_paid_eur: bookings.price_paid_eur
+    booked_on: bookings.booked_on
+    checked_in: bookings.checked_in"""

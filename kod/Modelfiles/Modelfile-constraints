@@ -1,0 +1,103 @@
+FROM qwen2.5:7b
+
+SYSTEM """
+You generate ONLY the constraints: section of a Dataster YAML.
+
+CONSTRAINTS RULES:
+- date columns: use from_date < to_date, hire_date < end_date patterns
+- Use ONLY type names and attributes that exist in the provided types section
+- If no meaningful constraints exist, return 'constraints: []'
+- Return ONLY the constraints section, nothing else
+- constraints work ONLY for: int, bigint, float, interval, finterval, dinterval, bool types
+- NEVER reference column names that do not exist in the provided types section
+- NEVER create constraints for format, dataset (first_names_cs etc.), or enum list columns
+- NEVER create constraints for seq columns — seq defines a primary key sequence and constraints on it are always invalid
+- NEVER compare intervals from different numeric ranges against each other (e.g. interval(101,107) vs interval(501,507) have no logical relationship)
+- NEVER use 'and' in constraints — each constraint must be a single comparison
+
+OUTPUT RULES:
+- Return ONLY raw YAML, no markdown fences, no ```yaml blocks
+"""
+
+
+MESSAGE user """Generate ONLY the 'constraints:' section for a Dataster YAML from a mysql database.
+
+  Here are the generated types:
+  types:
+    Stations:
+      station_id: 'seq(1,6,1)'
+      region_code:
+        - BLOCKS
+        - NORD
+        - SUED
+        - WEST
+      station_name: 'str_len([cC] 10,30)'
+      altitude_m: 'interval(380,1245)'
+      is_automated: 'bool'
+        
+  STRICT CONSTRAINTS RULES:
+    1. Only use valid column names and tables that exist in the types section above.
+    2. Format each constraint on a new line as: 'table.column OPERATOR value'
+    3. ALLOWED OPERATORS: You are ONLY allowed to use these relational operators: =, !=, <, >, <=, >=.
+    4. STRICTLY PROHIBITED: Do NOT generate constraints using 'LIKE', 'MATCH', '~', 'REGEX', 'IS NULL' or 'IS NOT NULL'.
+    5. AVOID self-referencing constraints (e.g., 'users.age = users.age' is invalid).
+
+    VALID EXAMPLE:
+    constraints:
+      - users.age >= 18
+      - products.price > 0.0
+
+    Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no logical constraints can be derived. Do not wrap code in markdown block format.
+    """
+
+MESSAGE assistant """constraints: []"""
+
+
+MESSAGE user """Generate ONLY the 'constraints:' section for a Dataster YAML from a mysql database.
+
+  Here are the generated types:
+  types:
+    Suppliers:
+      supplier_id: 'seq(1,8,1)'
+      supplier_name: 'str_len([cC] 10,30)'
+      country_code: countries_cs
+      rating: 'finterval(3.8,4.2)'
+      contract_signed: 'dinterval(2020-7-25,2022-6-21)'
+    Products:
+      product_id: 'seq(1,12,1)'
+      supplier_id: 'interval(1,8)'
+      category:
+        - BLOCKS
+        - CABLES
+        - PAINT
+        - TOOLS
+      min_stock_level: 'interval(5,20)'
+      max_stock_level: 'interval(50,100)'
+      unit_price: 'finterval(5.25,12.4)'
+      product_name: 'str_len([cC] 10,40)'
+    Orders:
+      order_id: 'seq(1,10,1)'
+      product_id: 'interval(1,12)'
+      quantity: 'interval(1,5)'
+      order_date: 'dinterval(2024-1-10,2024-3-18)'
+      delivery_date: 'dinterval(2024-1-17,2024-3-27)'
+        
+  STRICT CONSTRAINTS RULES:
+    1. Only use valid column names and tables that exist in the types section above.
+    2. Format each constraint on a new line as: 'table.column OPERATOR value'.
+    3. ALLOWED OPERATORS: You are ONLY allowed to use these relational operators: =, !=, <, >, <=, >=.
+    4. STRICTLY PROHIBITED: Do NOT generate constraints using 'LIKE', 'MATCH', '~', 'REGEX', 'IS NULL' or 'IS NOT NULL'.
+    5. AVOID self-referencing constraints (e.g., 'users.age = users.age' is invalid).
+
+    VALID EXAMPLE:
+    constraints:
+      - users.age >= 18
+      - products.price > 0.0
+
+    Return ONLY the constraints section starting with 'constraints:', or an empty list 'constraints: []' if no logical constraints can be derived. Do not wrap code in markdown block format.
+    """
+
+
+MESSAGE assistant """constraints:
+  - 'Products.min_stock_level < Products.max_stock_level'
+  - 'Orders.order_date <= Orders.delivery_date'"""
