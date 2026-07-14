@@ -1,0 +1,73 @@
+-- MySQL dump 10.13  Distrib 9.6.0, for Linux (x86_64)
+--
+-- Host: localhost    Database: testdb3
+-- ------------------------------------------------------
+-- Server version	9.6.0
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+SET @MYSQLDUMP_TEMP_LOG_BIN = @@SESSION.SQL_LOG_BIN;
+SET @@SESSION.SQL_LOG_BIN= 0;
+
+--
+-- GTID state at the beginning of the backup 
+--
+
+SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '1d0e90ad-7f1e-11f1-a597-fe8e1f563f91:1-37';
+
+--
+-- Current Database: `testdb3`
+--
+
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `testdb3` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+
+USE `testdb3`;
+
+--
+-- Table structure for table `customer_payments`
+--
+
+DROP TABLE IF EXISTS `customer_payments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `customer_payments` (
+  `customer_payment_id` int NOT NULL AUTO_INCREMENT,
+  `car_sold_id` int NOT NULL,
+  `customer_id` int NOT NULL,
+  `payment_status_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `customer_payment_date_due` date DEFAULT NULL,
+  `customer_payment_date_made` date DEFAULT NULL,
+  `actual_payment_amount` decimal(10,2) DEFAULT NULL,
+  PRIMARY KEY (`customer_payment_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `customer_payments`
+--
+
+LOCK TABLES `customer_payments` WRITE;
+/*!40000 ALTER TABLE `customer_payments` DISABLE KEYS */;
+INSERT INTO `customer_payments` VALUES (1,101,501,'PAID','2026-01-15','2026-01-14',15000.00),(2,102,502,'PAID','2026-01-20','2026-01-20',22500.50),(3,103,503,'PENDING','2026-06-20',NULL,NULL),(4,104,504,'PAID','2026-02-10','2026-02-12',18900.00),(5,105,505,'OVERDUE','2026-05-01',NULL,NULL),(6,106,506,'PAID','2026-03-01','2026-02-28',31000.00),(7,107,507,'PENDING','2026-06-25',NULL,NULL),(8,108,508,'PAID','2026-03-15','2026-03-15',12350.00),(9,109,509,'PAID','2026-04-05','2026-04-04',45000.00),(10,110,510,'OVERDUE','2026-05-15',NULL,NULL),(11,111,511,'PAID','2026-04-20','2026-04-22',17500.00),(12,112,512,'PENDING','2026-07-01',NULL,NULL),(13,113,513,'PAID','2026-05-10','2026-05-09',28990.99),(14,114,514,'PAID','2026-05-20','2026-05-20',16000.00),(15,115,515,'PENDING',NULL,NULL,NULL);
+/*!40000 ALTER TABLE `customer_payments` ENABLE KEYS */;
+UNLOCK TABLES;
+SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2026-07-14  1:19:05
