@@ -1,0 +1,101 @@
+
+4. Nástroj Dataster a analýza požiadaviek
+
+Kým predchádzajúce kapitoly položili teoretický základ pre testovanie založené na dátach a veľké jazykové modely, v tejto časti sa práca už priamo zameriava na dosiahnutie konkrétneho cieľa. Výstupom tejto práce nie sú priamo testovacie dáta, ale YAML konfigurácia, tzv. recept pre nástroj Dataster. Dataster  tým určuje cieľový formát a teda aj to, čo všetko musí navrhovaný nástroj o databáze zistiť. Táto kapitola analyzuje formát receptu z pohľadu znalostí potrebných na jeho vytvorenie a odvodzuje požiadavky na nástroj. Sekcia 4.1 predstavuje nástroj Dataster, sekcia 4.2 analyzuje formát receptu a sekcia 4.3 z tejto analýzy formuluje požiadavky na navrhovaný nástroj.
+
+4.1 Nástroj Dataster
+
+Dataster je súčasťou Testos platformy, ktorá sa zaoberá automatizáciou testovania softvéru [Testos]. Na základe vstupného receptu generuje testovacie dáta do relačných databáz vo forme SQL insert príkazov. Generovanie je postavené na SMT riešiteľovi [Vlach].  Dataster je budovaný na už existujúcej CLI aplikácii dbgenx, nad ktorou buduje API adaptér a webové rozhranie [tu citácia bud vlach alebo dbgenx]. 
+
+Používateľ pracuje s Datasterom prostredníctvom receptu, ktorý vytvára ručne. Recept má rôzne špecifikácie ako typy hodnôt, väzby na tabuľky a stĺpce, počty riadkov, dodatočné obmedzenia. Kvalita generovaných dát stojí na kvalite receptu. Dataster sám o sebe nemá prístup ku žiadnej databáze a nevidí jej schému, preto je na použivateľovi, aby túto znalosť preložil do receptu, do štruktúrovaného formátu YAML. 
+
+Autor receptu musí prejsť schému databázy, pre každý stĺpec určiť vhodný typ a správne identifikovať vzťahy medzi tabuľkami. Čas potrebný na tvorbu receptu sa úmerne zvyšuje s počtom tabuliek a táto práca môže trvať niekoľko hodín až dní. Aby bolo možné tento krok automatizovať je najskôr dôležité presne rozumieť tomu aké sú potrebné znalosti pre tvorbu receptu, čomu sa venuje sekcia 4.2.
+
+4.2 Analýza formátu receptu
+
+Recept sa skladá z piatich sekcií: include, types, schema, generate a constraints, pričom časti ako types, schema a generate sú povinné [Vlach].
+
+Sekcia include sa používa na rôzne prednastavené datasety, teda externé YAML súbory s informáciami ako mená, mestá, atď. Avšak na to aby autor receptu vedel datasety použiť, musí rozpoznať sémantickú doménu stĺpca a to nie z dátového typu, ale z názvu stĺpca a vzorových hodnôt. Zároveň musí poznať aktuálnu ponuku dostupných datasetov. 
+
+
+Sekcia types vyžaduje znalosti tabuliek, ako aj jednotlivých stĺpcov tabuľky a zároveň ich dátové typy. Na základe vzorových hodnôt zostaviť hranice intervalov, dĺžky reťazca alebo regex vzorov. Schéma nerozlišuje hlbší kontext, ale vzorové hodnoty áno. Práve preto táto sekcia vyžaduje aj samotné vzorky. Príkladom môže byť dátový typ INT reprezentujúci vek alebo cenu, samotná schéma medzi nimi nerozlišuje, rozlišujú ich až hodnoty.
+
+
+Sekcia schema mapuje stĺpce tabuliek na atribúty typov. Na jej vytvorenie je potrebná znalosť štruktúry tabuliek a vzťahy, teda ktorý stĺpec je cudzí kľúč a kam ukazuje. Je ale nutné poznamenať, že cudzí kľúč nemusí byť v schéme deklarovaný. Vzťah sa dá rozpoznať len z názvov a hodnôt. 
+
+Sekcia generate vyžaduje úsudok o zmysluplných počtoch riadkov, teda horná hranica je rozsah primárneho kľúča, k tomu pomery medzi tabuľkami. Toto nie je v databáze nikde zapísané a je potrebný úsudok nad charakterom tabuliek.
+
+Pri sekcii constraints len znalosť schémy neplatí, je z nej potrebné vedieť vyčítať logické súvislosti, ktoré vyplývajú z významu hodnôt. Príkladom tohto môžu byť napríklad počiatočný a koncový dátum, logická spojka v tomto prípade je, že počiatočný dátum by sa malo udiať skôr ako ten koncový.
+
+Z analýzy týchto sekcií je jasné, že kým zatiaľ pre určité sekcie stačí mechanické vyčítanie zo schémy pre získanie štruktúry, aké tabuľky existujú, aké majú stĺpce, deklarované dátové typy, primárne a cudzie kľúče, sú tu aj časti, ktoré vyžadujú hlbšiu interpretáciu kontextu vzoriek a názvov, napríklad, že ‘first_name’ je rodné meno, alebo že vek je kladné celé číslo v určitom rozmedzí.  Interpretačná kategória sa nedá pokryť pevným algoritmom a práve to je dôvod využitia jazykových modelov v tejto práci. 
+
+4.3 Analýza požiadaviek
+
+Tabuľka [odkaz na ňu] zahŕňa zjednotené požiadavky v jednej súvislosti. Každá požiadavka obsahuje svoje identifikačné číslo, popis, kategóriu a zdroj. Táto tabuľka identifikuje dve kategórie požiadaviek:
+Funkcionálne požiadavky (F)
+Nefunkcionálne požiadavky (NF)
+
+ID
+Popis
+Kategoria
+Zdroj
+REQ.1
+Nástroj sa pripojí k databáze na základe prihlasovacích údajov
+F
+Zadanie
+REQ.2
+Nástroj získa štruktúru databázy: názvy tabuliek, stĺpcov, dátové typy a kľúče.
+F
+Zadanie
+REQ.3
+Nástroj získa vzorové dáta
+F
+Zadanie
+REQ.4
+Nástroj odvodí sémantické domény stĺpcov z ich názvov a vzorových hodnôt.
+F
+Analýza 4.2
+REQ.5
+Nástroj odvodí parametre generátorov, teda hranice intervalov, dĺžky reťazcov, vzory, zo vzorových hodnôt.
+F
+Analýza 4.2
+REQ.6
+Analyzuje vzťahy ktoré nie sú v schéme explicitne spomenuté. 
+F
+Analýza 4.2
+REQ.7
+Odvodí počty  generovaných riadkov pre jednotlivé tabuľky. 
+
+
+F
+Analýza 4.2
+REQ.8
+Odvodí obmedzenia z významu hodnôt. 
+F
+Analýza 4.2
+REQ.9
+Nástroj využije model LLM pre generovanie receptu.
+F
+Zadanie 
+REQ.10
+Výstupom je recept akceptovateľný aktuálnou verziou Dataster. 
+F
+Prostredie
+REQ.11
+ Proces je opakovateľný
+NF
+Zadanie
+REQ.12
+Nástroj beží výhradne lokálne bez využitia externých služieb. 
+NF
+Zadanie 
+REQ.13
+Nástroj je prevádzkovateľný na GPU s 8GB VRAM 
+NF
+Prostredie
+REQ.14
+Výstup je overiteľný v nástroji Dataster a vykonávaním vygenerovaného SQL 
+NF
+Zadanie 
+
+
