@@ -1,0 +1,10 @@
+---
+config:
+  theme: neutral
+---
+flowchart TB
+    A([Výstup fázy]) --> B{Validácia}
+    B -->|bez chýb| C[Ďalšia fáza]
+    B -->|chyby| D[Oprava]
+    D -->|revalidácia| B
+    B -->|chyby po N cykloch| E[FAIL fázy]

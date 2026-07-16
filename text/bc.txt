@@ -1,8 +1,68 @@
-Uvod
+\chapter{Úvod}
+Testovanie je jedna z najdôležitejších fáz vývoja softvéru, pretože dôsledky nekvalitného softvéru sú nákladné. Nekvalitný softvér spôsobil v roku 2022 v USA náklady odhadované na skoro dva a pol bilióna amerických dolárov[tu pridaj citacu krasner 2022]. Jedným z prístupov ku testovaniu je Data-Driven testing (DDT), testovanie založené na princípe oddelenia testovacích dát od testovacej logiky.
 
-Testovanie je neodelitelnou sucastou vyvoja softver ale rovnako dolezitou castou je aj kvalita testovacich dat. Prave tie nam odrazazaju kontext vyuzitia softveru a mozu nam lepsie ukazat chyby
-Jednym pristrojom na generovanie dat je Dataster, lenze na to potrebujeme pripravit yaml subor, co vyzaduje znalost databazy ako aj hodiny casu. Tu prichadza vyvoj mojho porgramu, ktory sa zaobera generovanim yaml pomocou large language models.
+Efektívne testovanie stojí na kvalite testovacích dát, hlavne preto, že pri nedostatočne domyslených dátach môže dôjsť k neodhaleným chybám, ale aj k falošnému pocitu dobre otestovaného produktu, čo môže spôsobiť stratu časových a finančných zdrojov.
+Vytváranie testovacích dát je časovo náročné a vyžaduje znalosť schémy, ale aj charakteru reálnych dát.
+
+Pre uľahčenie práce existujú nástroje na generovanie náhodných testovacích dát. Jedným z nich je Dataster, nástroj, ktorý generuje štruktúrované testovacie dáta pre relačné databázy na základe konfiguračného receptu. Ručné vytvorenie receptu vo forme YAML vyžaduje znalosť dokumentácie programu Dataster, ako aj znalosť schémy databázy, vzťahov medzi tabuľkami a charakteru uložených hodnôt. Náročnosť tohto procesu rastie so zložitosťou databázy. Pre používateľa s nízkou znalosťou konkrétnej databázy predstavuje tvorba receptu netriviálnu manuálnu prácu.
+
+Potenciálnym riešením je automatizácia tejto úlohy s pomocou veľkých jazykových modelov (LLM), ktoré majú schopnosť interpretovať štruktúrované dáta a transformovať ich do iných formátov. Táto práca využíva lokálne LLM, keďže vstupom sú reálne dáta z databázy a lokálny beh zabezpečuje nielen súkromie dát, ale aj nízke náklady.
+
+Cieľom tejto práce je navrhnúť a implementovať nástroj, ktorý sa pripojí k databáze, extrahuje jej schému a vzorku uložených dát a pomocou lokálnych LLM automaticky vygeneruje recept pre nástroj Dataster. Ďalším cieľom je zhodnotiť kvalitu generovaných receptov naprieč rôznymi modelmi a konfiguráciami. Kvalita sa meria od štrukturálnej správnosti vygenerovaného receptu (YAML) cez akceptovanie nástrojom Dataster až po vykonateľnosť výsledného SQL kódu. Vyhodnotenie prebieha na sade testovacích databáz rôznej zložitosti.
+
+Kapitola 2 približuje definíciu testovania a popis data-driven testing. Kapitola 3 definuje LLM, ich využitie pri generovaní dát, predstavuje jednotlivé LLM modely a skúmanie alternatív. Kapitola 4 približuje nástroj Dataster, jeho využitie, limitácie, popis konfiguračného receptu a YAML súborov. Kapitola 5 predstavuje vysokoúrovňový návrh programu. Kapitola 6 sa zaoberá koncovou implementáciou. Kapitola 7 vysvetľuje proces experimentov, sadu testovacích databáz, úrovne validácie vygenerovaných receptov a porovnávané modely a konfigurácie. Kapitola 8 prezentuje a porovnáva výsledky experimentov. Kapitola 9 objasňuje limitácie programu a možné rozšírenia v budúcej práci. Na záver kapitola 10 zhŕňa dosiahnuté výsledky a porovnáva ich s cieľmi práce.
 
 
-Testovanie je neoddeliteľné od vývoja softvéru a kvalita testovacích dát rozhoduje o tom ake chyby budú v procese testovania odhalené. Vytváranie štruktúrovaných testovacích dát je časovo náročné a vyžaduje znalosť schémy, ale aj reálnych dát na ktorých podkladáme dáta testovacie. 
-Existujúce nástroje ako Dataster túto prácu výrazne zjednodušujú, ale vyžadujú ručnú prípravu YAML súborov. Cieľom tejto práce je nástroj, ktorý túto konfiguráciu generuje automaticky s využitím lokálnych large language models.
+
+\chapter{Testovanie softvéru}
+
+Cieľom tejto kapitoly je vymedziť pojem testovanie, jeho význam a dôsledky jeho zanedbania. Následne kapitola definuje termín Data-Driven testing (DDT), spôsob testovania, ktorý oddeľuje testovacie dáta od testovacej logiky a tým kladie zvýšené nároky na kvalitu a prípravu testovacích dát. Práve náročnosť prípravy dát je jeden z hlavných východiskom tejto práce.
+
+\section{Význam testovania}
+Testovanie je možné chápať ako proces vyhodnocovania softvéru na základe pozorovania jeho behu [AmmannOffutt2016]. Jeho cieľom je odhaliť chyby a overiť, či softvér spĺňa špecifikované požiadavky a potreby používateľov. [Myers 2011].
+
+\section{Dôsledky nedôkladného testovania}
+Každý softvér je v nejakej fáze vývoja chybný. Tieto chyby môžu mať za následok závažné straty, začínajúc od finančných strát až po straty na ľudských životoch. Existuje množstvo zaznamenaných prípadov kde nedôkladné testovanie viedlo až ku katastrofickým následkom. Jeden z týchto prípadov je explodovanie rakety  Ariane 5 (let 501), 37 sekúnd po jej štarte v roku 1996. Dôvodom bola neošetrená výnimka pri konverzii 64-bitového čísla s plávajúcou desatinnou čiarkou (float) na 16-bitové celé číslo so znamienkom (signed integer) v navigačnom systéme keďže prevzatý modul nebol testovaný pre letové parametre novej rakety. Toto viedlo k strate odhadovanej na približne 370 miliónov dolárov a ročnému zdržaniu programu Ariane 5. [LeLann1996]
+
+Ďalším príkladom je Therac-25, prístroj určený na rádioterapiu, ktorý bol používaný v USA a Kanade od roku 1983 až do ich stiahnutia v roku 1987. Chybný softvér spôsobil šesť prípadov masívneho predávkovania radiáciou, z toho tri úmrtia. Podobné chyby boli nájdené aj v predošlom modeli Therac-20, ten mal ale hardvérové poistky, ktoré pri rovnakej softvérovej chybe zabránili ožiareniu. Therac-25 ich nahradil čisto softvérovou kontrolou. [Leveson1993].
+
+Podobných prípadov je ale viac. Poukazujú na dôležitosť testovania, nevyhnuteľné pre bezpečnosť softvéru.  Okrem katastrofických zlyhaní generuje nekvalitný softvér spôsobuje aj priebežné ekonomické náklady. [Krasner2022]
+
+
+\section{Úrovne testovania}
+Testovanie prebieha na rôznych úrovniach, pričom každá overuje iné aspekty systému. [Roman2018]
+
+\begin{itemize}
+    \item \textbf{Jednotkové testovanie (unit testing)} - testovanie najmenších jednotiek kódu ako funkcie a metódy.
+    \item \textbf{Testovanie modulov (module testing)} - testovanie modulu (kolekcie jednotiek) v izolácii. Hľadajú chyby v komunikácii jednotiek v rámci modulu. 
+    \item \textbf{Integračné testovanie (integration testing)} - overenie rozhrania a komunikácie medzi modulmi. 
+    \item \textbf{Testovanie systému (system testing)} - kontroluje softvér ako celok. Hľadajú sa chyby v návrhu a špecifikácii.
+    \item \textbf{Akceptačné testovanie (acceptance testing)} - overenie, či softvér spĺňa požiadavky zákazníka a či spĺňa svoj primárny účel.
+\end{itemize}
+
+Táto práca sa dotýka predovšetkým vyšších úrovní, keďže generované testovacie dáta slúžia na plnenie databáz pri integračnom a systémovom testovaní aplikácií nad nimi.
+
+\section{Automatizované testovanie}
+Pri väčších projektoch sa manuálne testovanie stáva neefektívnym, nielen z časového, ale aj ekonomického hľadiska. Používa sa preto automatizované testovanie, pri ktorom testy vykonávajú špecializované nástroje a frameworky. Tento spôsob testovania sa stáva nevyhnutnou súčasťou vývoja. Automatizované testy sa spúšťajú opakovane a s rôznymi vstupmi, čím sa príprava testovacích dát stáva samostatnou, opakovanou potrebou. Jedným z prístupov testovania, ktorý oddeľuje testovacích dát od testovacej logiky, je Data-Driven testing (DDT), na ktorý sa zameriava táto práca.
+
+\section{Data-Driven testing}
+Základnou myšlienkou je, že rovnaký testovací skript možno spustiť s rôznymi sadami vstupných dát, čím sa zvyšuje pokrytie testov bez nutnosti duplikovania kódu. [Laukkanen]
+
+\subsection{Hlavné charakteristiky} 
+Oddelenie dát od logiky - testovacie dáta sú uložené v externých súboroch ako napríklad Excel, CSV, YAML, nie v kóde testu.
+\begin{itemize}
+    \item \textbf{Znovupoužiteľnosť} - rovnaké testy možno spustiť s rôznymi sadami dát.
+    \item \textbf{Čitateľnosť} - testovacie dáta musia byť ľahko čitateľné aj osobou bez znalostí programovania [Laukkanen]
+    \item \textbf{Jednoduchá údržba} - možné pridanie nového testovacieho prípadu bez zmeny kódu.
+\end{itemize}
+
+Data-Driven testing prináša mnoho výhod, ako zvýšenie pokrytia testov a jednoduchá údržba testov, má však aj svoje nevýhody. Je potrebné testovacie dáta neustále udržiavať a príprava kvalitných testovacích dát môže byť náročná. Kvalita testovania je limitovaná kvalitou testovacích dát a to je motivácia pre využitie automatizovaného generovania testovacích dát.
+
+
+\chapter{LLM}
+
+\chapter{DATASTER}
+
+
+\chapter{Návrh}
+Táto kapitola sa zaoberá vysoko-úrovňovým návrhom nástroja pre automatizované generovanie receptov pre Dataster. Následne približuje komponenty návrhu a tok dát medzi nimi. LLM je kľúčová časť tejto práce a taktiež jej spôsob využitia je dôležité spomenúť. Ako posledný je princíp validácie a opravy výstupov. Konkrétna implementácia návrhu je obsiahnutá v kapitole 6.
