@@ -1,0 +1,12 @@
+---
+config:
+  layout: dagre
+---
+flowchart TD
+    A[Výstup LLM fázy] --> B[Validácia]
+    B -->|validný| G[Sekcia receptu]
+    B -->|nevalidný| C[Štrukturálne opravy<br/>oprava tvaru dokumentu]
+    C --> D[Hodnotové opravy<br/>názvy, typy, referencie]
+    D --> E[Revalidácia]
+    E -->|validný| G
+    E -->|nevalidný| F[Fallback / zaznamenané zlyhanie]
