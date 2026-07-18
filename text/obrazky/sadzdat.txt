@@ -1,0 +1,7 @@
+flowchart LR
+    D1[Sada dát 1] --> S[Testovací skript]
+    D2[Sada dát 2] --> S
+    D3[Sada dát N] --> S
+    S --> V1[Beh 1: výsledok]
+    S --> V2[Beh 2: výsledok]
+    S --> V3[Beh N: výsledok]
