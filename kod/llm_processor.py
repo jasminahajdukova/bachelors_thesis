@@ -25,7 +25,7 @@ AVAILABLE_INCLUDES = [
 client = ollama.Client(timeout=600.0)
 
 def get_response(type_name: str, prompt: str, model: str, thinking: bool = False):
-    # testing: low (0, 0.2), high: (0.8, 1.2) appropriate: (0.3, 0.5) def: (0.1, 0.3, 0.3, 0.3)
+    # testing: low (0.0, 0.2), high: (0.8, 1.2) appropriate: (0.3, 0.5) def: (0.1, 0.3, 0.3, 0.3)
     default_temperatures = {
         "yaml-generator-constraints": 0.0,
         "yaml-generator-generate": 0.0,
@@ -34,6 +34,14 @@ def get_response(type_name: str, prompt: str, model: str, thinking: bool = False
     }
 
     try: 
+        model_info = client.show(model=model)
+
+        if isinstance(model_info, dict):
+            param_size = model_info.get('details', {}).get('parameter_size', 'N/A')
+        else:
+            details = getattr(model_info, 'details', None)
+            param_size = getattr(details, 'parameter_size', 'N/A') if details else 'N/A'
+
         response = client.generate(
                         model=model,
                         prompt=prompt,
@@ -57,7 +65,8 @@ def get_response(type_name: str, prompt: str, model: str, thinking: bool = False
         minutes = int(total_duration)
         seconds = int((total_duration - minutes) * 60 )
         temperature = default_temperatures[model]
-        logger_setup.logger.tokens(f"[{type_name.upper()}] Temperature: {temperature} Prompt tokens: {prompt_tokens}, Response tokens: {response_tokens}, Total duration: {minutes}m {seconds}s")
+
+        logger_setup.logger.tokens(f"[{type_name.upper()}] Model: {model} | Size: {param_size} | Temperature: {temperature} | Prompt tokens: {prompt_tokens} | Response tokens: {response_tokens} | Total duration: {minutes}m {seconds}s")
         return response
     
     except (httpx.TimeoutException, httpx.ReadTimeout) as exc:
