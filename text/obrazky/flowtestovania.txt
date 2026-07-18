@@ -1,0 +1,13 @@
+---
+config:
+  layout: dagre
+---
+flowchart TB
+    A["Vygenerovaný recept"] --> L1{"L1: štrukturálna validita YAML"}
+    L1 -- fail --> F1["vyradený - chyba pipeline"]
+    L1 -- pass --> L2{"L2: akceptácia nástrojom Dataster"}
+    L2 -- fail --> F2["klasifikácia zlyhania"]
+    L2 -- pass --> L3["L3: exekúcia SQL proti klonu schémy"]
+    L3 --> M["L3_RAW: podiel úspešných INSERTov"]
+    M --> N["L3_ADJUSTED: bez Dataster-atribuovaných zlyhaní"]
+    

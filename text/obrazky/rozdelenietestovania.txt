@@ -1,0 +1,13 @@
+flowchart LR
+    subgraph JADRO[Jadro - MySQL]
+        Q[qwen2.5] --> T["teploty: 0.0-1.2"]
+        Q --> V["veľkosti: 3b / 7b / mix"]
+    end
+    subgraph ROZ[Rozšírenie - MySQL]
+        R["rodiny: llama3.1, mistral"] --> X["cross-family mix"]
+    end
+    subgraph PG[Demonštrácia - PostgreSQL]
+        P["podmnožina DB, referenčná konfigurácia"]
+    end
+    JADRO --> ROZ --> PG
+    

@@ -1,0 +1,435 @@
+6 Testovanie 
+
+Kapitola 5 opísala implementáciu nástroja a táto kapitola definuje spôsob, akým sa vyhodnocuje kvalita generovaných receptov. Cieľom kapitoly nie je zhodnotenie správnosti kódu (tej sa venuje sekcia 5.7). Kapitola najskôr formuluje ciele experimentov a definuje testovacie databázy a vrstvy vyhodnotenia ako aj celkové spôsoby testovania. Samotné výsledky sú prezentované v kapitole 7.
+
+6.1 Ciele
+
+Účel testovania je zodpovedať niekoľko otázok, ktoré pokrývajú konfiguráciu LLM, vlastnosti vstupných schém a spoľahlivosť vyhodnocovacej metodiky.
+RQ1 Aký je vplyv teploty vzorkovania na úspešnosť pipeline (L1-L3)?
+RQ2 Aký je vplyv veľkosti modelu v rámci jednej rodiny na úspešnosť?
+RQ3 Líši sa úspešnosť medzi modelovými rodinami porovnateľnej veľkosti?
+RQ4 Ako sa mení úspešnosť s rastúcou zložitosťou databázovej schémy?
+RQ5 Pri akej veľkosti schémy dochádza ku poklesu kvality a úspešnosti ?
+RQ6 Je možné pri vyhodnocovaní spoľahlivo odlíšiť zlyhania spôsobené navrhnutou pipeline od zlyhaní generátora Dataster?
+
+
+6.2 Testovacie databázy
+
+Celkovo je na testovanie pripravených 19 základných testovacích databáz (testdb-testdb20), 3 testovacie databázy na reprodukciu chýb a 9 extrémnych testovacích databáz (extreme_testdb-extreme_testdb9). Každá z nich slúži na testovanie pipeline na rôznych typoch  databázových schém. Databáza testdb13 bola zo sady vylúčená ako duplikát testdb12.
+
+Databázy sú usporiadané podľa rastúcej zložitosti. Samotná zložitosť je definovaná pomocou týchto kritérií:
+počet tabuliek a stĺpcov: s rastúcim počtom sa zvyšuje objem dát, ktoré musí LLM spracovať
+počet cudzích kľúčov: miera prepojenia medzi tabuľkami 
+zložitosť primárnych kľúčov: prítomnosť zložených primárnych kľúčov, ktoré komplikujú jednoznačnú identifikáciu a prepojenie záznamov
+
+
+6.2.1 Základné testovacie databázy
+
+Účelom týchto testovacích dát je skontrolovať celkovú funkčnosť programu.
+
+Názov databázy
+počet tabuliek
+počet stĺpcov
+počet FK
+zložený PK
+Cieľ testovania
+testdb
+1
+3
+0
+nie
+základná funkcionalita (INT + VARCHAR)
+
+
+testdb2
+1
+3
+0
+nie
+nízky počet unikátnych hodnôt
+testdb3
+1
+7
+0
+nie
+desatinné čísla, prázdne dátumy
+testdb4
+1
+9
+0
+nie
+kontrola významu stĺpcov
+testdb5
+1
+10
+0
+nie
+NULL hodnoty, poradie dátumov
+testdb6
+1
+10
+0
+nie
+kontrola významu reťazcov
+testdb7
+1
+4
+0
+nie
+nízky počet unikátnych hodnôt, diakritika
+testdb8
+1
+6
+0
+nie
+INT rozsah
+testdb9
+1
+5
+0
+nie
+regex (vzorové reťazce INV-YYYY-NN)
+
+
+
+testdb10
+2
+15
+1
+nie
+FK vzťah
+testdb11
+2
+16
+1
+nie
+CamelCase/Snake_Case, NULL hodnoty
+testdb12
+2
+18
+1
+nie
+FK, login_name (UNIQUE constraint)
+testdb14
+2
+13
+1
+nie
+non-numeric PK
+testdb15
+3
+26
+2
+nie
+1:N
+testdb16
+3
+8
+2
+áno
+zložený PK
+testdb17
+2
+11
+0
+nie
+testovanie constraints
+testdb18
+5
+15
+5
+nie
+FK 
+testdb19
+3
+7
+2
+áno
+M:N 
+
+
+testdb20
+1
+4
+0
+nie
+CamelCase, NULL hodnoty
+
+
+6.2.2 Testovacie databázy na reprodukciu chýb
+
+Tieto testovacie databázy slúžia na reprodukciu obmedzenia generátora Dataster pri prevode hodnôt zo SMT riešiteľa do SQL pre cieľovú DBMS (MySQL). Cieľom nie je hodnotiť Dataster, ale overiť, že pipeline dokáže overiť, že vyhodnocovacia metodika dokáže tieto prípady správne odlíšiť od zlyhaní pipeline.
+
+Názov databázy
+počet tabuliek
+počet stĺpcov
+počet FK
+zložený PK
+Cieľ testovania
+testdb21
+1
+4
+0
+nie
+DECIMAL/float
+testdb22
+1
+3
+0
+nie
+SMT uniqueness
+testdb23
+1
+4
+0
+nie
+DATE/DATETIME/TIME
+
+
+
+6.2.3 Extrémne testovacie databázy
+
+Zatiaľ čo predošlé testy kontrolujú či program funguje bez problémov, tieto testovacie sady boli vytvorené pre zaťaženie programu na hranici jeho limitov. Ich cieľom je zistiť ako pri vysokom počte tabuliek, šírke tabuliek a hĺbke/tvare FK grafu klesá úspešnosť alebo kvalita výsledkov.
+Názov databázy
+počet tabuliek
+počet stĺpcov
+počet FK
+zložený PK
+Cieľ testovania
+extreme_testdb (počet tabuliek)
+30
+150
+29
+nie
+škálovanie počtu tabuliek
+extreme_testdb2 (počet tabuliek)
+60
+300
+59
+nie
+škálovanie počtu tabuliek
+extreme_testdb3 (počet tabuliek)
+100
+500
+99
+nie
+škálovanie počtu tabuliek
+extreme_testdb4 (šírka)
+1
+50
+0
+nie 
+ako šírka tabuľky zaplní kontextové okno
+extreme_testdb5 (šírka)
+1
+100
+0
+nie
+ako šírka tabuľky zaplní kontextové okno
+extreme_testdb6 (šírka)
+1
+200
+0
+nie
+ako šírka tabuľky zaplní kontextové okno
+extreme_testdb7 (hĺbka/tvar grafu)
+10
+19
+9
+nie 
+hĺbka FK reťazca 
+extreme_testdb8 (hĺbka/tvar grafu)
+20
+39
+19
+nie
+hĺbka FK reťazca
+extreme_testdb9 (hĺbka/tvar grafu)
+21
+41
+20
+nie
+šírka FK grafu
+
+
+
+6.3 Spôsob vyhodnotenia úspešnosti
+
+Proces vyhodnotenia úspešnosti vygenerovaných receptov prebieha na troch úrovniach, kde každá z nich definuje špecifické kritéria pre úspech alebo zlyhanie
+
+
+6.3.1 Úroveň L1: overenie správnosti YAML
+
+Táto úroveň sa zameriava na úspešnosť pipeline a kontrolu štruktúry vygenerovaného receptu.  Táto vrstva overuje formát YAML,  výskyt povinných sekcií a dodržiavanie pravidiel validačnej vrstvy kódu. V prípade, že recept zlyhá je okamžite vyradený a považovaný za chybu pipeline. Celková úspešnosť sa počíta ako podiel úspešných receptov k celkovému počtu vygenerovaných receptov:
+
+L1_Result = L1_success / L1_overall
+
+L1_success = počet receptov, ktoré prešli validačnou vrstvou
+L1_overall = celkový počet vygenerovaných receptov
+
+6.3.2 Úroveň L2: akceptácia nástrojom Dataster
+
+Ďalšia úroveň kontroluje, či je nástroj Dataster schopný úspešne spracovať recept a vygenerovať testovaciu sadu dát. Overuje akceptáciu Datasterom a preto ak je objavená chyba,  je to okamžite vyhodnotené ako zlyhanie. Podobne ako pri L1 (6.3.1) sa výsledok úspešnosti počíta ako podiel úspešne spracovaných receptov nástrojom Dataster k celkovému počtu receptov, ktoré prešli úrovňou L1. Výsledok úspešnosti sa počíta pre každý recept zvlášť.
+
+L2_Result = L2_success / L2_overall
+
+L2_success = počet receptov, ktoré boli akceptované nástrojom Dataster
+L2_overall = celkový počet, ktoré úspešne prešli L1
+
+6.3.3 Úroveň L3: exekúcia SQL dotazov a kontrola databázy
+
+Posledná vrstva kontroluje použiteľnosť vygenerovaných SQL dotazov v databáze. Na rozdiel od ostatných vrstiev sa tu jednotka meranie mení z receptov na jednotlivé SQL príkazy. Príkazy sú spustené v naklonovanej databáze bez dát (obsahujú iba pôvodnú schému klonovanej databázy). Na tejto vrstve sa kontroluje, či tvary vygenerované programom Dataster sú akceptované vybranou DBMS (MySQL). Cieľom je nestranne zmerať úspešnosť vykonanie SQL výstupu, pričom zlyhania môžu byť spôsobené buď chybou v kóde, alebo zdokumentovaným obmedzením samotného nástroja. Každý neakceptovaný príkaz je zaznamenaný spolu s klasifikáciu zlyhania (podľa sekcie 6.4). Pre kategóriu dataster_sql_escaping je vyhodnotenie dostatočné vykonané v odlišnom režime. (viz 6.4)
+L3_Raw = L3_success / L3_overall
+L3_Adjusted = L3_success / (L3_overall - L3_dataster_fail)
+
+
+L3_success = počet úspešne vykonaných SQL dotazov
+L3_overal = celkový počet vygenerovaných SQL dotazov
+L3_dataster_fail = počet INSERT príkazov, ktoré boli klasifikované ako obmedzenia nástroja Dataster (viz 6.4)
+
+6.4 Klasifikácia zlyhaní
+
+Pri vyhodnocovaní úspešnosti je nutné jasne určiť, ktorá časť systému zlyhanie spôsobila. Táto tabuľka ukazuje presné pravidlá, podľa ktorých sa každé zlyhanie triedi. Vďaka tomu vieme presne vypočítať metriku L3_Adjusted.
+
+ID zlyhania
+úroveň
+podmienka
+komu patrí zlyhanie
+pipeline_invalid_yaml
+L1
+výstup nie je platný YAML alebo chýba povinná sekcia
+pipeline
+dataster_smt_count
+L2
+generátor nedokáže vytvoriť požadovaný počet unikátnych záznamov (GenerateCountError)
+Dataster
+zero_rows
+L2
+recept prijatý, ale vygenerovaných 0 riadkov
+pipeline
+iná výnimka
+L2
+Dataster odmietol recept z iného dôvodu
+pipeline
+dataster_sql_escaping
+L3
+syntaktická chyba SQL (errno 1064) spôsobená neescapovanými znakmi v hodnotách
+Dataster
+dataster_finterval_fraction
+L3
+odmietnutá hodnota v tvare zlomku pre stĺpec DECIMAL (errno 1366)
+Dataster
+pipeline_type_mismatch
+L3
+odmietnutá hodnota pre nesúlad typov, bez zlomku (errno 1366)
+pipeline
+dataster_cascade_fk
+L3
+porušenie FK (errno 1452), rodičovský riadok zlyhal na dataster_* chybe
+Dataster
+fk_violation
+L3
+porušenie FK (errno 1452), bez rodiča
+pipeline
+duplicate_pk
+L3
+duplicitný primárny kľúč (errno 1062)
+pipeline
+not_null_violation
+L3
+NULL v NOT NULL stĺpci (errno 1048)
+pipeline
+data_too_long
+L3
+hodnota presahuje dĺžku stĺpca (errno 1406)
+pipeline
+other
+L3
+iná chyba MySQL
+pipeline
+
+
+
+Zlyhanie, ktoré nie je možné jednoznačne priradiť zdokumentovanému obmedzeniu nástroja Dataster, sú ponechané ako zlyhanie pipeline. Metrika L3_Adjusted (viz 6.3.3) teda vylučuje iba kategórie s prefixom dataster_
+
+6.5 Testovacie scenare + vykonanie
+
+Testovanie prebieha v niekoľkých fázach. Hlavne sa program testuje na referenčnom DBMS MySQL, ale keďže je implementované SQLAlchemy tak pre demonštráciu je vykonaný program s DBMS PostgreSQL s podmnožinou základných testovacích databáz. Jadrom testovanie je model qwen2.5 s rôznymi teplotami a potom nasleduje testovanie (Rozšírenie) s rôznymi rodinami pre účel porovnania výkonu modelov. Pri testovaní sa používajú testovacie databázy spomenuté v sekcii 6.2
+
+
+Každá konfigurácia beží v troch kolách, výstupy sa ukladajú oddelene pre každé kolo a analyzujú oddelene
+
+6.5.1 Jadro 
+
+V jadre testovania sa zameriavame výhradne na model qwen2.5 a spúšťame program naprieč rôznymi teplotami pre rôzne veľkosti parametrov modelu, ako 3b, 7b a mix predom spomenutých dvoch modelov. 
+
+
+Model
+teplota
+počet kôl
+počet DB
+qwen2.5:3b/qwen2.5:7b
+{0.0, 0.2, 0.3, 0.5, 0.8, 1.2}
+3
+31
+qwen2.5:3b
+{0.0, 0.2, 0.3, 0.5, 0.8, 1.2}
+3
+31
+qwen2.5:7b
+{0.0, 0.2, 0.3, 0.5, 0.8, 1.2}
+3
+31
+
+
+
+6.5.2 Rozšírenie
+
+Ďalej pokračujeme na rozšírenie, kde sa zameriava na samotné rodiny modelov. Cieľom je porovnať výsledky medzi rôznymi rodinami ako aj mix týchto modelov. V tomto prípade sa nezameriavame na rôzne teploty, ale použivame referenčné nastavenie teploty (toto sa doplní ked zistim z prvotného testovania aka je najlepsia teplota) 
+
+Model
+teplota
+počet kôl
+počet DB
+llama3.1:8b
+referencna teplota (to sa este prida)
+3
+19 (základné testovacie databázy
+)
+mistral:7b
+referencna teplota (to sa este prida)
+3
+19 (základné testovacie databázy
+)
+mistral:7b/llama3.1:8b/qwen2.5:7b
+referencna teplota (to sa este prida)
+3
+19 (základné testovacie databázy
+)
+
+
+
+
+6.5.3 Demonštrácia
+
+Ako posledné je demonštrácia použitia inej DBMS (PostgreSQL), teda, či implementácia funguje aj pre inú DBMS ako referenčnú. 
+
+qwen2.5:3b/qwen2.5:7b
+
+teplota
+počet kôl
+DB
+referencna teplota (to sa este prida)
+3
+testdb, testdb2, testdb3, testdb4, testdb5, testdb6, testdb7, testdb8, testdb9, testdb10
+
+
+
+
+6.6 Hranice vyhodnotenia
+
+Verzia softvéru:  prezentované výsledky sú naviazané na konkrétne verzie DBMS a verziu programu Dataster. Pri využití iných verzii sa správanie programu môže líšiť. 
+Počet testovacích kôl: použitie troch kôl je pre ukážku rozptylu výsledkov, nie je to však postačujúce na plnohodnotné testovanie.
+Hardvérové limity: výber testovacích modelov je obmedzený dostupným hardvérom a výsledky neplatia pre väčšie a výkonnejšie modely.
+Charakter dát: testovacie databázy slúžia na pokrytie rôznych testovacích prípadov a teda nereprezentujú skutočné dáta z reality. Nameranú úspešnosť preto nie je možné brať ako istotu pre reálne nasadenie.  
+
