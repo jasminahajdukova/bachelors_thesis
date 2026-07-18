@@ -1,0 +1,64 @@
+\chapter{Veľké jazykové modely (LLM)}
+\label{ch:kap3}
+Táto kapitola sa zameriava na teoretické vysvetlenie veľkých jazykových modelov (LLM) potrebné pre pochopenie návrhu nástroja v kapitole 4 . Ako prvé stručne opíše princíp fungovania LLM.  Ďalej porovnáva spôsoby prispôsobenia LLM a zdôvodňuje prečo bol vybraný few-shot prompting, ktorý bola použitá v tejto práci. Následne vysvetľuje rozdiely medzi lokálne spustenými modelmi a modelmi dostupnými cez API, zdôvodňuje prečo boli pre túto prácu vybrané práve lokálne spustené modely. LLM sa v tejto práci používa v7hradne na generovanie receptov (Kapitola ~\ref{ch:kap4}) a je dôležité túto myšlienku predstaviť. Na záver kapitoly sú spomenuté limitácie LLM, ktoré sú relevantné pre túto prácu, hlavne pojmy ako halucinácie, kontextové okno a nedeterminizmus. 
+
+\section{Čo je LLM}
+
+Veľké jazykové modely možno definovať ako neurónové siete trénované na obrovskom množstve textových dát. Fungujú na základe predvídania nasledujúceho tokenu v poradí. Tokenizácia je kľúčovým krokom v prípravnej fáze trénovania LLM. Text je rozdelený na základné jednotky spracovania (tokeny), ktoré môžu mať formu znakov, časti slov, symbolov alebo slov v závislosti od použitého tokenizačného postupu [Naveeda2024]. 
+
+V súčasnosti sú LLM založené na architektúre transformer, to znamená, že sa sekvencie tokenov spracúvajú na základe mechanizmu pozornosti [Vaswani2023]. Pozornosť v LLM priraďuje vstupným tokenom váhy na základe ich dôležitosti tak, aby sa model zameriaval na relevantné časti vstupu. [Naveeda2024].
+
+Model generuje komplexný text iteratívne, v jednotlivých krokoch predpovedá nasledujúci token ktorý sa pripojí k doteraz vygenerovanému výstupu dokým nie je vygenerovaný koncový token. Toto umožňuje modelu vytvárať rozsiahlejšie výstupy, čo je relevantné aj pre túto prácu.
+
+Samotné trénovanie prebieha v dvoch fázach a to predtrénovaním s veľkým množstvom textu a následným doladením pre konkrétne úlohy doladením (fine-tuning) [Naveeda2024].
+
+Presnosť LLM rastie so zvýšujúcim sa počtom vnútorných parametrov modelu. Ich veľkosť je v súčasných modeloch niekoľko miliárd [Naveeda2024]. S rastúcou veľkosťou rastú aj náklady na jeho spustenie, ktoré sa pri lokálnych modelov prejavujú hlavne na kapacite VRAM grafickej karty. Táto práca je limitovaná dostupným hardvérom, čo obmedzuje výber použitých modelov (kapitola 4).
+
+\section{Prispôsobenie LLM konkrétnej úlohe}
+Existuje mnoho spôsobov ako prispôsobiť LLM, pričom nie každý je vhodný na použitie v tejto práci. 
+\begin{itemize}
+    \item \textbf{fine-tuning} je dodatočné trénovanie už trénovaného modelu, ktorý je ďalej trénovaný na špecifických dátach. Funguje na princípe úpravy vnútorných parametrov (váh). [Brown2020] Vyžaduje tisícky kvalitných príkladov na prispôsobenie modelu a keďže tie neexistujú, bolo by ich nutné ručne vyrobiť. Taktiež je tento projekt limitovaný dostupným hardvérom a tým pádom je tento spôsob prispôsobenia vylúčený. [Hu2022] 
+    
+    \item \textbf{RAG (Retrieval-Augmented Generation)} spôsob prispôsobenia, kde sa pred generovaním odpovede hľadajú relevantné dokumenty z externej znalostnej bázy a vložia sa do promptu ako kontext. Tým pádom model čerpá z aktuálnych alebo doménových znalostí bez zmeny váh [Lewis2020]. Tento projekt nevyžaduje vyhľadávanie v znalostnej báze pretože všetky potrebné informácie poznáme a vkladajú sa do promptu priamo.
+
+    \item  \textbf{few-shot prompting} je spôsob pri ktorom sa modelu prompte poskytnute niekoľko príkladov na demonštráciu vstupu a výstupu. Model tak rieši úlohy tak, že napodobňuje vzory riešení bez úpravy váh. [Brown2020]. V riešení projektu sa používa Modelfile s príkladmi pre konkrétne generovanie sekcii types, schema, generate a constraints (Kapitola ~\ref{ch:kap5}).
+
+\end{itemize}
+
+Vzhľadom na hardvérové limitácie (8GB VRAM), chýbajúcu trénovaciu sadu a požiadavky použitia lokálneho nasadenia je few-shot prompting jedinou prakticky použiteľnou voľbou. V tejto práci je realizovaný prostredníctvom Modelfiles nástroja Ollama.
+
+\section{Lokálne a API modely}
+Existujú dva spôsoby ako používať LLM, buď cez lokálne spustenie (Llama, Qwen) alebo cez API poskytovateľa (Claude). Pre implementáciu tejto práce je použitý lokálny LLM. V tejto sekcii je vysvetlené prečo je táto voľba pre tento projekt vhodná.
+
+\subsection{API modely}
+Model beží na infraštruktúre poskytovateľa a pristupuje sa k nemu cez sieťové rozhranie. Tieto modely poskytujú prístup k najvýkonnejším modelom bez hardvérových nárokov, lenže dáta nie sú súkromné a náklady rastú s počtom volaní. Verzia modelu nie je pod kontrolou používateľa a  môže sa meniť.
+
+\subsection{Lokálne modely}
+Spúšťané lokálne na vlastnom hardvéri. Ich výhodou je súkromie dát, nulové náklady a plná kontrola nad modelom. Naopak nevýhodou je ich výkon obmedzený dostupným hardvérom. Dôvody pre výber lokálneho LLM sú:
+
+\begin{itemize}
+    \item schopnosť reprodukovať výsledky (toto vyžaduje fixnú verziu modelu)
+    \item súkromie a bezpečnosť dát, ktoré nemôžu opustiť lokálne prostredie čo je dôležité pri nasadení nástroja nad reálnou databázou obsahujúcou citlivé údaje
+    \item nulové náklady, ktoré umožňujú opakované behy
+\end{itemize}
+
+Práve preto sa pre túto prácu používajú lokálne modely cez Ollama (výber modelov v kapitole 6).
+
+\subsection{Kvantizácia}
+
+LLM vyžadujú na fungovanie značné výpočtové zdroje a pamäť čo výrazne obmedzuje dostupnosť. Preto vznikla kvantizácia, ktorá znižuje numerickú presnosť váh modelu, čím výrazne klesajú pamäťové nároky, lenže dochádza k malému zníženiu kvality výstupu~\cite{} [Naveeda2024]. Vďaka kvantizácii je možné spustiť modely so 7-8 miliardami parametrov na GPU s 8GB VRAM, čo je konfigurácia použitá v tejto práci.
+
+\section{Použitie LLM na generovanie testovacích dát}
+
+Testovanie softvéru je kľúčovou činnosťou, ktorá slúži ako základný kameň pri zabezpečení kvality a spoľahlivosti softvérových produktov a vzhľadom na to, že s rastúcim rozsahom a zložistosťou softvérových systémov rastie záujem o využitie LLM pri testovanie softvéru~\cite{} [Wang2024].
+
+Priamy prístup spočíva v tom, že model na základe zadanej databázovej schémy vygeneruje priamo riadky dát alebo INSERT príkazy. Výhodou je jednoduchosť a sémanticky realistické hodnoty. Tento prístup má aj nevýhody. každý riadok dát vyžaduje beh modelu a tak s objemov rastú aj náklady. Pri veľkom počte riadkov model neudrží väzby cudzích kľúčov medzi tabuľkami ani unikátnosť hodnôt, tým pádom nie je konzistencia garantovaná. Neopakovateľnosť, pretože ten istý vstup dá zakaždým iné dáta. Ako posledné vymyslené hodnoty končia v testovacej sade bez kontroly (halucinácie priamo v dátach). 
+
+
+V tejto práci sa model používa na generovanie receptu pre nástroj Dataster (Kapitola ~\ref{ch:kap4}), samotný recept je generovaný len raz a následne sú testovacie dáta vytvorené cez Dataster so SMT riešiteľom. Samotný model neslúži ako generátor dát, ale ako prekladač databázovej schémy na špecifikáciu. Model sa spúšťa raz pre schému bez ohľadu na objem generovaných dát. Generovanie je opakovateľné a tak sa nevýhody buď eliminujú alebo presúvajú do receptu.
+
+Halucinácie sa teda nestrácajú, môžu sa objaviť aj vo vygenerovaných receptoch a práve preto je dôležitá implementácia validačnej a opravnej vrstvy (Kapitola ~\ref{ch:kap6}).
+
+\section{Limitácie LLM}
+
+Napriek potenciálu LLM sú tu stále limitácie, ktoré ovplyvňujú generovanie dát. Halucinácie sa v kontexte tejto práce prejavujú ako nesprávne určenie dátových typov, alebo ako odkaz na tabuľky a stĺpce, ktoré v databázovej schéme neexistujú, čo priamo ovplyvňuje kvalitu vygenerovaného receptu. Ďalšou limitáciou je kontextové okno, teda množstvo textu, ktoré LLM dokáže naraz spracovať. Pri veľkých databázových schémach môže opis schémy prekročiť kapacitu kontextu, čo vedie k zlyhaniu generovania. Výstup LLM je navyše nedeterministický, čo znamená, že rovnaký vstup môže viesť k rôznym výstupom. Mieru náhodnosti riadi parameter teploty, ktoré vplyv na je aj testovaný. Návrh nástroja (Kapitola ~\ref{ch:kap5}) tieto limitácie adresuje validačnou a opravnou vrstvou a testovaním vplyvu parametrov (Kapitola ~\ref{ch:kap7}).  
