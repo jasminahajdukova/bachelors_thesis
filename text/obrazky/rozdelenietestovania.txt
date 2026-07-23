@@ -4,7 +4,7 @@ flowchart LR
         Q --> V["veľkosti: 3b / 7b / mix"]
     end
     subgraph ROZ[Rozšírenie - MySQL]
-        R["rodiny: llama3.1, mistral"] --> X["cross-family mix"]
+        R["rodiny: llama3.1, mistral"]
     end
     subgraph PG[Demonštrácia - PostgreSQL]
         P["podmnožina DB, referenčná konfigurácia"]
