@@ -1,0 +1,221 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 8
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Vyhodnotenie}
+\label{ch:kap8}
+Táto kapitola sa zameriava na vyhodnotenie výsledkov experimentov, ktoré boli definované v Kapitole~\ref{ch:kap7} na otázky RQ1-RQ6. Ako prvé sa zameriava na vyhodnotenie výsledkov  jadra testovania, modelu Qwen2.5 v troch konfiguráciach. Testovanie sa zameriava na testovanie modelu vo veľkostiach 3b, 7b a zmiešanú konfiguráciu oboch veľkostí, naprieč šiestimi teplotami. Ďalej sa zameriava na výsledky rozšírenia kde cieľom je porovnanie modelových rodín. Medzi modelové rodiny patrí llama3.1:8b a mistral:7b s referenčnou konfiguráciou qwen2.5. Kapitola zameriava na analýzu zlyhaní a zhrnutie limitov vyhodnotenia. Na záver kapitoly je demonštrácia, teda ukážka a overenie, že nástroj je schopný fungovať aj nad inými DBMS ako MySQL. DBMS vybrané na porovnanie je PostgreSQL. 
+
+\section{Priebeh experimentov}
+Vyhodnotenie prebieha podľa testovacích scenárov v troch fázach: jadro (31 databáz), rozšírenie (19 základných databáz) a demonštrácia (10 databáz). Každá konfigurácia bola spustená v troch kolách, pričom opakované behy ukázali, že ani teplota 0.0 nezaručuje rovnaké výstupy. Práve preto sú všetky behy vyhodnocované v troch kolách a výsledky sa ukazujú spoločne za všetky kolá.
+
+
+Ako dodatok sa uvádza úspešnosť L3\_adjusted ako vo dvoch agregáciach. Jedna ako celková úspešnosť, teda podiel úspešných prikazov zo všetkých vygenerovaných a druhá ako priemerná úspešnosť po databázach. Dôvodom je, že pri väčšie databázy ma prispievajú ku priemernej úspešnosti výrazne viac a preto je tam zavedená aj druhá miera úspešnosti, kde má každá databáza rovnakú váhu. Takto je aj možné vidieť ako sú rozložené zlyhania databáz, t.j.či sú rozložené rovnomerne alebo sa chyby ukazujú len v niektorých databázach. Keďže úspešnosti sa pohybujú v extrémnych rozdieloch 0\% a 100\%, tak sa používa Wilcoxonov test k porovnaniu tej istej databázy pri dvoch teplotách.
+
+
+Počas behu testov došlo k výpadku dvoch behov konfigurácie qwen2.5:7b (testdb18 pri teplote 0.5 a testdb9 pri teplote 1.2). Výpadok je zaznamenaný v tabuľke.
+
+\section{Vplyv teploty (RQ1)}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{ccccccc}
+    \toprule
+    & & & & \multicolumn{2}{c}{\textbf{L3\_Adjusted}} \\
+    \textbf{Konfig.} & \textbf{teplota} & \textbf{L2} & \textbf{\%} & \textbf{celková \%} & \textbf{priemer db $\pm$ sd \%} \\
+    \midrule
+        3b & 0.0 & 55/93 & 59.1 & 85.4 & 83.1 $\pm$ 32.8 \\ 
+        3b & 0.2 & 58/93 & 62.4 &  85.3 & 77.1 $\pm$ 38.6 \\ 
+        3b & 0.3 & 57/93 & 61.3 &  90.9 & 75.9 $\pm$ 41.5 \\ 
+        3b & 0.5 & 55/93 & 59.1 &  90.2 & 84.9 $\pm$ 31.9 \\ 
+        3b & 0.8 & 55/93 & 59.1 & 94.4 & 87.9 $\pm$ 29.8 \\
+        3b & 1.2 & 56/93 & 60.2 & 85.0 & 71.2 $\pm$ 42.1 \\
+        \midrule
+        7b & 0.0 & 60/93 & 64.5 &  100.0 & 100.0 $\pm$ 0.0 \\ 
+        7b & 0.2 & 68/93 & 73.1 & 100.0 & 100.0 $\pm$ 0.0 \\ 
+        7b & 0.3 & 66/93 & 71.0 &  100.0 & 100.0 $\pm$ 0.0 \\ 
+        7b & 0.5 & 63/92 & 68.5 &  100.0 & 100.0 $\pm$ 0.0 \\ 
+        7b & 0.8 & 67/93 & 72.0 &  98.8 & 97.2 $\pm$ 15.5 \\ 
+        7b & 1.2 & 61/92 & 66.3 &  99.1 & 96.4 $\pm$ 18.7 \\ 
+        \midrule
+        mix & 0.0 & 75/93 & 80.6 &  98.1 & 95.7 $\pm$ 20.5 \\ 
+        mix & 0.2 & 74/93 & 79.6 &  98.4 & 96.8 $\pm$ 17.1 \\
+        mix & 0.3 & 74/93 & 79.6 &  97.6 & 94.1 $\pm$ 23.7 \\ 
+        mix & 0.5 & 72/93 & 77.4 &  99.1 & 97.7 $\pm$ 13.3 \\ 
+        mix & 0.8 & 68/93 & 73.1 &  99.3 & 97.8 $\pm$ 13.4 \\ 
+        mix & 1.2 & 77/93 & 82.8 &  97.6 & 94.1 $\pm$ 23.7 \\ 
+    \bottomrule
+    \end{tabular}
+    \caption{Úspešnosť konfigurácií qwen2.5 (6 teplôt, 31 databáz, 3 behy), L2 = akceptované recepty}
+    \label{tab:vysledky_jadro}
+\end{table}
+
+
+
+Pri tejto otázke bolo cieľom skúmať ako veľmi má teplota vplyv na úspech v jednotlivých úrovniach, čiže správnosť YAML formátu (L1), prijatie receptu Datasterom (L2)  a spustenie SQL príkazov v databáze (L3). Testovanie prebiehalo s modelom Qwen2.5 s veľkosťami modelov 7b, 3b a ich zmiešanej konfigurácii (mix).
+
+
+Zlyhania na úrovni L1 sa vyskytli len na málo behoch (8 z 1674), čo poukazuje na to, že využitie validačnej a opravnej vrstvy programu robí štruktúrnu správnosť YAML nezávislou od teploty.
+
+
+Výsledky pre vrstvu L2 sa pohybujú v priemere okolo 60\% pre qwen2.5:3b, 69\% pre qwen2.5:7b a 78\% pre mix. Vo výsledkoch nie je vidieť nejaký vplyv teploty, toto sa potvrdilo aj Wilcoxonov test na priemeroch jednotlivých databáz. Rozdiely medzi dvojicami teplôt neboli významné.  Zaujímavé ale je ako má teplota najslabšie výsledky (1.2) a zároveň najväčšie výkyvy. 
+
+
+Pre ďalšie fázy bola zvolená teplota 0.0, nie ako najlepší výsledok, ale predvídateľný štandardný základ.
+
+\section{Vplyv veľkosti modelu (RQ2)}
+\label{sub:odpoved_rq2}
+Na rozdiel od teploty sa veľkosť modelu ukázalo ako veľký faktor ovplyvňujúci na úspešnosť behov. Spomedzi všetkých testov model 3b dosiahol najnižšie výsledky na všetkých úrovniach (L2 priemer 60\%, L3 90\%). Pri konfigurácii 7b a mix je dosiahnutá úspešnosť okolo 98 - 100\% pre L3\_Adjusted, teda ak bol recept akceptovaný v L2 tak boli SQL dotazy vykonané takmer bez chyby.
+
+
+Čo sa týka úspešnosti L2 je vidieť ako mix dosahuje vyššie čísla ako 7b (priemer 78\% oproti 69\%), toto je ale vysvetliteľné, model 7b častejšie generuje sebareferenčné odkazy FROM (stĺpec odkazuje sám na seba), ktoré validačná vrstva nezachytáva a ktoré vedú k pádu generátora. Pri modeli 7b spadlo až 49 behov, zatiaľ čo pri mix 7b a 3b len 7 a nakoniec u 3b spadlo len 5 behov. Ak tieto zlyhania odpočítame tak sa úspešnosť 7b zvýši na okolo 78\% a mix na 79\%. Záverom nie je ale ukázať, že mix  je lepší ale poznamenať ako mix dosahuje rovnakú kvalitu 7b napriek nižším nárokom, keďže dva zo štyroch fáz generovania obsluhuje menší model.
+
+
+Najviac sa rozdiely veľkostí ale prejavujú pri extrémnych schémach, úspešnosť modelu 3b prudko klesá zo 68\% na 40\%, zatiaľ čo model 7b zostáva nemenný na 69\% a mix klesá iba mierne zo 82\% na 72\% Dôležité je aj počet nezvládnutých databáz, teda až 6 pre 3b, pri konfigurácii 7b a mix bol tento počet len 3.
+
+
+\section{Vplyv modelových rodín (RQ3)}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{l r r r r} 
+    \toprule
+    & & &  \multicolumn{2}{c}{\textbf{L3\_Adjusted}} \\
+    \textbf{Model} & \textbf{L2} & \textbf{\%}  & \textbf{celková \%} & \textbf{priemer db $\pm$ \%} \\\midrule
+    
+        qwen2.5:3b & 39/57 & 68.4 & 79.8 & 82.6 $\pm$ 31.5 \\
+        qwen2.5:7b & 36/57 & 63.2 & 100.0 & 100.0 $\pm$ 0.0 \\
+        qwen mix & 51/57 & 89.5 & 94.1 & 93.8 $\pm$ 24.5 \\
+        llama3.1:8b & 38/57 & 66.7 & 95.1 & 94.3 $\pm$ 23.6 \\
+        mistral:7b & 24/57 & 42.1 & 28.7 & 40.0 $\pm$ 41.8 \\
+    \bottomrule
+    \end{tabular}
+    \caption{Porovanie rodín (teplota: 0.0, 19 zákl. databáz, 3 behy)}
+    \label{tab:vysledky_rodina}
+\end{table}
+Porovnanie rodín prebehlo s referenčnou teplotou 0.0 na 19 základných databázach. Čo sa týka modelu llama3.1:8b tak je možné vidieť podobné výsledky s qwen2.5:7b (L2 67\% oproti 63\% a L3\_Adjusted 95\% oproti 100\%), pričom k väčšine zlyhaní došlo kvôli dataster\_smt\_count~\ref{tab:klasifikacia_zlyhani}. Týmto je zjavné, že modely porovnateľnej veľkosti  z rôznych rodín poskytujú podobnú kvalitu.
+
+
+Na opačnej strane je ale možné vidieť ako mistral:7b výrazne zaostáva na oboch úrovniach (L2 42\% a L3\_Adjusted iba 29\%). Najviac sa objavujú kategórie zlyhaní sú data\_too\_long a fk\_violation. Teda je jasné, že mistral produkuje výrazne horšie dáta v akceptovaných receptoch ako aj to, že celkový počet akceptovaných receptov je menší. 
+
+
+Veľkosť modelu teda nie je postačujúca na zaručenie kvality, ale je rozhodujúca aj rodina.
+
+\section{Zmena úspešnosti s rastúcou zložitosťou databázovej schémy (RQ4, RQ5)}
+
+\begin{figure}[H]
+    
+    \centering
+    \begin{table}[H]
+    \centering
+    \begin{tabular}{ccccc}
+        \toprule
+        Typ & úroveň & 3b & 7b  & mix\\
+        \midrule
+         počet tabulie & 30 & 7/18  & 18/18  &  18/18 \\ 
+                       & 60 & 0/18 & 2/18 & 4/18 \\ 
+                       & 100 & 9/18  & 2/18  & 4/18\\ 
+        
+         šírka tabuľky & 50 & 18/18 & 18/18 & 18/18\\ 
+                       & 100 & 11/17& 18/18 & 18/18\\ 
+                       & 200 & 1/18& 1/18 & 1/18\\ 
+        
+         hĺbka FK      & 10 & 1/18& 18/18 &  18/18\\ 
+                       & 20 & 3/18 & 17/18 &  18/18\\ 
+                       & 21 & 14/17& 18/18 & 17/18\\ \bottomrule
+        \end{tabular} 
+        \caption{Zmena úspešnosti pri komplexných tabuľkách}
+        \label{tab:zlozitost_schemy}
+    \end{table}
+    
+\end{figure}
+
+
+Každý sledovaný parameter (počet tabuliek, šírka tabuliek a hĺbka FK) sa správajú inak. Pri počte tabuliek klesá úspešnosť niekde medzi 30 až 60 tabuľkami. Pri 60 tabuľkách konfigurácie 7b zvládli vygenerovať recept len pre 2 behy a mix len pre 4. Zaujímavé je ale, že priemerná úspešnosť pri 100 tabuľkách je mierne vyššia ako pri 60., takže o zlyhaní nerozhoduje len počet tabuliek ale aj ich konkrétny charakter.
+
+
+Pri šírke tabuliek (počte stĺpcov) funguje generovanie spoľahlivo do 100 stĺpcov a pri 200 stĺpcoch padá na úspešnosť 1/18 pre všetky konfigurácie. Dominantným zlyhaním je ale RecursionError vo vnútri nástroja Dataster, takže tento strop patrí Datasteru, nie modelom.
+
+
+Na záver čo sa týka hĺbky reťazca to nerobí problém konfigurácia 7b a mix a nízke čísla pre 3b spôsobuje prevažne dataster\_smt\_count, čiže interakcia receptov menšieho modelu so SMT riešiteľom, nie hĺbka reťazca samotná.
+
+
+Odpoveď na RQ5 sa líši v tom, že pri počte tabuliek nie je možné presnejšie kde leží zlom medzi 30 a 60 tabuľkami, teda, že presnejšie ho z meraných bodov nie je možné určiť. Pri šírke tabuliek je to medzi 100 a 200 stĺpcami a pri hĺbke FK reťazca v meranom rozsahu 21 tabuľkových úrovní sa zlom pre konfigurácie 7b a mix neukázal.
+
+\section{Je možné pri vyhodnocovaní spoľahlivo odlíšiť zlyhania spôsobené navrhnutou pipeline od zlyhaní generátora Dataster? (RQ6)}
+Áno, jedným z kľúčových cieľov testovania bolo spoľahlivo rozoznať priradenie chýb medzi samotným programom a generátorom Dataster. Toto sa opiera o štyri nezávislé pozorovania.
+
+
+Najčastejšie sa objavoval defekt dataster\_sql\_escaping, kde bolo odhalené, že Dataster v príkazoch INSERT vygeneroval neescapované hodnoty. To, že ide o chybu generátora potvrdil experiment, ked sa zaplo escapovanie v SQL  a tým aj zlyhania zmizli. 
+
+
+Ďalej bol pozorovaný defekt dataster\_finterval\_fraction, kde pre hodnoty finterval, boli dosadené zlomky namiesto desatinných čísel. Toto hovorí o defekte generátora  a potvrdzuje to aj podobné správanie dvoch DBMS (MySQL a PostgreSQL), tieto hodnoty boli odmietnuté, chyba teda vznikla pred databázou.
+
+
+Je dôležité spomenúť aj kategóriu smt\_count. Priradenie zlyhaniu k Dataster je v tomto prípade prísne, pretože tu bolo pri webovom rozhraní overené, že nástroj pri rovnakom recepte, pri ktorom volanie knižnice zlyhá, reálne vygeneroval  čiastočný výstup.
+
+
+Taktiež kategória ako sebareferenčný FROM, ktorý skončil pádom v Dataster, ale príčina bola priradená samotnému programu, keďže chyba nebola zachytená vo validačnej a opravnej vrstve programu. 
+
+
+Možné je aj spomenúť  model mistral:7b, kde kontrola padala hlavne v kategóriách na strane modelu (data\_too\_long: 168 a fk\_violation: 123). Tu je ukázané, že úspešnosť úrovne L3 zostáva nízka (29\%) aj po odrátaní zlyhaní pripísaných Datasteru. Metrika teda odlíši slabý model od obmedzení generátora.
+
+
+Na záver je ale aj dôležité priznať limit pri priraďovaní chýb. Hraničné a generické scenáre (zero\_rows) sa nechávajú ako zlyhanie pipeline, čo znamená, že výsledná úspešnosť podhodnocuje pipeline.  Klasifikovanie chýb je taktiež úzko spojené s formátom chybových správ referenčného DBMS. Pri prechode na PostgreSQL bolo potrebné kategórie a priraďovanie chýb pozmeniť.
+
+\section{Reprodúkcia chýb}
+
+Testovacia databázy \texttt{testdb21 - testdb23}, boli vytvorené s úmyslom testovania správania generátora Dataster.
+
+\begin{itemize}
+    \item \textbf{\texttt{testdb21} Generovanie hodnôt pre finterval} Testovací scenár sa zameriaval na generovanie číselných rozsahov s plávajúcou rádovou čiarkou. Pri vygenerovaných SQL INSERT príkazoch sa objavili zlomky a tím sa splnil aj účel testovacieho scenára.
+    \item \textbf{\texttt{testdb22} SMT jedinečnosť} Cieľom testovacieho scenára bolo žiadosť o vytvorenie viac unikátnych hodnôt ako je SMT solver schopný a tým pádom vyvolá smt\_count\_error.
+    \item \textbf{\texttt{testdb23} generovanie hodnôt pre dinterval} výsledky ukázali, že pri generovaní hodnôt pre dátum sa vygenerované hodnoty približovali prevažne ku spodnej hranici dátumového intervalu.
+\end{itemize}
+
+\section{Demonštrácia}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lc c l}
+    \toprule
+    \textbf{Databáza} & \textbf{L2} & \textbf{L3\_Adjusted} & \textbf{pozn.} \\
+    \midrule
+    testdb, 2, 5, 6, 8, 9, 10 & 3/3 & 100\% & zhodné s MySQL \\
+    testdb3 & 3/3 & 100\% & 13$\times$ dataster\_finterval\_fraction \\
+    testdb4 & -&N/A & Wrong FROM format (zhodné s MySQL) \\
+    testdb7 & -&N/A & dataster\_smt\_count (zhodné s MySQL) \\
+    \bottomrule
+    \end{tabular}
+    \caption{Demonštrácia na PostgreSQL (10 databáz, 3 kolá, teplota 0.0)}
+    \label{tab:vysledky_demostracia}
+\end{table}
+
+Cieľom bolo overiť, či nástroj funguje aj mimo referenčného DBMS. Nástroj bol spustených nad 10 základnými databázami nad PostgreSQL v troch kolách pri teplote 0.0 s konfiguráciou mix. Ukázalo sa, že 8 z 10 databáz boli plne funkčné s L3\_Adjusted 100\% na všetkých akceptovaných receptoch. 
+
+Obe zlyhania (testdb4 - wrong FROM format, testdb7 - smt\_count) sú zhodné s MySQL, čiže problém nie je v prenositeľnosti, ale ide už o zdokumentované chyby nezávislé od DBMS. Pri klasifikovaní chýb bolo potrebné prispôsobiť klasifikátor formátu chybových správ PostgreSQL (odlišné chybové správy).
+
+
+\section{Zhrnutie}
+
+V tejto kapitole boli vyhodnotené výsledky testov zamerané na otázky RQ1-RQ6 predstavené~\ref{sub:ciele}. V rámci RQ1 sa ukázalo, že teplota nemá dokázateľný vplyv na priemernú úspešnosť na databázy v testovacích sadách. Avšak pre teplotu 1.2 boli zaznamenané najslabšia úspešnosť. Výsledky viedli k zvoleniu teploty 0.0 pre testovanie v ďalších fázach. 
+
+
+Pri vyhodnotení RQ2 sa potvrdilo, že veľkosť modelu má výrazný vplyv na úspešnosť.  Tu konfigurácia 3b dosiahla najnižšiu priemernú úspešnosť a citlivosť na zložitosť schém spomedzi všetkých konfigurácii (7b, 3b a mix). Modely 7b a mix dosiahli pri L3\_Adjusted úspešnosť približujúcu sa k 100\%. Zaujímavý výsledok je schopnosť mix konfigurácie dosiahnuť podobný výsledok ako konfigurácia 7b, len pri nižších nárokoch.
+
+
+Pre porovnanie rodín modelov v RQ3 platí, že llama3.1:8b dosiahla podobné výsledky ako referenčný qwen2.5:7b, zatiaľ čo mistral výrazne zaostával na oboch úrovniach. Tu sa ukázalo, že kvalitu úspechu nezaručuje len veľkosť modelu, ale rozhoduje aj rodina.
+
+
+Pri RQ4 sa ukázalo. že každý sledovaný parameter (počet tabuliek, šírka tabuliek a hĺbka FK) sa správa inak a o konkrétnom zlyhaní rozhoduje charakter databázovej schémy. V rámci RQ5 boli identifikované body pri ktorých úspešnosť s rastúcou zložitosťou klesá. Úspešnosť klesá medzi 30 a 60 tabuľkami pri počte tabuliek, 100 a 200 stĺpcami pri šírke tabuliek a pri hĺbke FK reťazca sa zlom neukázal.
+
+
+Na záver bolo pri poslednej otázke RQ6 sa potvrdilo, že zlyhania programu možno spoľahlivo odlíšiť od defektov nástroja Dataster. Toto sa opiera o štyri nezávislé pozorovania.
+
+
+Pre zhrnutie sa pri analýze výsledkov ukázalo, že lokálne LLM dokáže generovať prevažne vykonateľné použiteľné recepty, pričom hlavné limity úspešnosti ležia v troch oblastiach, a to zdokumentované defekty Dataster, identifikované medzery validačnej vrstvy pri sebareferenčnom odkaze FROM a kapacitné limity malého modelu na zložitých schémach.
+

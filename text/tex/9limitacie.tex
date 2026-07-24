@@ -1,0 +1,74 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 9
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Limitácie programu a možné rozšírenia}
+\label{ch:kap9}
+
+Pri návrhu, implementácii a testovaní navrhnutého riešenia sa objavilo niekoľko obmedzení, ktoré sú nutné v tejto práci pomenovať. Zatiaľ čo sa Kapitola~\ref{ch:kap7} sa zaoberá opisom testovania a Kapitola~\ref{ch:kap8} obsahuje podrobné vyhodnotenie výsledkov, táto kapitola sa zameriava na identifikáciu limitácií nástroja (Sekcia~\ref{sub:limitacia_nastroja}), obmedzení generátora Dataster (Sekcia~\ref{sub:limitacia_generatora_dataster}) a obmedzenia pri práci s LLM (Sekcia~\ref{sub:limitacia_pri_praci_s_llm}), ako aj návrhy pre rozšírenie implementácie nástroja budúcej práci (Sekcia~\ref{sub:mozne_rozsirenia}).
+
+\section{Limitácia nástroja}
+\label{sub:limitacia_nastroja}
+
+
+
+\begin{itemize}
+    \item \textbf{Zložené primárne kľúče (M:N tabuľky)}
+    Tabuľky, ktorých zložený primárny kľúč je poskadaný výlučne z cudzích kľúčov (M:N) sú vylúčené už v predspracovaní so záznamov composite\_key. Tabuľky so zloženým PK, ktoré toto kritérium nespĺňajú, sa spracuvajú, unikátnosť kombinácie kľúča však nie je garantovaná.
+    
+    \item \textbf{Nečíselné primárne kľúče}
+    Ak primárny kľúč obsahuje textové alebo iné nečíselné hodnoty, program ich spracováva prostredníctvom zbierania vzoriek a následného generovania BLOCKS formátu. Neexistuje garancia unikátnosti, pri počte generovaných riadkov presahuje počet hodnôt v BLOCKS a tak vznikajú duplicitné kľúče.
+    \item \textbf{sebareferenčná definícia v sekcii \texttt{schema} }
+    Validačná vrstva nekontroluje prípad kde sa v YAML recept nachádza mapovanie stĺpca na ten istý stĺpec v rovnakej tabuľke. 
+
+    schema:
+    	stlpec: FROM tabulka.ten\_isty\_stlpec
+    
+    Dôvodom je medzera v implementácii vo validačnej a opravnej vrstve, nie je to zlyhanie LLM. Tým pádom chybný recept tak prejde validáciou ako správny, ale vo vrstve L2 spôsobí pád nástroja Dataster. Tento defekt môže za 49 pádov pri konfigurácii qwen2.5:7b (Sekcia~\ref{sub:odpoved_rq2}). Pre opravu stačí doplnenie kontroly, ako vo validačnej, tak aj v opravnej vrstve.
+
+    \item \textbf{Zhoršenie dátového typu pri neznámej hodnote}
+    Ak nástroj vyhodnotí, že stĺpec v sekcii types má nejaký neznámy typ, alebo nebola rozpoznaný dataset z AVAILABLE\_INCLUDES, tak sa nástroj pokusí dátový typ uhádnuť. V prípade, že sa to nepodarí, použije záložný univerzálny typ string. Toto je spôsobené nedostatočnou analýzy pri neznámych schémach. Toto vedie ku zníženiu kvality výsledného receptu, pretože dochádza ku zmene významu hodnôt vo vnútri stĺpca.
+
+    \item \textbf{Chýbajúce používateľská definícia datasetov}
+    Nástroj je limitovaný na sedem pred vytvorených datasetov v definícii AVAILABLE\_INCLUDES.  Toto je limitácia architektúry. V prípade, že sa hodnota v stĺpci v types sekcii nezhoduje ani s jedným z týchto datasetov, program zmení jeho typ na generický string. Taktiež, používateľ nemôže bez zásahu do zdrojového kódu pridať vlastné datasety. Toto zhoršuje kvalitu výsledného receptu.
+    
+\end{itemize}
+
+\section{Limitácia generátora Dataster}
+\label{sub:limitacia_generatora_dataster}
+
+Nasledujúce obmedzenia boli identifikované analýzou zdrojového kódu a reprodukované na databázach testdb21-23 a extreme\_testdb6 (Kapitola~\ref{ch:kap8}). Nejde o hodnotenie nástroja ale o vymenovní obmedzení, s ktorými musí generovanie receptov počítať.
+
+\begin{itemize}
+    \item \textbf{Escapovanie SQL hodnôt} - niektoré SQL INSERT príkazy obsahujú neescapované apostrofy a spätné lomky vo vygenerovaných reťazcoch
+    
+    \item \textbf{Zlomkové hodnoty vo vnútri finterval} - pre hodnoty s plávacúcou čiarkou sú generované hodnoty vo forme zlomkov. Toto bolo potvrdené testom \texttt{testdb21} nad DBMS MySQL a PostgreSQL.
+    
+    \item \textbf{SMT count} - ak recept vyžaduje viac unikátnych kombinácii, než je SMT solver schopný dodať, knižnica dbgenx vyhodí výnimku \texttt{GenerateCountErrors}. Avšak webové rozhranie nástroja Dataster pri indentickom recepte nezlyhá úplne, ale vytvorí neuplný výstup.
+
+    \item \textbf{RecursionError pri širokých tabuľkách} - pri extrémnych databázach, kde tabuľka obsahuje 200 stĺpcov a vaic dochádza v Datasteri k prekročeniu limitu rekurzie \texttt{RecursionError}. Toto vyvolá pád na každom recepte.
+
+    \item \textbf{Unikátnosť zložených PK} - hodnoty stĺpcov sa generujú nezávisle, kombinácia nie je garantovaná (dôvod vylúčenia M:N)
+
+\end{itemize}
+
+
+\section{Limitácie pri práci s LLM}
+\label{sub:limitacia_pri_praci_s_llm}
+\begin{itemize}
+    \item \textbf{Kapacita menších modelov} - pri vyhodnocovaní modelov sa ukázalo, že menšie modely strácajú schopnosť udržiavať štruktúru a konzistenciu YAML konfigurácie.
+    \item \textbf{Nedeterminizmus aj pri teplote 0.0} 
+    \item \textbf{Orezanie kontextu} 
+    
+\end{itemize}
+
+\section{Možné rozšírenia}
+\label{sub:mozne_rozsirenia}
+Na základe spomenutých obmedzení sú navrhnuté nasledujúce rozšírenia pre budúcu prácu
+\begin{itemize}
+    \item rozšírenie implementácia validačnej a opravnej vrstvy o pravidlo schema spomenute v sekcii 9.1
+    \item možnosť výberu cieľovej cesty a adresára pre ukladanie vygenerovaných YAML konfigurácii
+    \item rozšírenie nástroja o ďalšie databázové systémy (napríklad Oracle) 
+    \item priame prepojenie s existujúcou stránkou Dataster pre pohodlnejšie použitie
+
+\end{itemize}

@@ -1,0 +1,37 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 10
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Záver}
+\label{ch:kap10}
+
+Cieľom tejto práce bolo navrhnúť a implementovať nástroj na automatické generovanie receptov pre generátor testovacích dát Dataster (vo formáte YAML). Generovanie zabezpečujú lokálne veľké jazykové modely (LLM) spúšťané cez platformu Ollama. Nástroj bol implementovaný do štyroch fáz, ktoré boli doplnené o validačnú a opravnú vrstvu. Po implementácii nasledovalo testovanie, ktoré bolo rozdelené na tri úrovne, na sade 31 testovacích databáz.
+
+Pri testovaní sa ukázalo, že zmiešaná konfigurácia modelov (pričom 7b modely boli priradené ku interpretačným úlohám potrebným pri generovaní sekcií types a constraints, 3b pre transformačné fázy schema a generate) dosiahla po odpočítaní známych defektov porovnateľnú akceptovateľnosť receptov L2 (\~78 \% vs 79 \%), aj úspešnosť vykonania SQL príkazov na L3 úrovni (98\% vs 100\%) v porovnaní s čistým 7b modelom. Takto vyrovnala jeho kvalitu pri nižších výpočtových nárokoch v dvoch zo štyroch fáz.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 10
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Záver}
+\label{ch:kap10}
+
+Cieľom tejto práce bolo navrhnúť a implementovať nástroj na automatické generovanie receptov pre generátor testovacích dát Dataster (vo formáte YAML). Generovanie zabezpečujú lokálne veľké jazykové modely (LLM) spúšťané cez platformu Ollama. Nástroj bol implementovaný v štyroch fázach, ktoré boli doplnené o validačnú a opravnú vrstvu. Po implementácii nasledovalo testovanie, ktoré bolo rozdelené na tri úrovne, na sade 31 testovacích databáz.
+
+Pri testovaní sa ukázalo, že zmiešaná konfigurácia modelov (pričom 7b modely boli priradené k interpretačným úlohám potrebným pri generovaní sekcií types a constraints, 3b pre transformačné fázy schema a generate) dosiahla po odpočítaní známych defektov porovnateľnú akceptovateľnosť receptov L2 (~78 \% vs 79 \%), aj úspešnosť vykonania SQL príkazov na L3 úrovni (98 \% vs 100 \%) v porovnaní s čistým 7b modelom. Takto vyrovnala jeho kvalitu pri nižších výpočtových nárokoch v dvoch zo štyroch fáz.
+
+Úspešnosť nástroja klesá pri testovaní počtu tabuliek medzi 30 až 60 tabuľkami (dôsledok kapacitných limitov použitých modelov), zatiaľ čo zlyhanie pri šírke tabuľky medzi 100 a 200 stĺpcov patrilo výhradne obmedzeniu generátora Dataster (RecursionError). Pri hĺbke FK reťazca do 20 úrovní sa prekážka neukázala pre 7b a zmiešané konfigurácie. Navrhnutá metodika tak pomocou klasifikácie chýb dokázala odlíšiť zlyhania pipeline (napríklad sebareferenčné odkazy FROM) od obmedzení samotného Datasteru. Dôležitým prínosom práce sú zdokumentované defekty nástroja Dataster s empirickým potvrdením atribúcie. Práca tiež prináša zistenie o výraznom vplyve formátu a úpravy serializácie vstupu na správnosť výstupu vygenerovaného modelom.
+
+Podľa zadania boli splnené požiadavky, teda získanie schémy a pripojenie (REQ.1 – REQ.3) boli uskutočnené pomocou SQLAlchemy (a overené na MySQL a PostgreSQL), postupy na odvodenie vlastností a vzťahov (REQ.4 – REQ.8) sú rozdelené do štyroch fáz a ich úspešnosť sa meria v Kapitole~\ref{ch:kap8}. Akceptovateľnosť výstupov v aktuálnej verzii nástroja spĺňa REQ.10. Lokálny beh cez Ollama napĺňa REQ.9 a REQ.12–REQ.13, zatiaľ čo opakovateľnosť a reprodukovateľnosť vyhodnotenia naprieč tromi kolami zabezpečuje REQ.11. Overiteľnosť výstupov (REQ.14) zaisťuje trojúrovňová metodika vyhodnotenia.
+
+V návrhu je odchýlka od pôvodného zadania, a to, že generovanie sekcie include a SQL dotazov, boli ponechané kódu a nie samotnému LLM, keďže jeho využitie pri nich nezvyšovalo kvalitu.
+
+Možnosti ďalšej práce nástroja, hlavne rozšírenie implementácie validačnej a opravnej vrstvy sú rozobrané v Kapitole~\ref{ch:kap9}.
+
+Úspešnosť nástroja klesá pri testovaní počtu tabuliek medzi 30 až 60 tabuľkami (dôsledok kapacitných limitov použitých modelov), zatiaľ čo zlyhanie pri šírke tabuľky medzi 100 a 200 stĺpcov patrilo výhradne obmedzeniu generátora Dataster (RecursionError). Pri hĺbke FK reťazca do 20 úrovní sa prekážka neukázala pre 7b a zmiešané konfigurácie. Navrhnutá metodika tak pomocou klasifikácie chýb dokázala odlíšiť zlyhania pipeline (napríklad sebareferenčné odkazy FROM) od obmedzení samotného Datasteru. Prínosom práce sú aj zdokumentované defekty nástroja Dataster.
+
+Podľa zadania boli splnené požiadavky, teda získanie schémy a pripojenie (REQ.1 - REQ.3) boli uskutočnené pomocou SQLAlchemy (a overené na MySQL a PostgreSQL), postupy na odvodenie vlastností a vzťahov (REQ.4 - REQ.8) sú rozdelené do štyroch fáz a ich úspešnosť sa meria v Kapitole~\ref{ch:kap8}. Akceptovateľnosť výstupov v aktuálnej verzii nástroja spĺňa REQ.10. Lokálny beh cez Ollama napĺňa REQ.9 a REQ.12-REQ.13, zaťiaľ čo opakoveteľnosť a repordukovateľnosť vyhodnotenia naprieč tromi kolami zabezpečuje REQ.11. Overiteľnosť výstupov (REQ.14) zaisťuje trojúrovňová metodika vyhodnotenia.
+
+V návrhu je odchýlka od pôvodného zadania, a to, že generovanie sekcie include a SQL dotazov, boli ponechané kódu a nie samotnému LLM, keďže jeho využitie pri nich nezvyšovalo kvalitu.
+
+Možnosti ďalšej práce nástroja, hlavne rozšírenie implementácie validačnej a opravnej vrstvy sú rozobrané v Kapitole~\ref{ch:kap9}.
