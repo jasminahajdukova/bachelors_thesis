@@ -25,7 +25,6 @@ AVAILABLE_INCLUDES = [
 client = ollama.Client(timeout=600.0)
 
 def get_response(type_name: str, prompt: str, model: str, thinking: bool = False):
-    # testing: low (0.0, 0.2), high: (0.8, 1.2) appropriate: (0.3, 0.5) def: (0.1, 0.3, 0.3, 0.3)
     default_temperatures = {
         "yaml-generator-constraints": 0.0,
         "yaml-generator-generate": 0.0,
@@ -47,8 +46,8 @@ def get_response(type_name: str, prompt: str, model: str, thinking: bool = False
                         prompt=prompt,
                         think=thinking,
                         options={
-                            "num_predict": 4096,
-                            "num_ctx": 8192,
+                            "num_predict": 8192,
+                            "num_ctx": 16384,
                             "temperature": default_temperatures[model]})
         if isinstance(response, dict):
             prompt_tokens   = response.get('prompt_eval_count', 'N/A')
@@ -2131,7 +2130,8 @@ def generate_yaml(samples, sql_server_type, fk_map, gen_count, db_name):
         "fix_pk_seq": 0,
         "interval_num_fix": 0,
         "yaml_bool": 0,
-        "single_item_list_fix": 0    
+        "single_item_list_fix": 0,
+        "values_ref_dataset_bound": 0    
     }
 
     types_raw       = generate_yaml_prompt(sorted_samples, None, sql_server_type, "yaml-generator-types", "types")
