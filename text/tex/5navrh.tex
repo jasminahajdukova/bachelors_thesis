@@ -1,0 +1,94 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 5
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Návrh}
+\label{ch:kap5}
+Táto kapitola sa zaoberá vysokoúrovňovým návrhom nástroja na automatizované generovanie receptov pre nástroj Dataster. Následne približuje celkovú architektúru (Sekcia~\ref{sub:architektura}), komponenty návrhu a tok dát medzi nimi (Sekcia~\ref{sub:fazy_generovania}). LLM tvorí jadro návrhového riešenia a preto je pozornosť venovaná spôsobu využitia veľkých jazykových modelov (Sekcia~\ref{sub:vyuzitie_vlk_jaz_modelov}). Pokračuje princípom validácie a opravy výstupov (Sekcia~\ref{sub:validacia_a_kontrola}) a na záver opisuje rozdelenie práce (Sekcia~\ref{sub:rozdelenie_prace}). Konkrétna implementácia návrhu je obsiahnutá v Kapitole~\ref{ch:kap6}.
+
+\section{Architektúra}
+
+\label{sub:architektura}
+
+Vstupom nástroja sú identifikačné údaje pre pripojenie k relačnej databáze. Na začiatku sa program pripojí k databáze, extrahuje tabuľky, informácie o nich, teda stĺpce, ich dátové typy, primárne a cudzie kľúče. Po získaní týchto informácií sa z tabuľky vytiahnu rôzne vzorky krajných hodnôt z oboch koncov usporiadania, ktoré vymedzujú rozsah hodnôt stĺpca, čo jazykovému modelu umožní lepšie pochopiť charakter jednotlivých stĺpcov.
+
+
+
+V ďalšej fáze LLM ako prvé vygeneruje sekciu \texttt{types}, keďže na tejto sekcii závisia ostatné sekcie YAML. Následne sa vygenerujú ďalšie sekcie. Sekcie schema, generate a constraints sa generujú nezávisle, každá samostatným volaním modelu s types sekciou ako vstupom. 
+
+
+
+Surové výstupy jednotlivých fáz sa následne poskladajú do jedného predbežného YAML, ktorý je validovaný a v prípade chýb opravený. Zložený recept prechádza automatickými opravami, následne jednou validáciou a uloží sa.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{obrazky-figures/diagram1.pdf}
+    \caption{Architektúra nástroja}
+    \label{fig:diagram1}
+\end{figure}
+
+\section{Fázy generovania}
+
+\label{sub:fazy_generovania}
+
+Samotné generovanie sekcií je rozdelené do niekoľkých fáz, hlavne z dôvodu izolácie chýb. Pri zlyhaní nie sú ostatné sekcie stratené a chyba je priraditeľná fáze, v ktorej vznikla. Malé modely majú problém s dodržaním konzistentného formátu výstupu, pričom použitie few-shot príkladov tento problém pomáha zmierniť~\cite{Pysmennyi2025}. Rozdelenie úloh šetrí pamäť. Každý krok spracováva len nutné informácie, čo je pri 8 GB VRAM zásadná výhoda.
+
+
+Pre \textbf{fázu types} vstup obsahuje informácie o primárnom kľúči, dátových typoch stĺpcov, ako aj niekoľko vzoriek hodnôt. Ide o interpretačne najnáročnejšiu fázu a jej kvalita vygenerovaného výstupu priamo ovplyvňuje ostatné fázy, preto sa jej návrhu venuje najväčšia pozornosť. Databázové vzorky vidí iba fáza types, ostatné fázy pracujú výlučne s jej výstupom.
+
+
+\textbf{Fáza schema} prevezme vygenerovanú sekciu types. Jej úlohou je mapovanie stĺpcov a vzťahov cudzích kľúčov. Všetky cudzie kľúče vytiahne program priamo z databázy a do schémy ich vloží automaticky. Model sa používa najmä na návrh prepojení a na odhaľovanie vzťahov medzi tabuľkami, ktoré nie sú v databáze explicitne zapísané a treba ich odhadnúť podľa názvov a hodnôt.
+
+
+Pri \textbf{fáze generate} sa určujú jednotlivé počty generovaných riadkov pre každú tabuľku. Logický počet sa odvíja od rozsahu hodnôt primárneho kľúča.
+
+
+Ako posledná \textbf{fáza} je \textbf{constraints}, ktorá podľa vstupu types odvodzuje logické obmedzenia hodnôt, ktoré nie sú zachytené v schéme databázy, ale vyplývajú z kontextu hodnôt, ako napríklad rozsahy veku alebo nezáporné ceny. Tieto obmedzenia nie je možné mechanicky vyčítať, model ich musí vyvodiť zo sekcie types.
+
+
+Toto poradie je dôležité, pretože types je spoločným vstupom ostatných troch generovaných sekcií. Types definuje množinu tabuliek, stĺpcov a ich typov, na ktorú sa ostatné sekcie odkazujú. Ostatné fázy sú navzájom nezávislé a preto sa volajú oddelene, chyba v jednej z týchto častí neruší ostatné. 
+
+\section{Využitie veľkých jazykových modelov (LLM)}
+
+\label{sub:vyuzitie_vlk_jaz_modelov}
+
+Jazykový model v návrhu nefunguje ako autonómny agent, ktorý sám rozhoduje o ďalšom kroku, poradie fáz vrátane validácie a opráv sú pevne riadené programom. AI agenti sú síce populárni v oblasti zabezpečovania kvality softvéru~\cite{Pysmennyi2025}, ale pre tento program to bolo vyhodnotené ako nevhodné hneď z niekoľkých dôvodov. Po prvé, experimentálne vyhodnotenie vyžaduje reprodukovateľnosť, rovnaký vstup musí prejsť tou istou cestou. S agentom pribudne ďalšia neistota, pretože pri každom spustení sa môže líšiť nielen odpoveď modelu, ale aj počet a poradie krokov. Po druhé, spoľahlivé plánovanie je zdokumentovaným problémom aj pri väčších modeloch~\cite{Valmeekam2023}, pri modeloch s okolo 7 miliardami parametrov, ktoré si vynucuje dostupná pamäť (8 GB VRAM), ho nemožno preto predpokladať. Po tretie, keď má každá fáza svoje pevné miesto, zlyhanie je priraditeľné k fáze, v ktorej sa objavilo, pri slučke tvorenej agentom sa chyba stráca v trajektórii.
+
+
+Modely tak rozhodujú výhradne o obsahu generovaných sekcií, nie o štruktúre procesu. Všetko, čo je možné vykonať algoritmicky, vykonáva kód.
+
+\section{Validácia a oprava}
+
+\label{sub:validacia_a_kontrola}
+
+Priebeh validácie zloženého receptu znázorňuje obrázok~\ref{fig:diagram2}, teda pri validácii môžu nastať dva prípady. Buď je vygenerovaný YAML bez chýb a uloží sa, alebo prechádza kontrolou a radom opráv, pričom sa odchytené chyby zaznamenajú a recept sa uloží. Tento prístup bol zvolený zámerne, aby použivateľ mohol recept opraviť alebo nástroj spustiť znova. Zároveň to umožňuje vyhodnocovať aj recepty, ktoré validáciou neprešli (Kapitola~\ref{ch:kap7}). V prípade, že kód narazí na vážnu chybu, kód končí s chybovým hlásením.  
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\linewidth]{obrazky-figures/diagram2.pdf}
+    \caption{Schéma automatickej opravy a validácie zloženého receptu}
+    \label{fig:diagram2}
+\end{figure}
+
+
+Výstupy jazykových modelov sú formátovo nestabilné a menšie modely majú zdokumentované problémy s dodržaním konzistentného výstupného formátu~\cite{Pysmennyi2025}. Preto bola automatická oprava a kontrola výstupov navrhnutá ako integrálna súčasť procesu, nie ako dodatočná kontrola.
+
+\section{Rozdelenie práce}
+
+\label{sub:rozdelenie_prace}
+
+Využitie LLM pre každú časť procesu, od extrakcie schémy cez generovanie až po opravy by bolo nielen zbytočné, ale aj pomalé. Návrh túto prácu delí medzi LLM a samostatný kód podľa povahy úlohy. 
+
+
+LLM sa stará o generovanie YAML častí ako \texttt{types}, \texttt{schema}, \texttt{generate} a \texttt{constraints}, ale z generovania vynecháva sekciu \texttt{include} a SQL požiadavky. LLM dostáva úlohy, pri ktorých je dôležitá interpretácia a neexistuje presný algoritmus.
+
+
+Samotný kód dostáva úlohy na mechanickej báze, kde je nutný presný postup a odchýlka od neho je chybou. Stará sa o pripojenie k databáze, extrakciu schémy a vzoriek dát ako aj poskladanie týchto informácií do jedného balíka, ktorý je poslaný do LLM. Ako posledné si prevezme vygenerovaný výsledok, ten skontroluje, opraví a uloží. 
+
+
+V počiatočných fázach návrhu bol testovaný aj variant fázy, ktorý sám opravoval chybný recept, lenže opravy boli pomalé a nespoľahlivé a nakoniec sa oprava kódom ukázala ako lepšia voľba. 
+
+
+Pôvodný návrh zo zadania počítal s LLM aj pri generovaní SQL dotazov ako aj generovaní YAML include sekcie. Obe úlohy sa ale ukázali byť plne programovateľné a keďže LLM nepridávalo hodnotu ani jednej zo spomenutých častí a vytváral zbytočné chyby, implementácia týchto častí bola zverená kódu.
+
+

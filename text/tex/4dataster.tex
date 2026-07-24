@@ -1,0 +1,225 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 4
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Nástroj Dataster a analýza požiadaviek}
+\label{ch:kap4}
+
+Kým predchádzajúce kapitoly položili teoretický základ pre testovanie založené na dátach a veľké jazykové modely, v tejto časti sa práca už priamo zameriava na dosiahnutie konkrétneho cieľa. Výstupom tejto práce nie sú priamo testovacie dáta, ale YAML konfigurácia, tzv. recept pre nástroj Dataster. Dataster  tým určuje cieľový formát a teda aj to, čo všetko musí navrhovaný nástroj o databáze zistiť. Táto kapitola analyzuje formát receptu z pohľadu znalostí potrebných na jeho vytvorenie a odvodzuje požiadavky na nástroj. Sekcia~\ref{sub:nastroj_dataster} predstavuje nástroj Dataster, sekcia~\ref{sub:analyza_formatu_receptu}  analyzuje formát receptu a sekcia~\ref{sub:analyza_poziadaviek} z tejto analýzy formuluje požiadavky na navrhovaný nástroj.
+
+\section{Nástroj Dataster}
+\label{sub:nastroj_dataster}
+
+Dataster je súčasťou Testos platformy, ktorá sa zaoberá automatizáciou testovania softvéru. Na základe vstupného receptu generuje testovacie dáta pre relačné databázy vo forme SQL insert príkazov. Generovanie číselných, dátumových a pravdivostných hodnôt je postavené na SMT riešiteľovi, reťazce sa generujú samostatne. Obmedzenia (constraints) sa pritom berú do úvahy len pri SMT-typovaných atribútoch~\cite{Vlach2020}. Okrem vnorených typov umožňuje Dataster vyjadriť väzbu kľúčovým slovom \texttt{FROM}. Navrhvaný nástroj používa výhradne \texttt{FROM}, jeho sytax aj zázornený v príkladoch na stránke nástroja\footnote{\url{https://dataster.testos.org/}}. Dataster je budovaný na už existujúcej CLI aplikácii dbgenx, nad ktorou buduje API adaptér a webové rozhranie. 
+
+Používateľ pracuje s Datasterom prostredníctvom receptu, ktorý vytvára ručne. Recept má rôzne špecifikácie ako typy hodnôt, väzby na tabuľky a stĺpce, počty riadkov, dodatočné obmedzenia. Kvalita generovaných dát stojí na kvalite receptu. Dataster sám o sebe nemá prístup ku žiadnej databáze a nevidí jej schému, preto je na používateľovi, aby túto znalosť preložil do receptu, do štruktúrovaného formátu YAML. 
+
+Autor receptu musí prejsť schému databázy, pre každý stĺpec tabuľky určiť vhodný typ a správne identifikovať vzťahy medzi tabuľkami. Čas potrebný na tvorbu receptu sa úmerne zvyšuje s počtom tabuliek a táto práca môže trvať niekoľko hodín až dní. Aby bolo možné tento krok automatizovať, je najskôr dôležité presne rozumieť tomu aké sú potrebné znalosti pre tvorbu receptu, čomu sa venuje sekcia~\ref{sub:analyza_formatu_receptu}.
+
+
+
+\section{Analýza formátu receptu}
+\label{sub:analyza_formatu_receptu}
+
+
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Definícia tabuľky \texttt{parents}}]
+        CREATE TABLE parents (
+            parent_id   INT PRIMARY KEY,
+            parent_name VARCHAR(100) NOT NULL,
+            gender      VARCHAR(10) NOT NULL,
+            home_phone  VARCHAR(10) NOT NULL
+        ); 
+    \end{lstlisting}
+
+    \vspace{1.5em}
+    
+    \begin{tabular}{>{\centering\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.25\linewidth}>{\centering\arraybackslash}p{0.1\linewidth}>{\centering\arraybackslash}p{0.25\linewidth}}\toprule
+         
+         \textbf{parent\_id} & \textbf{parent\_name} & \textbf{gender} & \textbf{home\_phone} \\\midrule
+         
+         1 & John Doe       & Male   & 555-0192 \\
+         2 & Jane Smith     & Female & 555-0143 \\
+         3 & Robert Johnson & Male   & 555-0177 \\
+         4 & Emily Davis    & Female & 555-0155 \\ \bottomrule
+         
+    \end{tabular}
+    \caption{Vzorové dáta tabuľky \texttt{parents}}
+    \label{table:sample-parents}
+
+
+\end{figure}
+
+
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Definícia tabuľky \texttt{children}}]
+        CREATE TABLE children (
+            child_id        INT PRIMARY KEY,
+            parent_id       INT NOT NULL,
+            gender          VARCHAR(10) NOT NULL,
+            first_name      VARCHAR(20) NOT NULL,
+            age             INT NOT NULL,
+            date_of_birth   DATE NOT NULL,
+            FOREIGN KEY (parent_id) REFERENCES parents(parent_id)
+        );
+    \end{lstlisting}
+
+    \vspace{1.5em}
+    
+    \begin{tabular}{ccclcc}
+         \toprule
+         \textbf{child\_id} & \textbf{parent\_id} & \textbf{gender} & \textbf{first\_name} & \textbf{age} & \textbf{date\_of\_birth} \\
+         \midrule
+         1 & 1 & Male   & Billy  & 8    & 2018-04-12 \\
+         2 & 2 & Female & Lilly  & 5    & 2021-08-23 \\
+         3 & 3 & Male   & Tommy  & 10   & 2016-01-15 \\
+         4 & 4 & Female & Sophia & 12   & 2014-11-05 \\
+         \bottomrule
+    \end{tabular}
+    \caption{Vzorové dáta tabuľky \texttt{children}}
+    \label{table:sample_children}
+   
+\end{figure}
+
+
+Recept sa skladá z piatich sekcií: \texttt{include}, \texttt{types}, \texttt{schema}, \texttt{generate} a \texttt{constraints}, pričom časti ako \texttt{types}, \texttt{schema} a \texttt{generate}  sú povinné~\cite{Vlach2020}.
+
+
+Sekcia include sa používa s rôznymi prednastavenými datasetmi, teda externými YAML súbormi s informáciami ako mená, mestá, atď. Avšak, na to aby autor receptu vedel datasety použiť, musí rozpoznať sémantickú doménu stĺpca a to nie z dátového typu, ale z názvu stĺpca a vzorových hodnôt. Zároveň musí poznať aktuálnu ponuku dostupných datasetov. 
+\vspace{1.5em}
+\begin{figure}[H]
+    \centering
+  \begin{lstlisting}[caption={Include sekcia pre ukážkovú databázu}, label={lst:recipe-include}, frame=single, linewidth=0.65\textwidth, xleftmargin=0.28\textwidth]
+    include:
+        - first_names_cs
+        - last_names_cs
+\end{lstlisting}
+
+\end{figure}
+
+Sekcia types vyžaduje znalosti samotných typov, ako aj jednotlivých stĺpcov tabuľky a ich dátových typov. V dbgenx sú typy nezávislé objekty oddelené od tabuliek~\cite{Vlach2020}. V tejto práci sa ale použiva konvencia, pri ktorej sa názvov typu zhoduje s názvom tabuľky. Na základe vzorových hodnôt sa následne zostavujú hranice intervalov, dĺžky reťazca alebo regex vzory. Schéma nerozlišuje hlbší kontext, ale vzorové hodnoty áno. Práve preto táto sekcia vyžaduje aj samotné vzorky. Príkladom môže byť dátový typ \texttt{INT} reprezentujúci vek alebo cenu, samotná schéma medzi nimi nerozlišuje, rozlišujú ich až hodnoty.
+
+\vspace{1.5em}
+
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Types sekcia pre ukážkovú databázu.}, frame=single, linewidth=0.9\textwidth, xleftmargin=0.100\textwidth, label={lst:recipe-types}]
+    types:
+        parents:
+            parent_id: seq(1,4,1)
+            first_name: first_names_cs
+            last_name: last_names_cs
+            parent_name:
+                format: '{} {}'
+                values:
+                    - parents.first_name
+                    - parents.last_name
+
+            gender:
+                - BLOCKS
+                - Male
+                - Female
+            home_phone: 'regex(''555-[0-9]{4}'')'
+        children:
+            child_id: seq(1,4,1)
+            gender:
+                - BLOCKS
+                - Male
+                - Female
+            first_name: first_names_cs
+            age: int
+            date_of_birth: dinterval(2014-1-1, 2021-12-31)
+    \end{lstlisting}
+
+\end{figure}
+
+Sekcia schema mapuje stĺpce tabuliek na atribúty typov. Na jej vytvorenie je potrebná znalosť štruktúry tabuliek a vzťahy, teda ktorý stĺpec je cudzí kľúč a kam ukazuje. Je ale nutné poznamenať, že cudzí kľúč nemusí byť v schéme deklarovaný. Vzťah sa dá rozpoznať len z názvov a hodnôt. 
+
+\vspace{1.5em}
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Schema sekcia pre ukážkovú databázu.}, frame=single, linewidth=0.85\textwidth, xleftmargin=0.165\textwidth, label={lst:recipe-schema}]
+    schema:
+        parents:
+            parent_id:     parents.parent_id
+            parent_name:   parents.parent_name
+            gender:        parents.gender
+            home_phone:    parents.home_phone
+        children:
+            child_id:      children.child_id
+            parent_id:     FROM parents.parent_id
+            gender:        children.gender
+            first_name:    children.first_name
+            age:           children.age
+            date_of_birth: children.date_of_birth
+    \end{lstlisting}
+
+\end{figure}
+
+Sekcia generate vyžaduje úsudok o zmysluplných počtoch riadkov, teda horná hranica je rozsah primárneho kľúča, k tomu pomery medzi tabuľkami. Toto nie je v databáze nikde zapísané a je potrebný úsudok nad charakterom tabuliek.
+
+\vspace{1.5em}
+
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Generate sekcia pre ukážkovú databázu.}, frame=single, linewidth=0.75\textwidth, xleftmargin=0.260\textwidth, label={lst:recipe-generate}]
+    generate:
+        - 'parents  = 4'
+        - 'children = 4'
+    \end{lstlisting}
+
+\end{figure}
+
+Pri sekcii constraints len znalosť schémy neplatí, je z nej potrebné vedieť vyčítať logické súvislosti, ktoré vyplývajú z významu hodnôt. Príkladom tohto môžu byť napríklad počiatočný a koncový dátum, logická spojka v tomto prípade je, že počiatočný dátum by sa malo udiať skôr ako ten koncový.
+
+\vspace{1.5em}
+
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Constraints sekcia pre ukážkovú databázu.}, frame=single, linewidth=0.75\textwidth, xleftmargin=0.260\textwidth, label={lst:recipe-constraints}]
+    constraints:
+        - 'children.age >= 5'
+        - 'children.age <= 12'
+    \end{lstlisting}
+
+\end{figure}
+
+
+\section{Analýza požiadaviek}
+
+\label{sub:analyza_poziadaviek}
+
+Tabuľka~\ref{tab:reqs} zahŕňa zjednotené požiadavky v jednej súvislosti. Každá požiadavka obsahuje svoje identifikačné číslo, popis, kategóriu a zdroj. Táto tabuľka identifikuje dve kategórie požiadaviek:
+\begin{itemize}
+    \item \textbf{Funkcionálne požiadavky} (F)
+    \item \textbf{Nefunkcionálne požiadavky} (NF)
+\end{itemize}
+
+\begin{table}[H]
+    \centering
+    \begin{tabularx}{\textwidth}{l X c l}
+         \toprule
+         \textbf{ID} & \textbf{Popis} & \textbf{Kategória} & \textbf{Zdroj} \\
+         \midrule
+        REQ.1   & Nástroj sa pripojí k databáze na základe prihlasovacích údajov  & F & Zadanie \\ 
+        REQ.2   & Nástroj získa štruktúru databázy: názvy tabuliek, stĺpcov, dátové typy a kľúče & F & Zadanie \\
+        REQ.3   & Nástroj získa vzorové dáta & F & Zadanie \\ 
+        REQ.4   & Nástroj odvodí sémantické domény stĺpcov z ich názvov a vzorových hodnôt & F & Analýza~\ref{sub:analyza_formatu_receptu} \\ 
+        REQ.5   & Nástroj odvodí parametre generátorov, teda hranice intervalov, dĺžky reťazcov, vzory, zo vzorových hodnôt & F & Analýza~\ref{sub:analyza_formatu_receptu} \\ 
+        REQ.6   & Nástroj odvodí vzťahy a význam dát zo vzorových hodnôt a názvov stĺpcov & F & Analýza~\ref{sub:analyza_formatu_receptu} \\ 
+        REQ.7   & Odvodí počty  generovaných riadkov pre jednotlivé tabuľky & F & Analýza~\ref{sub:analyza_formatu_receptu} \\
+        REQ.8   & Odvodí obmedzenia z významu hodnôt & F & Analýza~\ref{sub:analyza_formatu_receptu} \\ 
+        REQ.9   & Nástroj využije model LLM pre generovanie receptu & F & Zadanie \\ 
+        REQ.10  & Výstupom je recept akceptovateľný aktuálnou verziou Dataster & F & Prostredie \\ 
+        REQ.11  & Nástroj možno spúšťať opakovane a vyhodnotenie je pri rovnakom nastavení reprodukovateľné & NF &Zadanie \\ 
+        REQ.12  & Nástroj beží výhradne lokálne bez využitia externých služieb & NF & Zadanie \\
+        REQ.13  & Nástroj je prevádzkovateľný na GPU s 8 GB VRAM & NF & Prostredie \\ 
+        REQ.14  & Výstup je overiteľný v nástroji Dataster a vykonávaním vygenerovaného SQL & NF & Zadanie \\ 
+
+         \bottomrule
+    \end{tabularx}
+    \caption{Zoznam funkcionálnych (F) a nefunkcionálnych (NF) požiadaviek na nástroj.}
+    \label{tab:reqs}
+\end{table}

@@ -1,0 +1,66 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 2
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Testovanie softvéru}
+\label{ch:kap2}
+
+Cieľom tejto kapitoly je vymedziť pojem testovanie, jeho význam a dôsledky jeho zanedbania (Sekcia~\ref{sub:testovanie_a_vyznam}). Vymenuje úrovne testovania (Sekcia~\ref{sub:urovne_testovania}) a následne kapitola definuje automatizované testovanie (Sekcia~\ref{sub:automatizovanie_testovanie}), pod ktoré patrí aj termín Data-Driven testing (DDT) (Sekcia~\ref{sub:data_driven-testing}). Je to spôsob testovania, ktorý oddeľuje testovacie dáta od testovacej logiky a tým kladie zvýšené nároky na kvalitu a prípravu testovacích dát. Práve náročnosť prípravy dát je jedným z hlavných východísk tejto práce.
+
+\section{Testovanie a jeho význam}
+\label{sub:testovanie_a_vyznam}
+Testovanie je možné chápať ako proces vyhodnocovania softvéru na základe pozorovania jeho behu~\cite{Ammann2016}. Jeho cieľom je odhaliť chyby a overiť, či softvér spĺňa špecifikované požiadavky a potreby používateľov~\cite{Myers2011}.
+
+Každý softvér je v nejakej fáze vývoja chybný. Tieto chyby môžu viesť k závažným dôsledkom, od finančných strát až po straty na ľudských životoch. Existuje množstvo zaznamenaných prípadov, kde nedôkladné testovanie viedlo až ku katastrofickým následkom. Jedným z týchto prípadov je explózia rakety Ariane 5 (let 501), okolo 40 sekúnd po jej štarte v roku 1996. Dôvodom bola neošetrená výnimka pri konverzii 64-bitového čísla s plávajúcou desatinnou čiarkou (double) na 16-bitové celé číslo so znamienkom (signed integer) v navigačnom systéme. Výnimka vznikla preto, že prevzatý modul nebol testovaný pre letové parametre novej rakety~\cite{Lions1996}. Toto viedlo k strate odhadovanej na približne 370 miliónov dolárov a ročnému zdržaniu programu Ariane 5~\cite{LeLann1996}.
+
+
+
+Ďalším príkladom je Therac-25, prístroj určený na rádioterapiu, v prevádzke od 1983, ktorý v rokoch 1985 až 1987 spôsobil šesť prípadov masívneho predávkovania žiarením, z toho tri úmrtia. Podobné chyby boli nájdené aj v predošlom modeli Therac-20, ten mal ale hardvérové poistky, ktoré pri rovnakej softvérovej chybe zabránili ožiareniu. Therac-25 ich nahradil čisto softvérovou kontrolou~\cite{Leveson1993}.
+
+
+Podobných prípadov je však viac. Poukazujú na dôležitosť testovania, ktoré je nevyhnutné pre bezpečnosť softvéru. Okrem fatálnych zlyhaní nekvalitný softvér prináša aj často skryté ekonomické náklady~\cite{Krasner2022}.
+
+
+\section{Úrovne testovania}
+\label{sub:urovne_testovania}
+Testovanie prebieha na rôznych úrovniach, pričom každá overuje iné aspekty systému~\cite{Ammann2016}.
+
+\begin{itemize}
+    \item \textbf{Jednotkové testovanie} (angl. unit testing) - testovanie najmenších jednotiek kódu ako funkcie a metódy.
+    \item \textbf{Testovanie modulov} (angl. module testing) - testovanie modulu (kolekcie jednotiek) v izolácii. Hľadajú sa chyby v komunikácii jednotiek v rámci modulu. 
+    \item \textbf{Integračné testovanie} (angl. integration testing) - overenie rozhrania a komunikácie medzi modulmi. 
+    \item \textbf{Testovanie systému} (angl. system testing) - kontroluje softvér ako celok. Hľadajú sa chyby v návrhu a špecifikácii.
+    \item \textbf{Akceptačné testovanie} (angl. acceptance testing) - overenie, či softvér spĺňa požiadavky zákazníka a či spĺňa svoj primárny účel.
+\end{itemize}
+
+Táto práca sa dotýka predovšetkým vyšších úrovní, keďže generované testovacie dáta slúžia na plnenie databáz pri integračnom a systémovom testovaní.
+
+\section{Automatizované testovanie}
+\label{sub:automatizovanie_testovanie}
+
+Pri väčších projektoch sa manuálne testovanie stáva neefektívnym, nielen z časového, ale aj ekonomického hľadiska. Efektívnou alternatívou je \textit{automatizované testovanie}, kde sú testy vykonávané prostredníctvom špecializovaných nástrojov a frameworkov. Tento spôsob testovania sa stáva nevyhnutnou súčasťou vývoja aj kvôli potrebe neustáleho overovania softvéru. Automatizované testy sa spúšťajú opakovane a s rôznymi vstupmi, čím sa príprava testovacích dát stáva samostatným a opakovaným procesom. Jedným z prístupov testovania, ktorý oddeľuje testovacie dáta od testovacej logiky, je Data-Driven testing, na ktorý sa zameriava táto práca.
+
+\section{Data-Driven testing (DDT)}
+\label{sub:data_driven-testing}
+DDT je prístup k testovaniu, ktorý oddeľuje testovacie dáta od testovacej logiky. Základnou myšlienkou je, že rovnaký testovací skript možno spustiť s rôznymi sadami vstupných dát, čím sa zvyšuje pokrytie testov bez nutnosti duplikovania kódu~\cite{Laukkanen2006}. Princíp znázorňuje obrázok~\ref{fig:dsadydat}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{obrazky-figures/sadydat.pdf}
+    \caption{Princíp DDT: jedna testovacia logika spustená s N sadami dát vedie na N behov testu}
+    \label{fig:dsadydat}
+\end{figure}
+
+
+\subsection{Hlavné charakteristiky} 
+
+Podľa~\cite{Laukkanen2006} medzi hlavné charakteristiky DDT patrí:
+
+\begin{itemize}
+    \item \textbf{Oddelenie dát od logiky} - testovacie dáta sú uložené v externých súboroch ako napríklad~Excel, CSV, YAML, nie v kóde testu.
+    \item \textbf{Znovupoužiteľnosť} - rovnaké testy možno spustiť s rôznymi sadami dát.
+    \item \textbf{Čitateľnosť} - testovacie dáta musia byť ľahko čitateľné aj osobou bez znalostí programovania.
+    \item \textbf{Jednoduchá údržba} - možnosť pridať nový testovací prípad bez zmeny kódu.
+\end{itemize}
+
+
+DDT prináša mnoho výhod, ako zvýšenie pokrytia testov a jednoduchá údržba testov, má však aj svoje nevýhody. Je potrebné testovacie dáta neustále udržiavať a príprava kvalitných testovacích dát môže byť náročná. Kvalita testovania je limitovaná kvalitou testovacích dát, čo je hlavnou motiváciou pre ich automatizované generovanie, ktorému sa venuje táto práca.

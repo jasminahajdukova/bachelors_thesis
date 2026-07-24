@@ -1,0 +1,79 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 3
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Veľké jazykové modely (LLM)}
+\label{ch:kap3}
+
+Táto kapitola sa zameriava na teoretické vysvetlenie veľkých jazykových modelov (LLM) potrebné pre pochopenie návrhu nástroja pre generovanie štruktúrovaných YAML súborov pre nástroj Dataster (Kapitola~\ref{ch:kap4}). Ako prvé stručne opíše princíp fungovania LLM (Sekcia~\ref{sub:co_je_llm}).  Ďalej porovnáva spôsoby prispôsobenia LLM a zdôvodňuje, prečo bol vybraný few-shot prompting (Sekcia~\ref{sub:prisposobenie_llm}), ktorý bol použitý v tejto práci. Následne vysvetľuje rozdiely medzi lokálne spustenými modelmi a modelmi dostupnými cez API, zdôvodňuje, prečo boli pre túto prácu vybrané lokálne spustené modely (Sekcia~\ref{sub:lokal_api_modely}). LLM sa v tejto práci používa výhradne na generovanie receptov (Kapitola~\ref{ch:kap4}). Na záver kapitoly sú spomenuté limitácie LLM (Sekcia~\ref{sub:limitacie_llm}), ktoré sú relevantné pre túto prácu, hlavne pojmy ako \textit{halucinácie}, \textit{kontextové okno} a \textit{nedeterminizmus}. 
+
+\section{Princíp fungovania LLM}
+\label{sub:co_je_llm}
+
+Veľké jazykové modely možno definovať ako neurónové siete trénované na obrovskom množstve textových dát. Fungujú na základe predvídania nasledujúceho tokenu v poradí. Tokenizácia je kľúčovým krokom v prípravnej fáze trénovania LLM. Text je rozdelený na základné jednotky spracovania (tokeny), ktoré môžu mať formu znakov, častí slov, symbolov alebo slov v závislosti od použitého tokenizačného postupu~\cite{Naveed2024}. 
+
+
+V súčasnosti sú LLM založené na architektúre transformer, to znamená, že sa sekvencie tokenov spracúvajú na základe mechanizmu pozornosti~\cite{Vaswani2017}. Pozornosť v LLM priraďuje vstupným tokenom váhy na základe ich dôležitosti tak, aby sa model zameriaval na relevantné časti vstupu~\cite{Naveed2024}.
+
+
+Model generuje komplexný text iteratívne, v jednotlivých krokoch predpovedá nasledujúci token, ktorý sa pripojí k doteraz vygenerovanému výstupu, dokým nie je vygenerovaný koncový token. Toto umožňuje modelu vytvárať rozsiahlejšie výstupy.
+
+
+Samotné trénovanie prebieha v dvoch fázach a to predtrénovaním s veľkým množstvom textu, a následným dolandením pre konkrétne úlohy (angl. fine-tuning)~\cite{Naveed2024}.
+
+
+Presnosť LLM rastie zvýšujúcim sa počtom vnútorných parametrov modelu. Ich veľkosť je v súčasných modeloch niekoľko miliárd~\cite{Naveed2024}. S rastúcou veľkosťou rastú aj náklady na ich spustenie, ktoré sa pri lokálnych modeloch prejavujú hlavne na kapacite VRAM grafickej karty. Táto práca je limitovaná dostupným hardvérom, čo obmedzuje výber použitých modelov (Kapitola~\ref{ch:kap7}).
+
+\section{Prispôsobenie LLM konkrétnej úlohe}
+\label{sub:prisposobenie_llm}
+Existuje mnoho spôsobov, ako prispôsobiť LLM, pričom nie každý je vhodný na použitie v tejto práci.
+
+\begin{itemize}
+    \item \textbf{Fine-tuning} - dodatočné doladenie už predtrénovaného modelu pomocou špecifických dát. Funguje na princípe úpravy vnútorných parametrov (váh)~\cite{Naveed2024}. Vyžaduje tisícky kvalitných príkladov na prispôsobenie modelu a keďže tie pre využitie v tejto práci neexistujú a ich ručné vytvorenie je mimo rozsah práce, je tento spôsob prispôsobenia vylúčený. 
+    
+    \item \textbf{RAG (Retrieval-Augmented Generation)} - spôsob prispôsobenia, kde sa pred generovaním odpovede hľadajú relevantné dokumenty z externej znalostnej bázy a vložia sa do promptu ako kontext. Tým pádom model čerpá z aktuálnych alebo doménových znalostí bez zmeny váh~\cite{Lewis2020}. Tento projekt nevyžaduje vyhľadávanie v znalostnej báze, pretože všetky potrebné informácie poznáme dopredu a vkladajú sa do promptu priamo.
+
+    \item  \textbf{Few-shot prompting} - spôsob prispôsobenia modelu pri ktorom sa modelu v prompte poskytne niekoľko príkladov na demonštráciu vstupu a výstupu. Model rieši úlohy tak, že napodobňuje vzory riešení bez úpravy váh~\cite{Brown2020}. V riešení projektu sa používa Modelfile s príkladmi pre konkrétne generovanie sekcií types, schema, generate a constraints (Sekcia~\ref{sub:implementacia_modelfiles}).
+
+\end{itemize}
+
+Vzhľadom na hardvérové limitácie (8 GB VRAM), chýbajúcu trénovaciu sadu a požiadavky použitia lokálneho modelu je few-shot prompting najvhodnejšou prakticky použiteľnou voľbou. V tejto práci je realizovaný prostredníctvom Modelfiles nástroja Ollama~\footnote{\url{https://ollama.com/}}.
+
+\section{Lokálne a API modely}
+\label{sub:lokal_api_modely}
+Existujú dva spôsoby, ako používať LLM, buď cez lokálne spustenie (napríklad Llama, Qwen) alebo cez API poskytovateľa (napríklad Anthropic). Pre implementáciu tejto práce je použitý lokálny LLM. V tejto sekcii je táto voľba vysvetlená.
+
+\subsection{API modely}
+
+API modely bežia na infraštruktúre poskytovateľa a pristupuje sa k nim cez sieťové rozhranie. Poskytujú prístup k najvýkonnejším modelom bez hardvérových nárokov, lenže dáta opúšťajú lokálne prostredie a ich spracovanie závisí od podmienok poskytovateľa, a náklady rastú s počtom volaní. Verzia modelu nie je pod kontrolou používateľa a  môže sa meniť.
+
+\subsection{Lokálne modely}
+
+Sú spúšťané lokálne na vlastnom hardvéri. Ich výhodou je súkromie dát, nulové poplatky za jednotlivé volania a plná kontrola nad modelom. Naopak nevýhodou je, že ich výkon je obmedzený dostupným hardvérom. Dôvody pre výber lokálneho LLM sú:
+
+\begin{itemize}
+    \item schopnosť reprodukovať výsledky (toto vyžaduje fixnú verziu modelu)
+    \item súkromie a bezpečnosť dát, ktoré nemôžu opustiť lokálne prostredie, čo je dôležité pri nasadení nástroja nad reálnou databázou obsahujúcou citlivé údaje
+    \item nulové poplatky za jednotlivé volania, ktoré umožňujú opakované behy
+\end{itemize}
+
+Práve preto sa pre túto prácu používajú lokálne modely cez Ollama (výber modelov v sekcii~\ref{sub:testovacie_scenare}).
+
+\subsection{Kvantizácia}
+
+LLM vyžadujú značné výpočtové zdroje a pamäť na fungovanie, čo výrazne obmedzuje dostupnosť. Preto vznikla kvantizácia, ktorá znižuje numerickú presnosť váh modelu, čím výrazne klesajú pamäťové nároky, lenže dochádza k malému zníženiu kvality výstupu~\cite{Naveed2024}. Vďaka kvantizácii je možné spustiť modely so 7-8 miliardami parametrov aj na GPU s 8 GB VRAM, čo je konfigurácia použitá v tejto práci.
+
+\section{Použitie LLM na generovanie testovacích dát}
+\label{sub:pouzitie_llm_na_generovanie_dat}
+
+S rastúcim rozsahom a zložitosťou softvérových systémov rastie aj záujem o využitie LLM pri testovaní softvéru~\cite{Wang2024}. LLM možno pri generovaní použiť dvoma spôsobmi, a to buď priamym generovaním dát alebo generovaním špecifikácie pre externý generátor. Priamy prístup spočíva v tom, že model na základe zadanej databázovej schémy vygeneruje priamo riadky dát alebo INSERT príkazy. Výhodou je jednoduchosť a sémanticky realistické hodnoty. Tento prístup má aj nevýhody. Každý riadok dát vyžaduje beh modelu a tak s objemom rastú aj náklady. Pri veľkom počte riadkov má model problém udržať väzby cudzích kľúčov medzi tabuľkami či unikátnosť hodnôt~\cite{Wang2024}, tým pádom nie je konzistencia garantovaná. Ďalšou nevýhodou je neopakovateľnosť, ten istý vstup dá zakaždým iné dáta. Napokon sa halucinované hodnoty dostávajú do testovacej sady bez kontroly. 
+
+
+V tejto práci sa lokálne LLM používa na generovanie receptu pre nástroj Dataster (Kapitola~\ref{ch:kap4}), samotný recept je generovaný len raz a následne sú testovacie dáta vytvorené cez Dataster so SMT (angl. Satisfiability modulo theories) riešiteľom. Samotný model neslúži ako generátor dát, ale ako prekladač databázovej schémy na špecifikáciu. Model sa spúšťa raz pre schému bez ohľadu na objem generovaných dát. Generovanie je opakovateľné a tak sa nevýhody buď eliminujú, alebo presúvajú do receptu, kde sú ľahko opraviteľné.
+
+
+Halucinácie sa teda nestrácajú, môžu sa objaviť aj vo vygenerovaných receptoch a práve preto je dôležitá implementácia validačnej a opravnej vrstvy (Sekcia~\ref{sub:validacia_oprava}).
+
+\section{Limitácie LLM}
+\label{sub:limitacie_llm}
+Napriek veľkému potenciálu LLM sú tu stále limitácie, ktoré ovplyvňujú generovanie dát. Halucinácie sa v kontexte tejto práce prejavujú ako nesprávne určenie dátových typov, alebo ako odkaz na tabuľky a stĺpce, ktoré v databázovej schéme neexistujú. Toto priamo ovplyvňuje kvalitu vygenerovaného receptu. Ďalšou limitáciou je kontextové okno, teda množstvo textu, ktoré LLM dokáže naraz spracovať. Pri veľkých databázových schémach môže opis schémy prekročiť kapacitu kontextu, vstup sa v takom prípade skráti, čo vedie k neúplným alebo nevalidným receptom. Výstup LLM je navyše nedeterministický, čo znamená, že rovnaký vstup môže viesť k rôznym výstupom. Mieru náhodnosti riadi parameter teploty, ktorého vplyv je v práci testovaný (Sekcia~\ref{sub:testovacie_scenare}). Návrh nástroja (Kapitola~\ref{ch:kap5}) tieto limitácie adresuje validačnou a opravnou vrstvou a testovaním vplyvu parametrov (Kapitola~\ref{ch:kap7}).  
