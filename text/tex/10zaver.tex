@@ -1,14 +1,3 @@
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
-% KAPITOLA 10
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\chapter{Záver}
-\label{ch:kap10}
-
-Cieľom tejto práce bolo navrhnúť a implementovať nástroj na automatické generovanie receptov pre generátor testovacích dát Dataster (vo formáte YAML). Generovanie zabezpečujú lokálne veľké jazykové modely (LLM) spúšťané cez platformu Ollama. Nástroj bol implementovaný do štyroch fáz, ktoré boli doplnené o validačnú a opravnú vrstvu. Po implementácii nasledovalo testovanie, ktoré bolo rozdelené na tri úrovne, na sade 31 testovacích databáz.
-
-Pri testovaní sa ukázalo, že zmiešaná konfigurácia modelov (pričom 7b modely boli priradené ku interpretačným úlohám potrebným pri generovaní sekcií types a constraints, 3b pre transformačné fázy schema a generate) dosiahla po odpočítaní známych defektov porovnateľnú akceptovateľnosť receptov L2 (\~78 \% vs 79 \%), aj úspešnosť vykonania SQL príkazov na L3 úrovni (98\% vs 100\%) v porovnaní s čistým 7b modelom. Takto vyrovnala jeho kvalitu pri nižších výpočtových nárokoch v dvoch zo štyroch fáz.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % KAPITOLA 10
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
