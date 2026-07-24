@@ -1,34 +1,42 @@
-flowchart LR
-    subgraph EX[Analýza databázy]
-        DB[(Databáza)]
-        I[Extrakcia schémy]
-        S[Vzorkovanie dát]
-        J[Vstup pre LLM]
-        DB -->|schéma| I
-        DB -->|vzorky| S
-        I --> J
-        S --> J
-    end
-
-    subgraph GEN[Generovanie LLM]
+flowchart BT
+ subgraph EX["Analýza databázy"]
+        DB[("Databáza")]
+        I["Extrakcia schémy"]
+        S["Vzorkovanie dát"]
+        J["Vstup pre LLM"]
+  end
+ subgraph GEN["Generovanie LLM"]
         T["Fáza 1: types *"]
         SCH["Fáza 2: schema"]
         G["Fáza 3: generate"]
         C["Fáza 4: constraints"]
-        T -->|types sekcia| SCH
-        T -->|types sekcia| G
-        T -->|types sekcia| C
-    end
-
-    subgraph OUT[Výstup]
-        SK[Skladanie receptu]
+  end
+ subgraph OUT["Výstup"]
+        SK["Skladanie receptu"]
         V["Validácia a oprava *"]
-        R[/Recept YAML/]
-        SK --> V
-        V --> R
-    end
-
+        R["Recept YAML"]
+  end
+    DB -- schéma --> I
+    DB -- vzorky --> S
+    I --> J
+    S --> J
+    T -- types sekcia --> SCH & G & C
+    SK --> V
+    V --> R
     J --> T
     SCH --> SK
     G --> SK
     C --> SK
+
+    R@{ shape: div-proc}
+    style DB font-size:24px
+    style I font-size:24px
+    style S font-size:24px
+    style J font-size:24px
+    style T font-size:24px
+    style SCH font-size:24px
+    style G font-size:24px
+    style C font-size:24px
+    style SK font-size:24px
+    style V font-size:24px
+    style R font-size:24px

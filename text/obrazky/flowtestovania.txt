@@ -1,13 +1,19 @@
----
-config:
-  layout: dagre
----
 flowchart TB
-    A["Vygenerovaný recept"] --> L1{"L1: štrukturálna validita YAML"}
-    L1 -- fail --> F1["vyradený - chyba pipeline"]
-    L1 -- pass --> L2{"L2: akceptácia nástrojom Dataster"}
+    A(["Beh pipeline"]) --> Q{"Recept vygenerovaný?"}
+    Q -- nie --> F0["L1 fail (pipeline_invalid_yaml)"]
+    Q -- áno --> L1["L1: validácia YAML<br>(výsledok sa zaznamená)"]
+    L1 --> L2{"L2: akceptácia nástrojom Dataster"}
     L2 -- fail --> F2["klasifikácia zlyhania"]
     L2 -- pass --> L3["L3: exekúcia SQL proti klonu schémy"]
     L3 --> M["L3_RAW: podiel úspešných INSERTov"]
-    M --> N["L3_ADJUSTED: bez Dataster-atribuovaných zlyhaní"]
-    
+    M --> N["L3_ADJUSTED: bez dataster_* zlyhaní"]
+
+    style A font-size:24px
+    style Q font-size:24px
+    style F0 font-size:24px
+    style L1 font-size:24px
+    style L2 font-size:22px
+    style F2 font-size:24px
+    style L3 font-size:24px
+    style M font-size:24px
+    style N font-size:24px

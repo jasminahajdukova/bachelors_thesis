@@ -1,0 +1,23 @@
+---
+config:
+  layout: dagre
+---
+flowchart BT
+ subgraph P["Priamy prístup"]
+        C1["INSERT príkazy<br>bez garancií FK a unikátnosti"]
+        B1["LLM<br>(beh pre každý riadok)"]
+        A1["Schéma databázy"]
+  end
+ subgraph R["Receptový prístup (táto práca)"]
+        F2["SQL dáta<br>deterministicky"]
+        E2["Dataster (SMT)"]
+        C2["Recept YAML"]
+        B2["LLM<br>(jeden beh)"]
+        A2["Schéma + vzorky dát"]
+  end
+    A1 --> B1
+    B1 --> C1
+    A2 --> B2
+    B2 --> C2
+    C2 --> E2
+    E2 --> F2

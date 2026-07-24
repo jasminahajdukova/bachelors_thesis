@@ -1,12 +1,13 @@
----
-config:
-  layout: dagre
----
-flowchart TD
-    A[Výstup LLM fázy] --> B[Validácia]
-    B -->|validný| G[Sekcia receptu]
-    B -->|nevalidný| C[Štrukturálne opravy<br/>oprava tvaru dokumentu]
-    C --> D[Hodnotové opravy<br/>názvy, typy, referencie]
-    D --> E[Revalidácia]
-    E -->|validný| G
-    E -->|nevalidný| F[Fallback / zaznamenané zlyhanie]
+flowchart TB
+    A(["Výstup fázy / zložený recept"]) --> S["Štrukturálne opravy<br>(formát YAML, sekcie, odsadenie)"]
+    S --> V["Hodnotové opravy<br>(názvy, typy, referencie)"]
+    V --> K{"Záverečná validácia"}
+    K -- bez chýb --> U["Uloženie"]
+    K -- obsahové chyby --> Z["Záznam chýb a uloženie"]
+
+    style A font-size:24px
+    style S font-size:24px
+    style V font-size:24px
+    style K font-size:24px
+    style U font-size:24px
+    style Z font-size:24px

@@ -1,8 +1,14 @@
 ---
 config:
   theme: neutral
+  layout: dagre
 ---
 flowchart TB
-    A([Zložený recept - výstup všetkých fáz]) --> B[Kontrola a validácia]
-    B -->|bez chýb| C[Uloženie receptu]
-    B -->|obsahové chyby| D[Záznam chyby a uloženie]
+    A(["Zložený recept - výstup všetkých fáz"]) --> B["Kontrola a validácia"]
+    B -- bez chýb --> C["Uloženie receptu"]
+    B -- obsahové chyby --> D["Záznam chyby a uloženie"]
+
+    style A font-size:20px
+    style B font-size:24px
+    style C font-size:24px
+    style D font-size:24px
