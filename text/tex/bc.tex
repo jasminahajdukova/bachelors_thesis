@@ -1,124 +1,246 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % KAPITOLA 1
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Úvod}
-Testovanie je jedna z najdôležitejších fáz vývoja softvéru, pretože dôsledky nekvalitného softvéru sú nákladné. Nekvalitný softvér spôsobil v roku 2022 v USA náklady odhadované na skoro dva a pol bilióna amerických dolárov[tu pridaj citacu krasner 2022]. Jedným z prístupov ku testovaniu je Data-Driven testing (DDT), testovanie založené na princípe oddelenia testovacích dát od testovacej logiky.
-
-Efektívne testovanie stojí na kvalite testovacích dát, hlavne preto, že pri nedostatočne domyslených dátach môže dôjsť k neodhaleným chybám, ale aj k falošnému pocitu dobre otestovaného produktu, čo môže spôsobiť stratu časových a finančných zdrojov.
-Vytváranie testovacích dát je časovo náročné a vyžaduje znalosť schémy, ale aj charakteru reálnych dát.
-
-Pre uľahčenie práce existujú nástroje na generovanie náhodných testovacích dát. Jedným z nich je Dataster, nástroj, ktorý generuje štruktúrované testovacie dáta pre relačné databázy na základe konfiguračného receptu. Ručné vytvorenie receptu vo forme YAML vyžaduje znalosť dokumentácie programu Dataster, ako aj znalosť schémy databázy, vzťahov medzi tabuľkami a charakteru uložených hodnôt. Náročnosť tohto procesu rastie so zložitosťou databázy. Pre používateľa s nízkou znalosťou konkrétnej databázy predstavuje tvorba receptu netriviálnu manuálnu prácu.
-
-Potenciálnym riešením je automatizácia tejto úlohy s pomocou veľkých jazykových modelov (LLM), ktoré majú schopnosť interpretovať štruktúrované dáta a transformovať ich do iných formátov. Táto práca využíva lokálne LLM, keďže vstupom sú reálne dáta z databázy a lokálny beh zabezpečuje nielen súkromie dát, ale aj nízke náklady.
-
-Cieľom tejto práce je navrhnúť a implementovať nástroj, ktorý sa pripojí k databáze, extrahuje jej schému a vzorku uložených dát a pomocou lokálnych LLM automaticky vygeneruje recept pre nástroj Dataster. Ďalším cieľom je zhodnotiť kvalitu generovaných receptov naprieč rôznymi modelmi a konfiguráciami. Kvalita sa meria od štrukturálnej správnosti vygenerovaného receptu (YAML) cez akceptovanie nástrojom Dataster až po vykonateľnosť výsledného SQL kódu. Vyhodnotenie prebieha na sade testovacích databáz rôznej zložitosti.
-
-Kapitola 2 približuje definíciu testovania a popis data-driven testing. Kapitola 3 definuje LLM, ich využitie pri generovaní dát, predstavuje jednotlivé LLM modely a skúmanie alternatív. Kapitola 4 približuje nástroj Dataster, jeho využitie, limitácie, popis konfiguračného receptu a YAML súborov. Kapitola 5 predstavuje vysokoúrovňový návrh programu. Kapitola 6 sa zaoberá koncovou implementáciou. Kapitola 7 vysvetľuje proces experimentov, sadu testovacích databáz, úrovne validácie vygenerovaných receptov a porovnávané modely a konfigurácie. Kapitola 8 prezentuje a porovnáva výsledky experimentov. Kapitola 9 objasňuje limitácie programu a možné rozšírenia v budúcej práci. Na záver kapitola 10 zhŕňa dosiahnuté výsledky a porovnáva ich s cieľmi práce.
+\label{ch:kap1}
+Testovanie je jednou z najdôležitejších fáz vývoja softvéru, pretože dôsledky nekvalitného softvéru sú nákladné. Nekvalitný softvér spôsobil v roku 2022 v USA náklady odhadované na približne 2,41 bilióna amerických dolárov~\cite{Krasner2022}. Jedným z prístupov k testovaniu je testovanie riadené dátami (angl. Data-Driven testing, DDT), testovanie založené na princípe oddelenia testovacích dát od testovacej logiky.
 
 
+Efektívne testovanie stojí na kvalite testovacích dát, hlavne preto, že pri nedostatočne domyslených dátach môžu chyby ostať neodhalené, čo vedie k časovým aj finančným stratám.
+
+
+Vytváranie testovacích dát je časovo náročné a vyžaduje znalosť štruktúry testovaného systému, ale aj charakteru reálnych dát.
+
+
+Na uľahčenie práce existujú nástroje na generovanie náhodných testovacích dát. Jedným z nich je Dataster~\cite{Vlach2020}, nástroj, ktorý generuje štruktúrované testovacie dáta pre relačné databázy na základe konfiguračného receptu. Ručné vytvorenie receptu vo formáte YAML vyžaduje znalosť dokumentácie programu Dataster\footnote{\url{https://dataster.testos.org/}}, ako aj znalosť schémy databázy, vzťahov medzi tabuľkami a charakteru uložených hodnôt. Náročnosť tohto procesu rastie so zložitosťou databázy. Pre používateľa s obmedzenými znalosťami predstavuje tvorba receptu pre konkrétnu databázu značné množstvo práce.
+
+
+Potenciálnym riešením je automatizácia tejto úlohy s pomocou veľkých jazykových modelov (LLM), ktoré majú schopnosť interpretovať štruktúrované dáta a transformovať ich do iných formátov~\cite{Naveed2024}. Táto práca využíva lokálne LLM, keďže vstupom sú reálne dáta z databázy a lokálny beh zabezpečuje nielen súkromie dát, ale aj nízke náklady.
+
+
+Cieľom tejto práce je navrhnúť a implementovať nástroj, ktorý sa pripojí k relačnej databáze, extrahuje jej schému spolu so vzorkami uložených dát a pomocou lokálnych LLM automaticky vygeneruje recept pre nástroj Dataster. Ďalším cieľom je zhodnotiť kvalitu vygenerovaných receptov naprieč rôznymi modelmi a konfiguráciami. Kvalita sa meria od správnosti vygenerovaného receptu (YAML) cez akceptáciu nástrojom Dataster až po vykonateľnosť výsledného SQL kódu. Vyhodnotenie prebieha na sade testovacích databáz rôznej zložitosti.
+
+
+
+Kapitola~\ref{ch:kap2} približuje definíciu testovania a popis DDT. Kapitola~\ref{ch:kap3} definuje LLM, ich využitie pri generovaní dát, predstavuje jednotlivé modely a alternatívne prístupy k prispôsobeniu modelov úlohe. Kapitola~\ref{ch:kap4} približuje nástroj Dataster, jeho využitie, limitácie, popis konfiguračného receptu a formátu YAML. Kapitola~\ref{ch:kap5} predstavuje vysokoúrovňový návrh programu. Kapitola~\ref{ch:kap6} sa zaoberá implementáciou. Kapitola~\ref{ch:kap7} vysvetľuje proces experimentov, popisuje sadu testovacích databáz, úrovne validácie vygenerovaných receptov a porovnávané modely a konfigurácie. Kapitola~\ref{ch:kap8} prezentuje a porovnáva výsledky experimentov. Kapitola~\ref{ch:kap9} rozoberá limitácie programu a možné rozšírenia v budúcej práci. Na záver Kapitola~\ref{ch:kap10} zhŕňa vykonanú prácu, dosiahnuté výsledky a porovnáva ich s cieľmi práce.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % KAPITOLA 2
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Testovanie softvéru}
+\label{ch:kap2}
 
-Cieľom tejto kapitoly je vymedziť pojem testovanie, jeho význam a dôsledky jeho zanedbania. Následne kapitola definuje termín Data-Driven testing (DDT), spôsob testovania, ktorý oddeľuje testovacie dáta od testovacej logiky a tým kladie zvýšené nároky na kvalitu a prípravu testovacích dát. Práve náročnosť prípravy dát je jeden z hlavných východiskom tejto práce.
+Cieľom tejto kapitoly je vymedziť pojem testovanie, jeho význam a dôsledky jeho zanedbania (Sekcia~\ref{sub:testovanie_a_vyznam}). Vymenuje úrovne testovania (Sekcia~\ref{sub:urovne_testovania}) a následne kapitola definuje automatizované testovanie (Sekcia~\ref{sub:automatizovanie_testovanie}), pod ktoré patrí aj termín Data-Driven testing (DDT) (Sekcia~\ref{sub:data_driven-testing}). Je to spôsob testovania, ktorý oddeľuje testovacie dáta od testovacej logiky a tým kladie zvýšené nároky na kvalitu a prípravu testovacích dát. Práve náročnosť prípravy dát je jedným z hlavných východísk tejto práce.
 
-\section{Význam testovania}
-Testovanie je možné chápať ako proces vyhodnocovania softvéru na základe pozorovania jeho behu [AmmannOffutt2016]. Jeho cieľom je odhaliť chyby a overiť, či softvér spĺňa špecifikované požiadavky a potreby používateľov. [Myers 2011].
+\section{Testovanie a jeho význam}
+\label{sub:testovanie_a_vyznam}
+Testovanie je možné chápať ako proces vyhodnocovania softvéru na základe pozorovania jeho behu~\cite{Ammann2016}. Jeho cieľom je odhaliť chyby a overiť, či softvér spĺňa špecifikované požiadavky a potreby používateľov~\cite{Myers2011}.
 
-\section{Dôsledky nedôkladného testovania}
-Každý softvér je v nejakej fáze vývoja chybný. Tieto chyby môžu mať za následok závažné straty, začínajúc od finančných strát až po straty na ľudských životoch. Existuje množstvo zaznamenaných prípadov kde nedôkladné testovanie viedlo až ku katastrofickým následkom. Jeden z týchto prípadov je explodovanie rakety  Ariane 5 (let 501), 37 sekúnd po jej štarte v roku 1996. Dôvodom bola neošetrená výnimka pri konverzii 64-bitového čísla s plávajúcou desatinnou čiarkou (float) na 16-bitové celé číslo so znamienkom (signed integer) v navigačnom systéme keďže prevzatý modul nebol testovaný pre letové parametre novej rakety. Toto viedlo k strate odhadovanej na približne 370 miliónov dolárov a ročnému zdržaniu programu Ariane 5. [LeLann1996]
+Každý softvér je v nejakej fáze vývoja chybný. Tieto chyby môžu viesť k závažným dôsledkom, od finančných strát až po straty na ľudských životoch. Existuje množstvo zaznamenaných prípadov, kde nedôkladné testovanie viedlo až ku katastrofickým následkom. Jedným z týchto prípadov je explózia rakety Ariane 5 (let 501), okolo 40 sekúnd po jej štarte v roku 1996. Dôvodom bola neošetrená výnimka pri konverzii 64-bitového čísla s plávajúcou desatinnou čiarkou (double) na 16-bitové celé číslo so znamienkom (signed integer) v navigačnom systéme. Výnimka vznikla preto, že prevzatý modul nebol testovaný pre letové parametre novej rakety~\cite{Lions1996}. Toto viedlo k strate odhadovanej na približne 370 miliónov dolárov a ročnému zdržaniu programu Ariane 5~\cite{LeLann1996}.
 
-Ďalším príkladom je Therac-25, prístroj určený na rádioterapiu, ktorý bol používaný v USA a Kanade od roku 1983 až do ich stiahnutia v roku 1987. Chybný softvér spôsobil šesť prípadov masívneho predávkovania radiáciou, z toho tri úmrtia. Podobné chyby boli nájdené aj v predošlom modeli Therac-20, ten mal ale hardvérové poistky, ktoré pri rovnakej softvérovej chybe zabránili ožiareniu. Therac-25 ich nahradil čisto softvérovou kontrolou. [Leveson1993].
 
-Podobných prípadov je ale viac. Poukazujú na dôležitosť testovania, nevyhnuteľné pre bezpečnosť softvéru.  Okrem katastrofických zlyhaní generuje nekvalitný softvér spôsobuje aj priebežné ekonomické náklady. [Krasner2022]
+
+Ďalším príkladom je Therac-25, prístroj určený na rádioterapiu, v prevádzke od 1983, ktorý v rokoch 1985 až 1987 spôsobil šesť prípadov masívneho predávkovania žiarením, z toho tri úmrtia. Podobné chyby boli nájdené aj v predošlom modeli Therac-20, ten mal ale hardvérové poistky, ktoré pri rovnakej softvérovej chybe zabránili ožiareniu. Therac-25 ich nahradil čisto softvérovou kontrolou~\cite{Leveson1993}.
+
+
+Podobných prípadov je však viac. Poukazujú na dôležitosť testovania, ktoré je nevyhnutné pre bezpečnosť softvéru. Okrem fatálnych zlyhaní nekvalitný softvér prináša aj často skryté ekonomické náklady~\cite{Krasner2022}.
 
 
 \section{Úrovne testovania}
-Testovanie prebieha na rôznych úrovniach, pričom každá overuje iné aspekty systému. [Roman2018]
+\label{sub:urovne_testovania}
+Testovanie prebieha na rôznych úrovniach, pričom každá overuje iné aspekty systému~\cite{Ammann2016}.
 
 \begin{itemize}
-    \item \textbf{Jednotkové testovanie (unit testing)} - testovanie najmenších jednotiek kódu ako funkcie a metódy.
-    \item \textbf{Testovanie modulov (module testing)} - testovanie modulu (kolekcie jednotiek) v izolácii. Hľadajú chyby v komunikácii jednotiek v rámci modulu. 
-    \item \textbf{Integračné testovanie (integration testing)} - overenie rozhrania a komunikácie medzi modulmi. 
-    \item \textbf{Testovanie systému (system testing)} - kontroluje softvér ako celok. Hľadajú sa chyby v návrhu a špecifikácii.
-    \item \textbf{Akceptačné testovanie (acceptance testing)} - overenie, či softvér spĺňa požiadavky zákazníka a či spĺňa svoj primárny účel.
+    \item \textbf{Jednotkové testovanie} (angl. unit testing) - testovanie najmenších jednotiek kódu ako funkcie a metódy.
+    \item \textbf{Testovanie modulov} (angl. module testing) - testovanie modulu (kolekcie jednotiek) v izolácii. Hľadajú sa chyby v komunikácii jednotiek v rámci modulu. 
+    \item \textbf{Integračné testovanie} (angl. integration testing) - overenie rozhrania a komunikácie medzi modulmi. 
+    \item \textbf{Testovanie systému} (angl. system testing) - kontroluje softvér ako celok. Hľadajú sa chyby v návrhu a špecifikácii.
+    \item \textbf{Akceptačné testovanie} (angl. acceptance testing) - overenie, či softvér spĺňa požiadavky zákazníka a či spĺňa svoj primárny účel.
 \end{itemize}
 
-Táto práca sa dotýka predovšetkým vyšších úrovní, keďže generované testovacie dáta slúžia na plnenie databáz pri integračnom a systémovom testovaní aplikácií nad nimi.
+Táto práca sa dotýka predovšetkým vyšších úrovní, keďže generované testovacie dáta slúžia na plnenie databáz pri integračnom a systémovom testovaní.
 
 \section{Automatizované testovanie}
-Pri väčších projektoch sa manuálne testovanie stáva neefektívnym, nielen z časového, ale aj ekonomického hľadiska. Používa sa preto automatizované testovanie, pri ktorom testy vykonávajú špecializované nástroje a frameworky. Tento spôsob testovania sa stáva nevyhnutnou súčasťou vývoja. Automatizované testy sa spúšťajú opakovane a s rôznymi vstupmi, čím sa príprava testovacích dát stáva samostatnou, opakovanou potrebou. Jedným z prístupov testovania, ktorý oddeľuje testovacích dát od testovacej logiky, je Data-Driven testing (DDT), na ktorý sa zameriava táto práca.
+\label{sub:automatizovanie_testovanie}
 
-\section{Data-Driven testing}
-Základnou myšlienkou je, že rovnaký testovací skript možno spustiť s rôznymi sadami vstupných dát, čím sa zvyšuje pokrytie testov bez nutnosti duplikovania kódu. [Laukkanen]
+Pri väčších projektoch sa manuálne testovanie stáva neefektívnym, nielen z časového, ale aj ekonomického hľadiska. Efektívnou alternatívou je \textit{automatizované testovanie}, kde sú testy vykonávané prostredníctvom špecializovaných nástrojov a frameworkov. Tento spôsob testovania sa stáva nevyhnutnou súčasťou vývoja aj kvôli potrebe neustáleho overovania softvéru. Automatizované testy sa spúšťajú opakovane a s rôznymi vstupmi, čím sa príprava testovacích dát stáva samostatným a opakovaným procesom. Jedným z prístupov testovania, ktorý oddeľuje testovacie dáta od testovacej logiky, je Data-Driven testing, na ktorý sa zameriava táto práca.
+
+\section{Data-Driven testing (DDT)}
+\label{sub:data_driven-testing}
+DDT je prístup k testovaniu, ktorý oddeľuje testovacie dáta od testovacej logiky. Základnou myšlienkou je, že rovnaký testovací skript možno spustiť s rôznymi sadami vstupných dát, čím sa zvyšuje pokrytie testov bez nutnosti duplikovania kódu~\cite{Laukkanen2006}. Princíp znázorňuje obrázok~\ref{fig:dsadydat}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{obrazky-figures/sadydat.pdf}
+    \caption{Princíp DDT: jedna testovacia logika spustená s N sadami dát vedie na N behov testu}
+    \label{fig:dsadydat}
+\end{figure}
+
 
 \subsection{Hlavné charakteristiky} 
-Oddelenie dát od logiky - testovacie dáta sú uložené v externých súboroch ako napríklad Excel, CSV, YAML, nie v kóde testu.
+
+Podľa~\cite{Laukkanen2006} medzi hlavné charakteristiky DDT patrí:
+
 \begin{itemize}
+    \item \textbf{Oddelenie dát od logiky} - testovacie dáta sú uložené v externých súboroch ako napríklad~Excel, CSV, YAML, nie v kóde testu.
     \item \textbf{Znovupoužiteľnosť} - rovnaké testy možno spustiť s rôznymi sadami dát.
-    \item \textbf{Čitateľnosť} - testovacie dáta musia byť ľahko čitateľné aj osobou bez znalostí programovania [Laukkanen]
-    \item \textbf{Jednoduchá údržba} - možné pridanie nového testovacieho prípadu bez zmeny kódu.
+    \item \textbf{Čitateľnosť} - testovacie dáta musia byť ľahko čitateľné aj osobou bez znalostí programovania.
+    \item \textbf{Jednoduchá údržba} - možnosť pridať nový testovací prípad bez zmeny kódu.
 \end{itemize}
 
-Data-Driven testing prináša mnoho výhod, ako zvýšenie pokrytia testov a jednoduchá údržba testov, má však aj svoje nevýhody. Je potrebné testovacie dáta neustále udržiavať a príprava kvalitných testovacích dát môže byť náročná. Kvalita testovania je limitovaná kvalitou testovacích dát a to je motivácia pre využitie automatizovaného generovania testovacích dát.
 
+DDT prináša mnoho výhod, ako zvýšenie pokrytia testov a jednoduchá údržba testov, má však aj svoje nevýhody. Je potrebné testovacie dáta neustále udržiavať a príprava kvalitných testovacích dát môže byť náročná. Kvalita testovania je limitovaná kvalitou testovacích dát, čo je hlavnou motiváciou pre ich automatizované generovanie, ktorému sa venuje táto práca.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % KAPITOLA 3
-\chapter{LLM}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Veľké jazykové modely (LLM)}
+\label{ch:kap3}
+
+Táto kapitola sa zameriava na teoretické vysvetlenie veľkých jazykových modelov (LLM) potrebné pre pochopenie návrhu nástroja pre generovanie štruktúrovaných YAML súborov pre nástroj Dataster (Kapitola~\ref{ch:kap4}). Ako prvé stručne opíše princíp fungovania LLM (Sekcia~\ref{sub:co_je_llm}).  Ďalej porovnáva spôsoby prispôsobenia LLM a zdôvodňuje, prečo bol vybraný few-shot prompting (Sekcia~\ref{sub:prisposobenie_llm}), ktorý bol použitý v tejto práci. Následne vysvetľuje rozdiely medzi lokálne spustenými modelmi a modelmi dostupnými cez API, zdôvodňuje, prečo boli pre túto prácu vybrané lokálne spustené modely (Sekcia~\ref{sub:lokal_api_modely}). LLM sa v tejto práci používa výhradne na generovanie receptov (Kapitola~\ref{ch:kap4}). Na záver kapitoly sú spomenuté limitácie LLM (Sekcia~\ref{sub:limitacie_llm}), ktoré sú relevantné pre túto prácu, hlavne pojmy ako \textit{halucinácie}, \textit{kontextové okno} a \textit{nedeterminizmus}. 
+
+\section{Princíp fungovania LLM}
+\label{sub:co_je_llm}
+
+Veľké jazykové modely možno definovať ako neurónové siete trénované na obrovskom množstve textových dát. Fungujú na základe predvídania nasledujúceho tokenu v poradí. Tokenizácia je kľúčovým krokom v prípravnej fáze trénovania LLM. Text je rozdelený na základné jednotky spracovania (tokeny), ktoré môžu mať formu znakov, častí slov, symbolov alebo slov v závislosti od použitého tokenizačného postupu~\cite{Naveed2024}. 
+
+
+V súčasnosti sú LLM založené na architektúre transformer, to znamená, že sa sekvencie tokenov spracúvajú na základe mechanizmu pozornosti~\cite{Vaswani2017}. Pozornosť v LLM priraďuje vstupným tokenom váhy na základe ich dôležitosti tak, aby sa model zameriaval na relevantné časti vstupu~\cite{Naveed2024}.
+
+
+Model generuje komplexný text iteratívne, v jednotlivých krokoch predpovedá nasledujúci token, ktorý sa pripojí k doteraz vygenerovanému výstupu, dokým nie je vygenerovaný koncový token. Toto umožňuje modelu vytvárať rozsiahlejšie výstupy.
+
+
+Samotné trénovanie prebieha v dvoch fázach a to predtrénovaním s veľkým množstvom textu, a následným dolandením pre konkrétne úlohy (angl. fine-tuning)~\cite{Naveed2024}.
+
+
+Presnosť LLM rastie zvýšujúcim sa počtom vnútorných parametrov modelu. Ich veľkosť je v súčasných modeloch niekoľko miliárd~\cite{Naveed2024}. S rastúcou veľkosťou rastú aj náklady na ich spustenie, ktoré sa pri lokálnych modeloch prejavujú hlavne na kapacite VRAM grafickej karty. Táto práca je limitovaná dostupným hardvérom, čo obmedzuje výber použitých modelov (Kapitola~\ref{ch:kap7}).
+
+\section{Prispôsobenie LLM konkrétnej úlohe}
+\label{sub:prisposobenie_llm}
+Existuje mnoho spôsobov, ako prispôsobiť LLM, pričom nie každý je vhodný na použitie v tejto práci.
+
+\begin{itemize}
+    \item \textbf{Fine-tuning} - dodatočné doladenie už predtrénovaného modelu pomocou špecifických dát. Funguje na princípe úpravy vnútorných parametrov (váh)~\cite{Naveed2024}. Vyžaduje tisícky kvalitných príkladov na prispôsobenie modelu a keďže tie pre využitie v tejto práci neexistujú a ich ručné vytvorenie je mimo rozsah práce, je tento spôsob prispôsobenia vylúčený. 
+    
+    \item \textbf{RAG (Retrieval-Augmented Generation)} - spôsob prispôsobenia, kde sa pred generovaním odpovede hľadajú relevantné dokumenty z externej znalostnej bázy a vložia sa do promptu ako kontext. Tým pádom model čerpá z aktuálnych alebo doménových znalostí bez zmeny váh~\cite{Lewis2020}. Tento projekt nevyžaduje vyhľadávanie v znalostnej báze, pretože všetky potrebné informácie poznáme dopredu a vkladajú sa do promptu priamo.
+
+    \item  \textbf{Few-shot prompting} - spôsob prispôsobenia modelu pri ktorom sa modelu v prompte poskytne niekoľko príkladov na demonštráciu vstupu a výstupu. Model rieši úlohy tak, že napodobňuje vzory riešení bez úpravy váh~\cite{Brown2020}. V riešení projektu sa používa Modelfile s príkladmi pre konkrétne generovanie sekcií types, schema, generate a constraints (Sekcia~\ref{sub:implementacia_modelfiles}).
+
+\end{itemize}
+
+Vzhľadom na hardvérové limitácie (8 GB VRAM), chýbajúcu trénovaciu sadu a požiadavky použitia lokálneho modelu je few-shot prompting najvhodnejšou prakticky použiteľnou voľbou. V tejto práci je realizovaný prostredníctvom Modelfiles nástroja Ollama~\footnote{\url{https://ollama.com/}}.
+
+\section{Lokálne a API modely}
+\label{sub:lokal_api_modely}
+Existujú dva spôsoby, ako používať LLM, buď cez lokálne spustenie (napríklad Llama, Qwen) alebo cez API poskytovateľa (napríklad Anthropic). Pre implementáciu tejto práce je použitý lokálny LLM. V tejto sekcii je táto voľba vysvetlená.
+
+\subsection{API modely}
+
+API modely bežia na infraštruktúre poskytovateľa a pristupuje sa k nim cez sieťové rozhranie. Poskytujú prístup k najvýkonnejším modelom bez hardvérových nárokov, lenže dáta opúšťajú lokálne prostredie a ich spracovanie závisí od podmienok poskytovateľa, a náklady rastú s počtom volaní. Verzia modelu nie je pod kontrolou používateľa a  môže sa meniť.
+
+\subsection{Lokálne modely}
+
+Sú spúšťané lokálne na vlastnom hardvéri. Ich výhodou je súkromie dát, nulové poplatky za jednotlivé volania a plná kontrola nad modelom. Naopak nevýhodou je, že ich výkon je obmedzený dostupným hardvérom. Dôvody pre výber lokálneho LLM sú:
+
+\begin{itemize}
+    \item schopnosť reprodukovať výsledky (toto vyžaduje fixnú verziu modelu)
+    \item súkromie a bezpečnosť dát, ktoré nemôžu opustiť lokálne prostredie, čo je dôležité pri nasadení nástroja nad reálnou databázou obsahujúcou citlivé údaje
+    \item nulové poplatky za jednotlivé volania, ktoré umožňujú opakované behy
+\end{itemize}
+
+Práve preto sa pre túto prácu používajú lokálne modely cez Ollama (výber modelov v sekcii~\ref{sub:testovacie_scenare}).
+
+\subsection{Kvantizácia}
+
+LLM vyžadujú značné výpočtové zdroje a pamäť na fungovanie, čo výrazne obmedzuje dostupnosť. Preto vznikla kvantizácia, ktorá znižuje numerickú presnosť váh modelu, čím výrazne klesajú pamäťové nároky, lenže dochádza k malému zníženiu kvality výstupu~\cite{Naveed2024}. Vďaka kvantizácii je možné spustiť modely so 7-8 miliardami parametrov aj na GPU s 8 GB VRAM, čo je konfigurácia použitá v tejto práci.
+
+\section{Použitie LLM na generovanie testovacích dát}
+\label{sub:pouzitie_llm_na_generovanie_dat}
+
+S rastúcim rozsahom a zložitosťou softvérových systémov rastie aj záujem o využitie LLM pri testovaní softvéru~\cite{Wang2024}. LLM možno pri generovaní použiť dvoma spôsobmi, a to buď priamym generovaním dát alebo generovaním špecifikácie pre externý generátor. Priamy prístup spočíva v tom, že model na základe zadanej databázovej schémy vygeneruje priamo riadky dát alebo INSERT príkazy. Výhodou je jednoduchosť a sémanticky realistické hodnoty. Tento prístup má aj nevýhody. Každý riadok dát vyžaduje beh modelu a tak s objemom rastú aj náklady. Pri veľkom počte riadkov má model problém udržať väzby cudzích kľúčov medzi tabuľkami či unikátnosť hodnôt~\cite{Wang2024}, tým pádom nie je konzistencia garantovaná. Ďalšou nevýhodou je neopakovateľnosť, ten istý vstup dá zakaždým iné dáta. Napokon sa halucinované hodnoty dostávajú do testovacej sady bez kontroly. 
+
+
+V tejto práci sa lokálne LLM používa na generovanie receptu pre nástroj Dataster (Kapitola~\ref{ch:kap4}), samotný recept je generovaný len raz a následne sú testovacie dáta vytvorené cez Dataster so SMT (angl. Satisfiability modulo theories) riešiteľom. Samotný model neslúži ako generátor dát, ale ako prekladač databázovej schémy na špecifikáciu. Model sa spúšťa raz pre schému bez ohľadu na objem generovaných dát. Generovanie je opakovateľné a tak sa nevýhody buď eliminujú, alebo presúvajú do receptu, kde sú ľahko opraviteľné.
+
+
+Halucinácie sa teda nestrácajú, môžu sa objaviť aj vo vygenerovaných receptoch a práve preto je dôležitá implementácia validačnej a opravnej vrstvy (Sekcia~\ref{sub:validacia_oprava}).
+
+\section{Limitácie LLM}
+\label{sub:limitacie_llm}
+Napriek veľkému potenciálu LLM sú tu stále limitácie, ktoré ovplyvňujú generovanie dát. Halucinácie sa v kontexte tejto práce prejavujú ako nesprávne určenie dátových typov, alebo ako odkaz na tabuľky a stĺpce, ktoré v databázovej schéme neexistujú. Toto priamo ovplyvňuje kvalitu vygenerovaného receptu. Ďalšou limitáciou je kontextové okno, teda množstvo textu, ktoré LLM dokáže naraz spracovať. Pri veľkých databázových schémach môže opis schémy prekročiť kapacitu kontextu, vstup sa v takom prípade skráti, čo vedie k neúplným alebo nevalidným receptom. Výstup LLM je navyše nedeterministický, čo znamená, že rovnaký vstup môže viesť k rôznym výstupom. Mieru náhodnosti riadi parameter teploty, ktorého vplyv je v práci testovaný (Sekcia~\ref{sub:testovacie_scenare}). Návrh nástroja (Kapitola~\ref{ch:kap5}) tieto limitácie adresuje validačnou a opravnou vrstvou a testovaním vplyvu parametrov (Kapitola~\ref{ch:kap7}).  
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % KAPITOLA 4
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Nástroj Dataster a analýza požiadaviek}
-Kým predchádzajúce kapitoly položili teoretický základ pre testovanie založené na dátach a veľké jazykové modely, v tejto časti sa práca už priamo zameriava na dosiahnutie konkrétneho cieľa. Výstupom tejto práce nie sú priamo testovacie dáta, ale YAML konfigurácia, tzv. recept pre nástroj Dataster. Dataster  tým určuje cieľový formát a teda aj to, čo všetko musí navrhovaný nástroj o databáze zistiť. Táto kapitola analyzuje formát receptu z pohľadu znalostí potrebných na jeho vytvorenie a odvodzuje požiadavky na nástroj. Sekcia 4.1 predstavuje nástroj Dataster, sekcia 4.2 analyzuje formát receptu a sekcia 4.3 z tejto analýzy formuluje požiadavky na navrhovaný nástroj.
+\label{ch:kap4}
+
+Kým predchádzajúce kapitoly položili teoretický základ pre testovanie založené na dátach a veľké jazykové modely, v tejto časti sa práca už priamo zameriava na dosiahnutie konkrétneho cieľa. Výstupom tejto práce nie sú priamo testovacie dáta, ale YAML konfigurácia, tzv. recept pre nástroj Dataster. Dataster  tým určuje cieľový formát a teda aj to, čo všetko musí navrhovaný nástroj o databáze zistiť. Táto kapitola analyzuje formát receptu z pohľadu znalostí potrebných na jeho vytvorenie a odvodzuje požiadavky na nástroj. Sekcia~\ref{sub:nastroj_dataster} predstavuje nástroj Dataster, sekcia~\ref{sub:analyza_formatu_receptu}  analyzuje formát receptu a sekcia~\ref{sub:analyza_poziadaviek} z tejto analýzy formuluje požiadavky na navrhovaný nástroj.
 
 \section{Nástroj Dataster}
-Dataster je súčasťou Testos platformy, ktorá sa zaoberá automatizáciou testovania softvéru [Testos]. Na základe vstupného receptu generuje testovacie dáta do relačných databáz vo forme SQL insert príkazov. Generovanie je postavené na SMT riešiteľovi [Vlach].  Dataster je budovaný na už existujúcej CLI aplikácii dbgenx, nad ktorou buduje API adaptér a webové rozhranie [tu citácia bud vlach alebo dbgenx]. 
+\label{sub:nastroj_dataster}
 
-Používateľ pracuje s Datasterom prostredníctvom receptu, ktorý vytvára ručne. Recept má rôzne špecifikácie ako typy hodnôt, väzby na tabuľky a stĺpce, počty riadkov, dodatočné obmedzenia. Kvalita generovaných dát stojí na kvalite receptu. Dataster sám o sebe nemá prístup ku žiadnej databáze a nevidí jej schému, preto je na použivateľovi, aby túto znalosť preložil do receptu, do štruktúrovaného formátu YAML. 
+Dataster je súčasťou Testos platformy, ktorá sa zaoberá automatizáciou testovania softvéru. Na základe vstupného receptu generuje testovacie dáta pre relačné databázy vo forme SQL insert príkazov. Generovanie číselných, dátumových a pravdivostných hodnôt je postavené na SMT riešiteľovi, reťazce sa generujú samostatne. Obmedzenia (constraints) sa pritom berú do úvahy len pri SMT-typovaných atribútoch~\cite{Vlach2020}. Okrem vnorených typov umožňuje Dataster vyjadriť väzbu kľúčovým slovom \texttt{FROM}. Navrhvaný nástroj používa výhradne \texttt{FROM}, jeho sytax aj zázornený v príkladoch na stránke nástroja\footnote{\url{https://dataster.testos.org/}}. Dataster je budovaný na už existujúcej CLI aplikácii dbgenx, nad ktorou buduje API adaptér a webové rozhranie. 
 
-Autor receptu musí prejsť schému databázy, pre každý stĺpec určiť vhodný typ a správne identifikovať vzťahy medzi tabuľkami. Čas potrebný na tvorbu receptu sa úmerne zvyšuje s počtom tabuliek a táto práca môže trvať niekoľko hodín až dní. Aby bolo možné tento krok automatizovať je najskôr dôležité presne rozumieť tomu aké sú potrebné znalosti pre tvorbu receptu, čomu sa venuje sekcia 4.2.
+Používateľ pracuje s Datasterom prostredníctvom receptu, ktorý vytvára ručne. Recept má rôzne špecifikácie ako typy hodnôt, väzby na tabuľky a stĺpce, počty riadkov, dodatočné obmedzenia. Kvalita generovaných dát stojí na kvalite receptu. Dataster sám o sebe nemá prístup ku žiadnej databáze a nevidí jej schému, preto je na používateľovi, aby túto znalosť preložil do receptu, do štruktúrovaného formátu YAML. 
+
+Autor receptu musí prejsť schému databázy, pre každý stĺpec tabuľky určiť vhodný typ a správne identifikovať vzťahy medzi tabuľkami. Čas potrebný na tvorbu receptu sa úmerne zvyšuje s počtom tabuliek a táto práca môže trvať niekoľko hodín až dní. Aby bolo možné tento krok automatizovať, je najskôr dôležité presne rozumieť tomu aké sú potrebné znalosti pre tvorbu receptu, čomu sa venuje sekcia~\ref{sub:analyza_formatu_receptu}.
 
 
-\newpage
+
 \section{Analýza formátu receptu}
-
-\begin{lstlisting}[caption={Štruktúra ukážkovej databázy.}]
-
-CREATE TABLE parents (
-    parent_id   INT PRIMARY KEY,
-    parent_name VARCHAR(100) NOT NULL,
-    gender      VARCHAR(10) NOT NULL,
-    home_phone  VARCHAR(10) NOT NULL,
-);
-\end{lstlisting}
+\label{sub:analyza_formatu_receptu}
 
 
-\begin{table}[ht]
+\begin{figure}[H]
     \centering
-    \begin{tabular}{|l|l|l|l|}
-         \toprule
-         \textbf{parent\_id} & \textbf{parent\_name} & \textbf{gender} & \textbf{home\_phone} \\
-         \midrule
+    \begin{lstlisting}[caption={Definícia tabuľky \texttt{parents}}]
+        CREATE TABLE parents (
+            parent_id   INT PRIMARY KEY,
+            parent_name VARCHAR(100) NOT NULL,
+            gender      VARCHAR(10) NOT NULL,
+            home_phone  VARCHAR(10) NOT NULL
+        ); 
+    \end{lstlisting}
+
+    \vspace{1.5em}
+    
+    \begin{tabular}{>{\centering\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.25\linewidth}>{\centering\arraybackslash}p{0.1\linewidth}>{\centering\arraybackslash}p{0.25\linewidth}}\toprule
+         
+         \textbf{parent\_id} & \textbf{parent\_name} & \textbf{gender} & \textbf{home\_phone} \\\midrule
+         
          1 & John Doe       & Male   & 555-0192 \\
          2 & Jane Smith     & Female & 555-0143 \\
          3 & Robert Johnson & Male   & 555-0177 \\
-         4 & Emily Davis    & Female & 555-0155 \\
-         \bottomrule
+         4 & Emily Davis    & Female & 555-0155 \\ \bottomrule
+         
     \end{tabular}
     \caption{Vzorové dáta tabuľky \texttt{parents}}
-    \label{tab:sample-parents}
-\end{table}
-
-\begin{lstlisting}[caption={Štruktúra ukážkovej databázy.}]
-CREATE TABLE children (
-    child_id        INT PRIMARY KEY,
-    parent_id       INT NOT NULL,
-    gender          VARCHAR(10) NOT NULL,
-    first_name      VARCHAR(20) NOT NULL,
-    age             INT NOT NULL,
-    date_of_birth   DATE NOT NULL,
-    FOREIGN KEY (parent_id) REFERENCES parents(parent_id)
-);
-\end{lstlisting}
+    \label{table:sample-parents}
 
 
-\begin{table}[ht]
+\end{figure}
+
+
+\begin{figure}[H]
     \centering
-    \begin{tabular}{|l|l|l|l|l|l|}
+    \begin{lstlisting}[caption={Definícia tabuľky \texttt{children}}]
+        CREATE TABLE children (
+            child_id        INT PRIMARY KEY,
+            parent_id       INT NOT NULL,
+            gender          VARCHAR(10) NOT NULL,
+            first_name      VARCHAR(20) NOT NULL,
+            age             INT NOT NULL,
+            date_of_birth   DATE NOT NULL,
+            FOREIGN KEY (parent_id) REFERENCES parents(parent_id)
+        );
+    \end{lstlisting}
+
+    \vspace{1.5em}
+    
+    \begin{tabular}{ccclcc}
          \toprule
          \textbf{child\_id} & \textbf{parent\_id} & \textbf{gender} & \textbf{first\_name} & \textbf{age} & \textbf{date\_of\_birth} \\
          \midrule
@@ -129,23 +251,33 @@ CREATE TABLE children (
          \bottomrule
     \end{tabular}
     \caption{Vzorové dáta tabuľky \texttt{children}}
-    \label{tab:sample-children}
-\end{table}
+    \label{table:sample_children}
+   
+\end{figure}
 
-Recept sa skladá z piatich sekcií: include, types, schema, generate a constraints, pričom časti ako types, schema a generate sú povinné [Vlach].
+
+Recept sa skladá z piatich sekcií: \texttt{include}, \texttt{types}, \texttt{schema}, \texttt{generate} a \texttt{constraints}, pričom časti ako \texttt{types}, \texttt{schema} a \texttt{generate}  sú povinné~\cite{Vlach2020}.
 
 
-Sekcia include sa používa na rôzne prednastavené datasety, teda externé YAML súbory s informáciami ako mená, mestá, atď. Avšak na to aby autor receptu vedel datasety použiť, musí rozpoznať sémantickú doménu stĺpca a to nie z dátového typu, ale z názvu stĺpca a vzorových hodnôt. Zároveň musí poznať aktuálnu ponuku dostupných datasetov. 
-
-\begin{lstlisting}[caption={Include seckcia pre ukážkovú databázu}, label={lst:recipe-include}]
+Sekcia include sa používa s rôznymi prednastavenými datasetmi, teda externými YAML súbormi s informáciami ako mená, mestá, atď. Avšak, na to aby autor receptu vedel datasety použiť, musí rozpoznať sémantickú doménu stĺpca a to nie z dátového typu, ale z názvu stĺpca a vzorových hodnôt. Zároveň musí poznať aktuálnu ponuku dostupných datasetov. 
+\vspace{1.5em}
+\begin{figure}[H]
+    \centering
+  \begin{lstlisting}[caption={Include sekcia pre ukážkovú databázu}, label={lst:recipe-include}, frame=single, linewidth=0.65\textwidth, xleftmargin=0.28\textwidth]
     include:
         - first_names_cs
         - last_names_cs
 \end{lstlisting}
 
-Sekcia types vyžaduje znalosti tabuliek, ako aj jednotlivých stĺpcov tabuľky a zároveň ich dátové typy. Na základe vzorových hodnôt zostaviť hranice intervalov, dĺžky reťazca alebo regex vzorov. Schéma nerozlišuje hlbší kontext, ale vzorové hodnoty áno. Práve preto táto sekcia vyžaduje aj samotné vzorky. Príkladom môže byť dátový typ INT reprezentujúci vek alebo cenu, samotná schéma medzi nimi nerozlišuje, rozlišujú ich až hodnoty.
+\end{figure}
 
-\begin{lstlisting}[caption={Types seckcia pre ukážkovú databázu}, label={lst:recipe-types}]
+Sekcia types vyžaduje znalosti samotných typov, ako aj jednotlivých stĺpcov tabuľky a ich dátových typov. V dbgenx sú typy nezávislé objekty oddelené od tabuliek~\cite{Vlach2020}. V tejto práci sa ale použiva konvencia, pri ktorej sa názvov typu zhoduje s názvom tabuľky. Na základe vzorových hodnôt sa následne zostavujú hranice intervalov, dĺžky reťazca alebo regex vzory. Schéma nerozlišuje hlbší kontext, ale vzorové hodnoty áno. Práve preto táto sekcia vyžaduje aj samotné vzorky. Príkladom môže byť dátový typ \texttt{INT} reprezentujúci vek alebo cenu, samotná schéma medzi nimi nerozlišuje, rozlišujú ich až hodnoty.
+
+\vspace{1.5em}
+
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Types sekcia pre ukážkovú databázu.}, frame=single, linewidth=0.9\textwidth, xleftmargin=0.100\textwidth, label={lst:recipe-types}]
     types:
         parents:
             parent_id: seq(1,4,1)
@@ -154,7 +286,7 @@ Sekcia types vyžaduje znalosti tabuliek, ako aj jednotlivých stĺpcov tabuľky
             parent_name:
                 format: '{} {}'
                 values:
-                    - parents.fist_name
+                    - parents.first_name
                     - parents.last_name
 
             gender:
@@ -171,11 +303,16 @@ Sekcia types vyžaduje znalosti tabuliek, ako aj jednotlivých stĺpcov tabuľky
             first_name: first_names_cs
             age: int
             date_of_birth: dinterval(2014-1-1, 2021-12-31)
-\end{lstlisting}
+    \end{lstlisting}
+
+\end{figure}
 
 Sekcia schema mapuje stĺpce tabuliek na atribúty typov. Na jej vytvorenie je potrebná znalosť štruktúry tabuliek a vzťahy, teda ktorý stĺpec je cudzí kľúč a kam ukazuje. Je ale nutné poznamenať, že cudzí kľúč nemusí byť v schéme deklarovaný. Vzťah sa dá rozpoznať len z názvov a hodnôt. 
 
-\begin{lstlisting}[caption={Schema seckcia pre ukážkovú databázu}, label={lst:recipe-schema}]
+\vspace{1.5em}
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Schema sekcia pre ukážkovú databázu.}, frame=single, linewidth=0.85\textwidth, xleftmargin=0.165\textwidth, label={lst:recipe-schema}]
     schema:
         parents:
             parent_id:     parents.parent_id
@@ -184,178 +321,1022 @@ Sekcia schema mapuje stĺpce tabuliek na atribúty typov. Na jej vytvorenie je p
             home_phone:    parents.home_phone
         children:
             child_id:      children.child_id
-            parent_id      FROM parents.parent_id
+            parent_id:     FROM parents.parent_id
             gender:        children.gender
             first_name:    children.first_name
             age:           children.age
             date_of_birth: children.date_of_birth
-\end{lstlisting}
+    \end{lstlisting}
+
+\end{figure}
 
 Sekcia generate vyžaduje úsudok o zmysluplných počtoch riadkov, teda horná hranica je rozsah primárneho kľúča, k tomu pomery medzi tabuľkami. Toto nie je v databáze nikde zapísané a je potrebný úsudok nad charakterom tabuliek.
 
-\begin{lstlisting}[caption={Generate seckcia pre ukážkovú databázu}, label={lst:recipe-generate}]
+\vspace{1.5em}
+
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Generate sekcia pre ukážkovú databázu.}, frame=single, linewidth=0.75\textwidth, xleftmargin=0.260\textwidth, label={lst:recipe-generate}]
     generate:
         - 'parents  = 4'
         - 'children = 4'
-\end{lstlisting}
+    \end{lstlisting}
+
+\end{figure}
 
 Pri sekcii constraints len znalosť schémy neplatí, je z nej potrebné vedieť vyčítať logické súvislosti, ktoré vyplývajú z významu hodnôt. Príkladom tohto môžu byť napríklad počiatočný a koncový dátum, logická spojka v tomto prípade je, že počiatočný dátum by sa malo udiať skôr ako ten koncový.
 
-\begin{lstlisting}[caption={Constraints seckcia pre ukážkovú databázu}, label={lst:recipe-constraints}]
+\vspace{1.5em}
+
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Constraints sekcia pre ukážkovú databázu.}, frame=single, linewidth=0.75\textwidth, xleftmargin=0.260\textwidth, label={lst:recipe-constraints}]
     constraints:
-        - 'children_age >= 5'
-        - 'children_age <= 12'
-\end{lstlisting}
+        - 'children.age >= 5'
+        - 'children.age <= 12'
+    \end{lstlisting}
 
+\end{figure}
 
-% \begin{lstlisting}[caption={Kompletný recept pre ukážkovú databázu}, label={lst:recipe-full}]
-%     include:
-%         - first_names_cs
-%         - last_names_cs
-        
-%     types:
-%         parents:
-%             parent_id: seq(1,4,1)
-%             first_name: first_names_cs
-%             last_name: last_names_cs
-%             parent_name:
-%                 format: '{} {}'
-%                 values:
-%                     - parents.fist_name
-%                     - parents.last_name
-
-%             gender:
-%                 - BLOCKS
-%                 - Male
-%                 - Female
-%             home_phone: 'regex(''555-[0-9]{4}'')'
-%         children:
-%             child_id: seq(1,4,1)
-%             gender:
-%                 - BLOCKS
-%                 - Male
-%                 - Female
-%             first_name: first_names_cs
-%             age: int
-%             date_of_birth: dinterval(2014-1-1, 2021-12-31)
-
-%     schema:
-%         parents:
-%             parent_id:     parents.parent_id
-%             parent_name:   parents.parent_name
-%             gender:        parents.gender
-%             home_phone:    parents.home_phone
-%         children:
-%             child_id:      children.child_id
-%             parent_id      FROM parents.parent_id
-%             gender:        children.gender
-%             first_name:    children.first_name
-%             age:           children.age
-%             date_of_birth: children.date_of_birth
-
-%     generate:
-%         - 'parents  = 4'
-%         - 'children = 4'
-
-%     constraints:
-%         - 'children_age >= 5'
-%         - 'children_age <= 12'
-    
-% \end{lstlisting}
 
 \section{Analýza požiadaviek}
-Tabuľka [odkaz na ňu] zahŕňa zjednotené požiadavky v jednej súvislosti. Každá požiadavka obsahuje svoje identifikačné číslo, popis, kategóriu a zdroj. Táto tabuľka identifikuje dve kategórie požiadaviek:
+
+\label{sub:analyza_poziadaviek}
+
+Tabuľka~\ref{tab:reqs} zahŕňa zjednotené požiadavky v jednej súvislosti. Každá požiadavka obsahuje svoje identifikačné číslo, popis, kategóriu a zdroj. Táto tabuľka identifikuje dve kategórie požiadaviek:
 \begin{itemize}
     \item \textbf{Funkcionálne požiadavky} (F)
     \item \textbf{Nefunkcionálne požiadavky} (NF)
 \end{itemize}
 
-\begin{table}[h]
+\begin{table}[H]
     \centering
-    \begin{tabularx}{\textwidth}{|l|X|c|l|}
+    \begin{tabularx}{\textwidth}{l X c l}
          \toprule
-         \textbf{ID} & \textbf{Popis} & \textbf{kategória} & \textbf{Zdroj} \\
+         \textbf{ID} & \textbf{Popis} & \textbf{Kategória} & \textbf{Zdroj} \\
          \midrule
-        REQ.1   & Nástroj sa pripojí k databáze na základe prihlasovacích údajov & F & Zadanie \\ \hline
-        REQ.2   & Nástroj získa štruktúru databázy: názvy tabuliek, stĺpcov, dátové typy a kľúče. & F & Zadanie \\ \hline
-        REQ.3   & Nástroj získa vzorové dáta & F & Zadanie \\ \hline
-        REQ.4   & Nástroj odvodí sémantické domény stĺpcov z ich názvov a vzorových hodnôt. & F & Analýza 4.2 \\ \hline
-        REQ.5   & Nástroj odvodí parametre generátorov, teda hranice intervalov, dĺžky reťazcov, vzory, zo vzorových hodnôt. & F & Analýza 4.2 \\ \hline
-        REQ.6   & Analyzuje vzťahy ktoré nie sú v schéme explicitne spomenuté. & F & Analýza 4.2 \\ \hline
-        REQ.7   & Odvodí počty  generovaných riadkov pre jednotlivé tabuľky. & F & Analýza 4.2 \\ \hline
-        REQ.8   & Odvodí obmedzenia z významu hodnôt. & F & Analýza 4.2 \\ \hline
-        REQ.9   & Nástroj využije model LLM pre generovanie receptu. & F & Zadanie \\ \hline
-        REQ.10  & Výstupom je recept akceptovateľný aktuálnou verziou Dataster. & F & Prostredie \\ \hline
-        REQ.11  & Proces je opakovateľný & NF &Zadanie \\ \hline
-        REQ.12  & Nástroj beží výhradne lokálne bez využitia externých služieb. & NF & Zadanie \\  \hline
-        REQ.13  & Nástroj je prevádzkovateľný na GPU s 8GB VRAM & NF & Prostredie \\ \hline
+        REQ.1   & Nástroj sa pripojí k databáze na základe prihlasovacích údajov  & F & Zadanie \\ 
+        REQ.2   & Nástroj získa štruktúru databázy: názvy tabuliek, stĺpcov, dátové typy a kľúče & F & Zadanie \\
+        REQ.3   & Nástroj získa vzorové dáta & F & Zadanie \\ 
+        REQ.4   & Nástroj odvodí sémantické domény stĺpcov z ich názvov a vzorových hodnôt & F & Analýza~\ref{sub:analyza_formatu_receptu} \\ 
+        REQ.5   & Nástroj odvodí parametre generátorov, teda hranice intervalov, dĺžky reťazcov, vzory, zo vzorových hodnôt & F & Analýza~\ref{sub:analyza_formatu_receptu} \\ 
+        REQ.6   & Nástroj odvodí vzťahy a význam dát zo vzorových hodnôt a názvov stĺpcov & F & Analýza~\ref{sub:analyza_formatu_receptu} \\ 
+        REQ.7   & Odvodí počty  generovaných riadkov pre jednotlivé tabuľky & F & Analýza~\ref{sub:analyza_formatu_receptu} \\
+        REQ.8   & Odvodí obmedzenia z významu hodnôt & F & Analýza~\ref{sub:analyza_formatu_receptu} \\ 
+        REQ.9   & Nástroj využije model LLM pre generovanie receptu & F & Zadanie \\ 
+        REQ.10  & Výstupom je recept akceptovateľný aktuálnou verziou Dataster & F & Prostredie \\ 
+        REQ.11  & Nástroj možno spúšťať opakovane a vyhodnotenie je pri rovnakom nastavení reprodukovateľné & NF &Zadanie \\ 
+        REQ.12  & Nástroj beží výhradne lokálne bez využitia externých služieb & NF & Zadanie \\
+        REQ.13  & Nástroj je prevádzkovateľný na GPU s 8 GB VRAM & NF & Prostredie \\ 
         REQ.14  & Výstup je overiteľný v nástroji Dataster a vykonávaním vygenerovaného SQL & NF & Zadanie \\ 
 
          \bottomrule
     \end{tabularx}
-    \caption{Zoznam funkčných (F) a nefunkčných (NF) požiadaviek na nástroj.}
+    \caption{Zoznam funkcionálnych (F) a nefunkcionálnych (NF) požiadaviek na nástroj.}
     \label{tab:reqs}
 \end{table}
 
-% KAPITOLA 5
-\chapter{Návrh}
 
-Táto kapitola sa zaoberá vysokoúrovňovým návrhom nástroja na automatizované generovanie receptov pre nástroj Dataster. Následne približuje celkovú architektúru, komponenty návrhu a tok dát medzi nimi. LLM tvorí jadro návrhového riešenia a preto je pozornosť venovaná spôsobu využitia veľkých jazykových modelov. Kapitolu uzatvára princíp princíp validácie a opravy výstupov. Konkrétna implementácia návrhu je obsiahnutá v kapitole 6.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 5
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Návrh}
+\label{ch:kap5}
+Táto kapitola sa zaoberá vysokoúrovňovým návrhom nástroja na automatizované generovanie receptov pre nástroj Dataster. Následne približuje celkovú architektúru (Sekcia~\ref{sub:architektura}), komponenty návrhu a tok dát medzi nimi (Sekcia~\ref{sub:fazy_generovania}). LLM tvorí jadro návrhového riešenia a preto je pozornosť venovaná spôsobu využitia veľkých jazykových modelov (Sekcia~\ref{sub:vyuzitie_vlk_jaz_modelov}). Pokračuje princípom validácie a opravy výstupov (Sekcia~\ref{sub:validacia_a_kontrola}) a na záver opisuje rozdelenie práce (Sekcia~\ref{sub:rozdelenie_prace}). Konkrétna implementácia návrhu je obsiahnutá v Kapitole~\ref{ch:kap6}.
 
 \section{Architektúra}
-Vstupom nástroja sú identifikačné údaje pre pripojenie k relačnej databáze. Na začiatku sa program pripojí k databáze, extrahuje tabuľky, informácie o nich, teda stĺpce a ich dátové typy. Po získaní týchto informácií sa z tabuľky vytiahnu rôzne vzorky, ktoré zahŕňajú krajné aj typické hodnoty každého stĺpca, aby mal jazykový model k dispozícii reálne hodnoty z tabuľky.
 
-V ďalšej fáze LLM ako prvé vygeneruje types sekciu, keďže na tejto sekcii závisia ostatné sekcie YAML. Následne sa vygenerujú ďalšie sekcie. Sekcie schema, generate a constraints sa generujú nezávisle, každá samostatným volaním modelu s types sekciou ako vstupom. 
+\label{sub:architektura}
 
-Sekcia types prechádza opravami ešte pred generovaním ostatných sekcií, keďže slúži ako ich vstup a chyby v nej by sa šírili ďalej. Zo všetkých vygenerovaných sekcií  sa poskladá jeden predbežný YAML, ktorý je validovaný a v prípade chýb opravený. Na záver je recept opäť skontrolovaný a uložený.
+Vstupom nástroja sú identifikačné údaje pre pripojenie k relačnej databáze. Na začiatku sa program pripojí k databáze, extrahuje tabuľky, informácie o nich, teda stĺpce, ich dátové typy, primárne a cudzie kľúče. Po získaní týchto informácií sa z tabuľky vytiahnu rôzne vzorky krajných hodnôt z oboch koncov usporiadania, ktoré vymedzujú rozsah hodnôt stĺpca, čo jazykovému modelu umožní lepšie pochopiť charakter jednotlivých stĺpcov.
 
-\begin{figure}[h]
+
+
+V ďalšej fáze LLM ako prvé vygeneruje sekciu \texttt{types}, keďže na tejto sekcii závisia ostatné sekcie YAML. Následne sa vygenerujú ďalšie sekcie. Sekcie schema, generate a constraints sa generujú nezávisle, každá samostatným volaním modelu s types sekciou ako vstupom. 
+
+
+
+Surové výstupy jednotlivých fáz sa následne poskladajú do jedného predbežného YAML, ktorý je validovaný a v prípade chýb opravený. Zložený recept prechádza automatickými opravami, následne jednou validáciou a uloží sa.
+
+\begin{figure}[H]
     \centering
     \includegraphics[width=1\linewidth]{obrazky-figures/diagram1.pdf}
-    \caption{tu nieco pridaj}
+    \caption{Architektúra nástroja}
     \label{fig:diagram1}
 \end{figure}
 
 \section{Fázy generovania}
-Samotné generovanie sekcií je rozdelené do niekoľkých fáz, hlavne z dôvodu izolácie chýb. Pri zlyhaní nie sú ostatné sekcie stratené a chyba je priraditeľná fáze, v ktorej vznikla. Malé modely zvládajú vymedzené úlohy s few-shot vzormi lepšie ako komplexné viacčasťové výstupy, kde s rastúcou zložitosťou požadovaného výstupu rastie výskyt formátových chýb [Pysmennyi2025]. Rozdelenie úloh šetrí pamäť. Každý krok spracováva len nutné informácie, čo je pri 8GB VRAM zásadná výhoda.
 
-Pre fázu types je vstupom sterilizovaná schéma a vzorky dát, ktorý obsahuje informácie o primárnom kľúči tabuľky, dátových typoch stĺpcov ako aj niekoľko odlišných vzoriek. Ide o interpretačne najnáročnejšiu fázu a jej kvalita vygenerovaného výstupu priamo ovplyvňuje ostatné fázy, preto sa jej návrhu venuje najväčšia pozornosť. 
+\label{sub:fazy_generovania}
 
-Fáza schema prevezme vygenerovanú sekciu types. Jej úlohou je mapovanie stĺpcov a vzťahov cudzích kľúčov. Hoci je mapovanie z veľkej časti mechanické, rozpoznanie vzťahov medzi tabuľkami vyžaduje interpretáciu názvov a hodnôt, preto je úloha zverená modelu.
+Samotné generovanie sekcií je rozdelené do niekoľkých fáz, hlavne z dôvodu izolácie chýb. Pri zlyhaní nie sú ostatné sekcie stratené a chyba je priraditeľná fáze, v ktorej vznikla. Malé modely majú problém s dodržaním konzistentného formátu výstupu, pričom použitie few-shot príkladov tento problém pomáha zmierniť~\cite{Pysmennyi2025}. Rozdelenie úloh šetrí pamäť. Každý krok spracováva len nutné informácie, čo je pri 8 GB VRAM zásadná výhoda.
 
-Pri fáze generate sa určujú jednotlivé počty generovaných riadkov pre každú tabuľku. Logický počet sa odvíja od rozsahu hodnôt primárneho kľúča.
 
-Ako posledná fáza je constraints, ktorá podľa vstupu types odvodzuje logické obmedzenia hodnôt, ktoré nie sú zachytené v schéme databázy, ale vyplývajú z kontextu hodnôt, ako napríklad rozsahy veku alebo nezáporné ceny. Tieto obmedzenia nie je možné mechanicky vyčítať, model ich musí vyvodiť zo vzoriek.
+Pre \textbf{fázu types} vstup obsahuje informácie o primárnom kľúči, dátových typoch stĺpcov, ako aj niekoľko vzoriek hodnôt. Ide o interpretačne najnáročnejšiu fázu a jej kvalita vygenerovaného výstupu priamo ovplyvňuje ostatné fázy, preto sa jej návrhu venuje najväčšia pozornosť. Databázové vzorky vidí iba fáza types, ostatné fázy pracujú výlučne s jej výstupom.
 
-Toto poradie je dôležité pretože types je spoločným vstupom ostatných troch generovaných sekcií. Types definuje množinu tabuliek, stĺpcov a ich typov, na ktorú sa ostatné sekcie odkazujú. Ostatné fázy sú od seba  navzájom nezávislé a preto sa volajú oddelene, chyba v jednej z týchto častí neruší ostatné. 
+
+\textbf{Fáza schema} prevezme vygenerovanú sekciu types. Jej úlohou je mapovanie stĺpcov a vzťahov cudzích kľúčov. Všetky cudzie kľúče vytiahne program priamo z databázy a do schémy ich vloží automaticky. Model sa používa najmä na návrh prepojení a na odhaľovanie vzťahov medzi tabuľkami, ktoré nie sú v databáze explicitne zapísané a treba ich odhadnúť podľa názvov a hodnôt.
+
+
+Pri \textbf{fáze generate} sa určujú jednotlivé počty generovaných riadkov pre každú tabuľku. Logický počet sa odvíja od rozsahu hodnôt primárneho kľúča.
+
+
+Ako posledná \textbf{fáza} je \textbf{constraints}, ktorá podľa vstupu types odvodzuje logické obmedzenia hodnôt, ktoré nie sú zachytené v schéme databázy, ale vyplývajú z kontextu hodnôt, ako napríklad rozsahy veku alebo nezáporné ceny. Tieto obmedzenia nie je možné mechanicky vyčítať, model ich musí vyvodiť zo sekcie types.
+
+
+Toto poradie je dôležité, pretože types je spoločným vstupom ostatných troch generovaných sekcií. Types definuje množinu tabuliek, stĺpcov a ich typov, na ktorú sa ostatné sekcie odkazujú. Ostatné fázy sú navzájom nezávislé a preto sa volajú oddelene, chyba v jednej z týchto častí neruší ostatné. 
 
 \section{Využitie veľkých jazykových modelov (LLM)}
-Jazykový model v návrhu nefunguje ako autonómny agent, ktorý sám rozhoduje o ďalšom kroku, poradie fáz vrátane validácie a opráv sú pevne riadené programom. AI agenti sú síce populárni čo sa týka zabezpečovania kvality softvéru [Pysmennyi2025], ale pre tento program to bolo vyhodnotené ako nevhodné hneď z niekoľkých dôvodov. Po prvé, experimentálne vyhodnotenie vyžaduje reprodukovateľnosť, rovnaký vstup musí prejsť tou istou cestou. S agentom pribudne ďalšia neistota, pretože pri každom spustení sa môže líšiť nielen odpoveď modelu, ale aj počet a poradie krokov. Po druhé, modely s veľkosťou okolo 7 miliárd parametrov, ktorú si vynucuje dostupná pamäť GPU (8GB VRAM) nemajú kapacitu na spoľahlivé plánovanie [Valmeekam2022]. Po tretie, keď má každá fáza svoje pevné miesto, zlyhanie je priraditeľné k fáze v ktorej sa objavilo, pri slučke tvorenej agentom sa chyba stráca v trajektórii.
+
+\label{sub:vyuzitie_vlk_jaz_modelov}
+
+Jazykový model v návrhu nefunguje ako autonómny agent, ktorý sám rozhoduje o ďalšom kroku, poradie fáz vrátane validácie a opráv sú pevne riadené programom. AI agenti sú síce populárni v oblasti zabezpečovania kvality softvéru~\cite{Pysmennyi2025}, ale pre tento program to bolo vyhodnotené ako nevhodné hneď z niekoľkých dôvodov. Po prvé, experimentálne vyhodnotenie vyžaduje reprodukovateľnosť, rovnaký vstup musí prejsť tou istou cestou. S agentom pribudne ďalšia neistota, pretože pri každom spustení sa môže líšiť nielen odpoveď modelu, ale aj počet a poradie krokov. Po druhé, spoľahlivé plánovanie je zdokumentovaným problémom aj pri väčších modeloch~\cite{Valmeekam2023}, pri modeloch s okolo 7 miliardami parametrov, ktoré si vynucuje dostupná pamäť (8 GB VRAM), ho nemožno preto predpokladať. Po tretie, keď má každá fáza svoje pevné miesto, zlyhanie je priraditeľné k fáze, v ktorej sa objavilo, pri slučke tvorenej agentom sa chyba stráca v trajektórii.
+
 
 Modely tak rozhodujú výhradne o obsahu generovaných sekcií, nie o štruktúre procesu. Všetko, čo je možné vykonať algoritmicky, vykonáva kód.
 
-\section{Validácia a kontrola}
-Priebeh validácie znázorňuje obrázok (pridaj číslo obrázka), teda pri validácii môžu nastať 3 prípady. Bud je vygenerovaný YAML bez chýb a pokračuje ku ďalšej fáze, alebo prechádza cyklom opráv. V prípade, že kód narazí na chybu, ktorá pretrváva aj po N cykloch opráv, kód končí s chybovým hlásením.
+\section{Validácia a oprava}
 
-\begin{figure}[h]
+\label{sub:validacia_a_kontrola}
+
+Priebeh validácie zloženého receptu znázorňuje obrázok~\ref{fig:diagram2}, teda pri validácii môžu nastať dva prípady. Buď je vygenerovaný YAML bez chýb a uloží sa, alebo prechádza kontrolou a radom opráv, pričom sa odchytené chyby zaznamenajú a recept sa uloží. Tento prístup bol zvolený zámerne, aby použivateľ mohol recept opraviť alebo nástroj spustiť znova. Zároveň to umožňuje vyhodnocovať aj recepty, ktoré validáciou neprešli (Kapitola~\ref{ch:kap7}). V prípade, že kód narazí na vážnu chybu, kód končí s chybovým hlásením.  
+
+\begin{figure}[H]
     \centering
-    \includegraphics[width=0.5\linewidth]{obrazky-figures/diagram2.pdf}
-    \caption{tu nieco pridaj}
+    \includegraphics[width=0.75\linewidth]{obrazky-figures/diagram2.pdf}
+    \caption{Schéma automatickej opravy a validácie zloženého receptu}
     \label{fig:diagram2}
 \end{figure}
 
 
-Výstupy jazykových modelov sú formátovo nestabilné a menšie modely majú zdokumentované problémy s dodržaním konzistentného výstupného formátu [Pysmennyi2025]. Preto bola validácia a oprava výstupov navrhnutá ako integrálna súčasť procesu, nie ako dodatočná kontrola.
+Výstupy jazykových modelov sú formátovo nestabilné a menšie modely majú zdokumentované problémy s dodržaním konzistentného výstupného formátu~\cite{Pysmennyi2025}. Preto bola automatická oprava a kontrola výstupov navrhnutá ako integrálna súčasť procesu, nie ako dodatočná kontrola.
 
 \section{Rozdelenie práce}
+
+\label{sub:rozdelenie_prace}
+
 Využitie LLM pre každú časť procesu, od extrakcie schémy cez generovanie až po opravy by bolo nielen zbytočné, ale aj pomalé. Návrh túto prácu delí medzi LLM a samostatný kód podľa povahy úlohy. 
 
-LLM sa stará o generáciu YAML častí ako types, schema, generate a constraints, ale z generovania vynecháva sekciu include a SQL požiadavky. LLM dostáva úlohy pri ktorých je dôležitá interpretácia a neexistuje presný algoritmus.
+
+LLM sa stará o generovanie YAML častí ako \texttt{types}, \texttt{schema}, \texttt{generate} a \texttt{constraints}, ale z generovania vynecháva sekciu \texttt{include} a SQL požiadavky. LLM dostáva úlohy, pri ktorých je dôležitá interpretácia a neexistuje presný algoritmus.
+
 
 Samotný kód dostáva úlohy na mechanickej báze, kde je nutný presný postup a odchýlka od neho je chybou. Stará sa o pripojenie k databáze, extrakciu schémy a vzoriek dát ako aj poskladanie týchto informácií do jedného balíka, ktorý je poslaný do LLM. Ako posledné si prevezme vygenerovaný výsledok, ten skontroluje, opraví a uloží. 
 
+
 V počiatočných fázach návrhu bol testovaný aj variant fázy, ktorý sám opravoval chybný recept, lenže opravy boli pomalé a nespoľahlivé a nakoniec sa oprava kódom ukázala ako lepšia voľba. 
 
-Pôvodný návrh zo zadania počítal s LLM aj pri generovaní SQL dopytov ako aj generovaní YAML include sekcie. Obe úlohy sa ale ukázali byť plne programovateľné a keďže LLM nepridávalo hodnotu ani  jednej zo spomenutých častí a vytváral zbytočné chyby, implementácia týchto častí bola zverená kódu.
 
+Pôvodný návrh zo zadania počítal s LLM aj pri generovaní SQL dotazov ako aj generovaní YAML include sekcie. Obe úlohy sa ale ukázali byť plne programovateľné a keďže LLM nepridávalo hodnotu ani jednej zo spomenutých častí a vytváral zbytočné chyby, implementácia týchto častí bola zverená kódu.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 6
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Implementácia}
+\label{ch:kap6}
+Táto kapitola sa zameriava na implementáciu predstaveného návrhu v Kapitole~\ref{ch:kap5}. Nezaoberá sa  opisom zdrojového kódu, ale implementačnými detailmi, problémy ktoré sa pri ich implementácii objavili, a spôsob ich riešenia. Opisuje použité technológie, ako Python, SQLAlchemy, Ollama, atď (Sekcia~\ref{sub:pouzite_technologie}).  Ďalej vysvetľuje akým spôsobom je získavaná štruktúra databázy a vzorové dáta z jej tabuliek (Sekcia~\ref{sub:extrakcia_a_vzorky}). Vysvetľuje rozdelenie celého procesu generovania do štyroch samostatných fáz (Sekcia~\ref{sub:fazy_generovania_receptu}) a špecializáciou lokálnych modelov pomocou textových súborov Modelfile (Sekcia~\ref{sub:implementacia_modelfiles}) a mechanizmus validácie a opráv výstupov (Sekcia~\ref{sub:validacia_oprava}). Záver kapitoly opisuje výstup nástroja (Sekcia~\ref{sub:vystupy}).
+
+\section{Použité technológie}
+\label{sub:pouzite_technologie}
+
+\begin{itemize}
+    \item \textbf{Python 3.12} implementačný jazyk nástroja
+    \item \textbf{SQLAlchemy} extrakcia schémy databázy nezávisle od DBMS (Sekcia~\ref{sub:extrakcia_a_vzorky})
+    \item \textbf{PyYAML} spracovanie receptov vo formáte YAML, vrátane vlastného loaderu \newline \texttt{UniqueKeyLoader} na detekciu duplicitných kľúčov v schéme
+    \item \textbf{Ollama} lokálne spúšťanie LLM a ich prispôsobenie cez Modelfiles (Sekcia~\ref{sub:implementacia_modelfiles})
+    \item \textbf{qwen2.5:3b/7b~\cite{Qwen2025}, llama3.1:8b~\cite{Llama2024}, mistral:7b~\cite{Mistral7b}} použité jazykové modely (Sekcia~\ref{sub:testovacie_scenare})
+    \item \textbf{Dataster/dbgenx} cieľový generátor testovacích dát, recepty sú overené priamym volaním knižnice dbgenx, nad ktorou je Dataster postavený
+    \item \textbf{MySQL} referenčná DBMS
+    \item \textbf{PostgreSQL} DBMS pre demonštráciu prenosnosti
+    \item \textbf{Docker} izolované testovacie databázy
+    
+\end{itemize}
+
+\section{Extrakcia a vzorky}
+\label{sub:extrakcia_a_vzorky}
+
+V tejto časťi pipeline stojí kód medzi databázou a prvou fázou LLM, zbiera všetky potrebné informácie z databázy pre generovanie a skladá ich do serializovanej štruktúry, ktorá je vstupom do \texttt{types} fázy (\ref{sub_sub:types}). Táto implementácia  sa zaoberá mechanickým získavaním informácií
+
+
+Štruktúra schémy sa získava prostredníctvom SQLAlchemy Inspector v module \newline schema\_extractor.py. Umožňuje nám to získavať informácie naprieč rôznych databáz bez nutnosti upravovania SQL dopytov aby sedeli pre konkrétnu {DBMS}. V počiatočných fázach vývoja bol najskôr implementovaný len mysql konektor. Tento prístup sa ukázal ako limitujúci, keďže implementácia nepodporovala ďalšie {DBMS} a tým pádom bol dosadený SQLAlchemy Inspector.
+
+
+Ďalšou dôležitou časťou sú samotné dáta posielané do generujúcich fáz. bez nich nie je možné vytvoriť sémanticky zmysluplný recept. Stratégia zberu vzoriek sa delí podľa charakteru stĺpca:
+
+\begin{itemize}
+    \item \textbf{Stĺpce primárneho kľúča (PK):} pri primárnych kľúčoch sa nezbierajú vzorky rovnako ako pri ostatných stĺpcoch keďže primárny kľúč je ľahko odvoditeľný. Namiesto toho sa zbierajú minimálne a maximálne hodnoty, aby bol určený presný rozsah primárneho kľúča, ktorá sa následne obalí seq, ako vidno v ukážke. 
+    \item \textbf{Ostatné stĺpce (Non–PK):} pri ostatných stĺpcoch sa používa SQL dopyt využívajúci operáciu UNION, kde sa vyberajú unikátne hodnoty vzostupne a zostupne. Dôvodom je aby sa v prípade rôznych intervalov zobrazovali skutočné hraničné hodnoty. Toto nám dáva presný obraz o dátach v tabuľkách, ktoré sú kľúčové pre generovanie types (hlavne intervalov) a obmedzení v constraints.
+    \item \textbf{Filtrovanie hodnôt NULL:} všetky SQL dopyty obsahujú podmienku pre filtrovanie prázdnych hodnôt, pretože cieľom je získať dáta ktoré nám reálne priblížia sémantiku hodnôt stĺpca.
+    \item \textbf{Limitácia vzoriek:} množstvo vzoriek je limitované funkciou calculate\_limit, ktorá na základe celkového počtu riadkov v tabuľke vypočíta ideálny počet vzoriek, okolo 25\% celkových dát, na rozsah okolo 5-20 vzoriek. Z tejto odobranej vzorky sa do promptu odovzdáva najviac 10 hodnôt, ktoré sú vypočítané pomocou \newline \texttt{distinct\_count\_in\_sample} z celej odobranej vzorky. Tento limit udržiava prompt v rozumnej veľkosti, ale stále sa vybralo dosť vzoriek pre zachytenie rozsahu a charakteru hodnôt.
+\end{itemize}
+
+Po získaní štruktúry a dát je potrebné poskladať informácie do jedného spoločného formátu JSON, niektoré relačné databázy ale obsahujú typy, ktoré nie je možné transformovať do JSON formátu a preto sa používa pomocná funkcia json\_decimal(), ktorá transformuje typy ako \texttt{DECIMAL} na float, \texttt{timedelta} na \texttt{HH:MM:SS} a hodnoty \texttt{datetime/date} na reťazec oddelený medzerou namiesto štandardného ISO znaku \texttt{T}.
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Príklad serializovaného vstupu}, label={lst:json}, frame=single, linewidth=0.9\textwidth, xleftmargin=0.09\textwidth]
+    {
+      "users": {
+        "id": {
+          "is_pk": true,
+          "db_type": "int",
+          "data_type": "numeric",
+          "seq": "seq(1, 10, 1)"
+        },
+        "name": {
+          "is_pk": false,
+          "db_type": "varchar(100)",
+          "distinct_count_in_sample": 5,
+          "samples": [
+            "Aneta Valekova",
+            "Eva Vesela",
+            "Frantisek Kucera",
+            "Pavel Cerny",
+            "Stepan Horak"
+          ]
+        },
+        "email": {
+          "is_pk": false,
+          "db_type": "varchar(150)",
+          "distinct_count_in_sample": 5,
+          "samples": [
+            "aneta@test.com",
+            "eva@gmail.com",
+            "frantisek@test.com",
+            "peter@test.com",
+            "stepan@bing.com"
+          ]
+        }
+      }
+    }
+\end{lstlisting}
+\end{figure}
+
+Celý tento proces je vykonaný bez využitia jazykového modelu, tým sa predišlo možným halucináciam a nepredvídateľnému správaniu, ktoré by mohlo nastať bol by jazykový model implementovaný. Po vytvorení serializovaného vstupu pre types fázu a úloha tejto časti tým pádom končí a výsledok je odovzdaný ako vstup pre fázy generovania.
+
+\section{Fázy generovanie receptu}
+\label{sub:fazy_generovania_receptu}
+
+Proces generovania receptu sa delí do štyroch fáz: \texttt{types}, \texttt{schema}, \texttt{generate} a \texttt{constraints}. Všetky fázy zdieľajú spoločnú funkciu pre komunikáciu s rozhraním Ollama klienta.
+
+Pre volanie klienta boli definované aj nasledjujúce parametre:
+
+\begin{itemize}
+    \item \textbf{Kontextové okno (\texttt{num\_ctx)}} - bolo nastavené na 16384 tokenov. Veľké kontextové okno bolo potrebné pre rozsiahle serializované schémy so vzorkami dát pri databázaach, ktoré majú desiatky tabuliek.
+    \item \textbf{Maximálny počet vygenerovaných tokenov (\texttt{num\_predict)}}: bolo nastanevé na 8192 tokenov aby sa predošlo predčasnému orezaniu sekcie
+    \item \textbf{Časový limit (\texttt{timeout)}}: nastavený na 600 sekúnd (10 minút) na jedno volanie, tým sa zabráni zaseknutiu procesu.  
+\end{itemize}
+
+V tomto projekte je limitácia 8 GB VRAM. Fázy s interpetačne náročnejšou úlohou, ako constraints a types, obsluhujú väčší model (qwen2.5:7b), ľahšie fázy variant qwen2.5:3b. Zmiešaný prístup modelov, qwen2.5:7b a qwen2.5:3b, umožňuje využitie väčšieho modelu tam kde úloha vyžaduje interpretáciu a menší tam kde stačí iba transformácia. Porovnávaním jednotlivých rodín a veľkosti modelov pomocou testov sa zaoberá Kapitola~\ref{ch:kap8} Na záver všetky fázy sú poskladané do jedného receptu a prechádzajú postupnosťou opravy a validácie.
+
+\subsection{Types}
+\label{sub_sub:types}
+Vstupom fázy Types je serializovaná schéma so vzorkami dát, ich extrakciu opisuje Sekcia~\ref{sub:extrakcia_a_vzorky}. Model každému stĺpcu priradí dátový typ v súlade s nástrojom Dataster, napríklad \texttt{seq(min,max,step)} pre primárne kľúče, \texttt{interval/finterval/dinterval} s hranicami zo vzoriek, \texttt{str\_len} alebo \texttt{regex} pre reťazce a referencie na datasety. Výstup fázy types priamo ovplyvňuje tvorbu a kvalitu ostatných sekcií. Je priamou súčasťou promptov všetkých troch nasledujúcich fáz  \texttt{schema}, \texttt{generate} aj \texttt{constraints} ho dostávajú ako vstup. Akákoľvek chyba sa preto rozšíri priamo do ostatných fáz. Samostatná fáza umožňuje vyhraničenie úlohy pre malý model, špecializovanými few-shot príkladmi a možnosťou validovať a opravovať výstupy jednotlivých fáz oddelene. Výstup sekcie je surový text sekcie types, ktorý sa validuje (Sekcia~\ref{sub:validacia_oprava}). Jedným konkrétnym príkladom opravy je napríklad nesprávne priradenie dátového typu modelom pri stĺpcoch, ktoré obsahovali DECIMAL hodnoty. Príčinou tohto problému bolo, že Python DECIMAL sa vložil do serializovanej schémy ako reťazec a tým pádom model interpretoval tieto hodnoty ako reťazcový typ namiesto číselného. Riešením je konverzia DECIMAL na float pri serializácií vstupu.
+
+\subsection{Schema}
+Vstupom fázy Scheme je prompt, ktorý je zložený z výstupu sekcie \texttt{types}, kritických pravidiel a validných príkladov. Kritické pravidlá poznamenávajú to, že každá tabuľka a jej stĺpce sa musia objaviť v schéme, ďalej sú tam pravidlá formátovania a zákaz halucinovania hodnôt, ktoré neexistujú. Bez týchto pravidiel model vynecháva stĺpce alebo vytvára také, ktoré sa v tabuľke nenachádzajú. Úlohou tejto sekcie je mapovanie stĺpcov na atribúty typov z predchádzajúcej fázy (\texttt{types}). Zároveň slúži na vyjadrenie cudzích kľúčov pomocou štruktúry \texttt{FROM}.  Konkrétny príklad opravy je zlyhanie LLM pri návrate nesprávneho názvu stĺpcov, samotný názov sa síce v tabuľke objavil, lenže pri určitej DBMS, ktorá má citlivosť na malé a veľké písmená došlo k chybe. 
+
+\subsection{Generate}
+Vstupom fázy \texttt{generate} je prompt poskladaný z \texttt{types} sekcie vygenerovanej z predchádzajúcej fázy, kritických pravidiel a platných príkladov. Kritické pravidlá upozorňujú na správny formát sekcie \texttt{generate}, ako aj pravidlo, že nech je pre každú tabuľku vygenerovaný počet riadkov. Ako posledné pravidlo je aby počty riadkov odzrkadľovali hodnoty vo vnútri seq, inač tam dosadí generické číslo. Bez týchto pravidiel model vytvára hodnoty, ktoré môžu spôsobiť zlyhanie pri generovaní testovacích dát. 
+
+\subsection{Constraints}
+Úlohou tejto fázy je interpretovať význam hodnôt v \texttt{types} sekcii a vytvoriť logické obmedzenia. Vstupom fázy je prompt zložený z \texttt{types} výstupu, prísnych pravidiel a platného príkladu. 
+
+Pravidlá obmedzení hovoria o tom, že pri generovaní obmedzení sa majú používať len platné názvy tabuliek a ich stĺpcov, ktoré sú uvedené v predom vygenerovanej časti \texttt{types}, každé obmedzenie sa píše na nový riadok so špecifickým formátom, ďalej určuje nepovolené operátory a ako posledné upozorňuje aby sa negeneroval obmedzenia s referenciami na samého seba. Táto fáza je spoločne so sekciou \texttt{types} jediná interpretačná úloha. Jeden z problémov pri generovaní \texttt{constraints} bola referencia na samého seba \newline (\textit{users.age = users.age}). Toto obmedzenie nepridáva do výsledného receptu žiadnu hodnotu a preto sú tieto obmedzenia vynechané.
+
+
+
+\section{Modelfiles}
+ \label{sub:implementacia_modelfiles}
+Modelfile je textový súbor, ktorý slúži ako podklad pre vytváranie a prispôsobenie LLM pre mechanizmus Ollama. Každá fáza má vlastný špecializovaný Modelfile so systémovým promptom a few-shot príkladmi. Zatiaľ čo Modelfile má v sebe pravidlá správania a few-shot príklady, prompty zo súboru \textbf{prompts.py} mu dodávajú serializované schémy konkrétnej databázy.
+
+
+Každý Modelfile má podobnú štruktúru, teda tri základné bloky:
+\begin{itemize}
+    \item \textbf{FROM:} týmto sa určuje ako aj vybraná rodina modelov, tak aj veľkosť a kapacita modelu. 
+    \item \textbf{SYSTEM:} obsahuje všeobecné inštrukcie, pravidlá a logické obmedzenie, ktoré musí model dodržiavať
+    \item \textbf{Few-shot MESSAGE user/assistant:} slúži ako podklad konverzácií medzi používateľom a asistentom. Model ich používa ako vzor správania.
+\end{itemize}
+
+Všeobecné inštrukcie vo vnútri \textbf{SYSTEM} promptu vznikali postupne počas testovanie programu. Každé pravidlo predstavuje nejakú chybu, alebo moment keď sa model odchýlil od inštrukcií. Modelfile preto obsahuje explicitné zákazy a pravidlá.
+
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Príklad pravidla}, label={lst:rule_example}, frame=single, linewidth=0.9\textwidth, xleftmargin=0.05\textwidth]
+ALWAYS copy column names EXACTLY as they are spelled in the 
+input JSON database samples. Do NOT fix typos in column names
+(for example., if input says 'recieved_date', output MUST be 
+'recieved_date').
+\end{lstlisting}
+
+\end{figure}
+
+Few-shot je história konverzácie vložená do každého Modelfile. Príklady boli vybrané tak aby pokryli rôzne problémové scenáre, ktoré boli objavené počas testovania. Pokrývajú prípady ako vytvorenie \textbf{BLOCKS} formátu, generovanie poskladaných hodnôt, atď.
+
+\begin{figure}[H]
+    \centering
+    \begin{lstlisting}[caption={Príklad BLOCKS few-shot správy}, label={lst:fewshot_example}, frame=single, linewidth=0.95\textwidth, xleftmargin=0.05\textwidth]
+MESSAGE user """Database samples:
+{"Currencies": 
+    {"currency_code": 
+        {"is_pk": true, 
+         "db_type": "varchar(3)", 
+         "data_type": "non-numeric", 
+         "samples": ["CZK", "EUR", "GBP", "USD"]}, 
+     "currency_name": 
+        {"is_pk": false, 
+         "db_type": "varchar(50)", 
+         "distinct_count_in_sample": 2, 
+         "samples": ["Czech Koruna", "Euro"]}}}
+
+Return ONLY the types section starting with 'types:', nothing else. 
+Do not wrap code in markdown block format."""
+
+MESSAGE assistant """
+    types:
+      Currencies:
+        currency_code:
+          - BLOCKS
+          - CZK
+          - EUR
+          - GBP
+          - USD
+        currency_name: str_len([cCs] 4,50)
+"""
+
+\end{lstlisting}
+
+\end{figure}
+
+Aj napriek všetkým pravidlám sa môže stať, že ich model poruší. Práve preto existuje validačná a opravná vrstva.
+
+\section{Validácia a oprava}
+\label{sub:validacia_oprava}
+
+Výstup jazykového modelu je nedeterministický a ani prísne prompty nedokážu zaručiť validný výstup. Preto po poskladaní celého receptu nasleduje automatická oprava a validácia. Namiesto opakovaného volania modelu sa opravy vykonávajú v kóde. Dôvodom je, že oprava v kóde je reprodukovateľná a výhodnejšia ako opakované volanie modelu. Bola vytvorená postupnosť opráv, ktorý vygenerovaný recept postupne opravuje. Oprava nečaká na vygenerovanie celého dokumentu, ale zasahuje po výstupe každej fázy.
+
+Priebeh validácie zloženého receptu znázorňuje obrázok~\ref{fig:opravavalidacia}. Ak je YAML vygenerovaný bez chýb, recept sa úspešne uloží. V prípade, že sa v recepte objaví chyba, tak sa zaznamená a recept sa taktiež uloží. V prípade, že sa v recepte nachádza chyba, ktorú nie je možné opraviť, dochádza ku zlyhaniu (Kapitola~\ref{ch:kap7}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{obrazky-figures/opravavalidacia.pdf}
+    \caption{Dvojvrstvový mechanizmus opráv a záverečná validácia}
+    \label{fig:opravavalidacia}
+\end{figure}
+
+
+Dôvod týchto opráv je jednoduchý.  V prípade, že by chyba objavila v sekcii \texttt{types} a zostala neopravená, bola by okamžite poslaná do promptov ostatných sekcií, ktoré ju nasledujú.
  
+Hodnotové opravy predpokladajú korektnú štruktúru dokumentu, práve preto sú opravy rozdelené na dve vrstvy:
+
+\begin{itemize}
+    \item \textbf{štrukturálna oprava} (napr list-of-dict)
+    \item \textbf{hodnotové opravy} ( zlé názvy, typy)
+\end{itemize}
+
+Toto rozdelenie je z dôvodu, že ak dôjde k deformácii formátu YAML, hodnotová kontrola sa buď vôbec nespustí alebo sa vykonajú opravy na zlom mieste.
+
+
+V prípade, že sa ale vyskytne chyba, ktorú kód nevie opraviť, napríklad rozpadnutá štruktúra YAML, zapíše sa to ako chybový stav do data class, kritické chyby sa uložia do CSV správy a generovanie pre danú databázu sa ukončí. Pôvodný poškodený súbor sa zapíše do results/original\_yaml.
+
+
+Táto práca sa zameriavala na to, aby bola generácia YAML nielen správna, ale aj čo najviac použiteľná v praxi. Preto bolo implementované takzvané zrkadlenie opráv, ktoré zabezpečuje prepojenie medzi validačnou a opravnou vrstvou. Ukončením procesu na validácii by znamenalo zbytočné zahadzovanie vygenerovaných receptov, ktoré boli v jadre správne, lenže obsahovali drobnú chybu. Keďže kód už mal mechanizmus na detekciu týchto chýb, ich automatická oprava bola logickým a priamym pokračovaním existujúcej validácie.
+
+Čo sa týka opráv, sú tu aj určité limitácie. V prípade, že LLM vygeneruje neznámy alebo nezmyselný dátový typ, tak sa kód pokusí o jeho záchranu pomocou funkcie \newline \textit{guess\_type\_from\_db}. Avšak, ak to zlyhá kód ako poslednú možnosť zmení typ daného stĺpca na univerzálny typ \textbf{string}. Aj keď táto oprava zachráni recept pred zlyhaním, samotná kvalita týmto klesá. Vygenerované hodnoty strácajú sémantický význam a vzťah k reálnym dátam v databáze. Každý zásah je zaznamenaný v logu a štatistikách o opravách.
+
+\section{Výstup}
+\label{sub:vystupy}
+Po prejdení všetkých fáz sa skladá konečný recept a dopĺňa sa \texttt{include} sekcia, ktorá sa generuje deterministicky zo zoznamu použitých datasetov. Finálny recept sa ukladá do \textbf{results/dataster}, surový recept pred opravami sa ukladá do \textbf{results/original\_yaml/} a CSV so štatistikami chýb a opráv sa ukladá do \textbf{results/csv/}.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 7
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Metodika experimentov}
+\label{ch:kap7}
+
+Kapitola~\ref{ch:kap6} opísala implementáciu nástroja a táto kapitola definuje spôsob, akým sa vyhodnocuje kvalita generovaných receptov. Cieľom tejto kapitoly nie je zhodnotenie správnosti kódu. Kapitola najskôr formuluje ciele experimentov(Sekcia ~\ref{sub:ciele}) a definuje testovacie databázy (Sekcia~\ref{sub:testovacie_databazy}) a vrstvy vyhodnotenia ako aj celkové spôsoby testovania (Sekcia~\ref{sub:sposob_vyhodnotenia_uspesnosti}). Samotné výsledky sú prezentované v Kapitole~\ref{ch:kap8}.
+
+\section{Ciele}
+\label{sub:ciele}
+Účel testovania je zodpovedať niekoľko otázok, ktoré pokrývajú konfiguráciu LLM, vlastnosti vstupných schém a spoľahlivosť vyhodnocovacej metodiky.
+
+\begin{itemize}
+    \item \textbf{RQ1} Aký je vplyv teploty vzorkovania na úspešnosť pipeline (L1-L3)?
+    \item \textbf{RQ2} Aký je vplyv veľkosti modelu v rámci jednej rodiny na úspešnosť?
+    \item \textbf{RQ3} Líši sa úspešnosť medzi modelovými rodinami porovnateľnej veľkosti?
+    \item \textbf{RQ4} Ako sa mení úspešnosť s rastúcou zložitosťou databázovej schémy?
+    \item \textbf{RQ5} Pri akej veľkosti schémy dochádza k poklesu kvality a úspešnosti ?
+    \item \textbf{RQ6} Je možné pri vyhodnocovaní spoľahlivo odlíšiť zlyhania spôsobené navrhnutou pipeline od zlyhaní generátora Dataster?
+\end{itemize}
+
+Celkovo je na testovanie pripravených 19 základných testovacích databáz (testdb-testdb20), 3 testovacie databázy na reprodukciu chýb a 9 extrémnych testovacích databáz (extreme\_testdb-extreme\_testdb9). Každá z nich slúži na testovanie pipeline na rôznych typoch  databázových schém. Databáza testdb13 bola zo sady vylúčená ako duplikát testdb12.
+
+Databázy sú usporiadané podľa rastúcej zložitosti. Samotná zložitosť je definovaná pomocou týchto kritérií:
+\begin{itemize}
+    \item \textbf{počet tabuliek a stĺpcov:} s rastúcim počtom sa zvyšuje objem dát, ktoré musí LLM spracovať
+    
+    \item \textbf{počet cudzích kľúčov:} miera prepojenia medzi tabuľkami 
+    
+    \item \textbf{zložitosť primárnych kľúčov:} prítomnosť zložených primárnych kľúčov, ktoré komplikujú jednoznačnú identifikáciu a prepojenie záznamov
+
+\end{itemize}
+
+
+\section{Testovacie databázy}
+\label{sub:testovacie_databazy}
+
+\subsection{Základné testovacie databázy}
+
+Účelom týchto testovacích dát je skontrolovať celkovú funkčnosť programu.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{>{\centering\arraybackslash}p{0.1\linewidth}>{\centering\arraybackslash}p{0.1\linewidth}>{\centering\arraybackslash}p{0.1\linewidth}>{\centering\arraybackslash}p{0.08\linewidth}>{\centering\arraybackslash}p{0.08\linewidth}>{\centering\arraybackslash}p{0.4\linewidth}}
+    \toprule
+    \textbf{Názov db} & \textbf{počet tabuliek} & \textbf{počet stĺpcov} & \textbf{počet FK} & \textbf{zložený PK} & \textbf{Cieľ testovania} \\
+    \midrule
+         testdb   & 1 & 3  & 0 & nie & zákl. funkcionalita (INT+VARCHAR)  \\
+         testdb2  & 1 & 3  & 0 & nie & nízky počet unikátnych hodnôt  \\
+         testdb3  & 1 & 7  & 0 & nie & desatinné čísla, prázdne dátumy  \\
+         testdb4  & 1 & 9  & 0 & nie & kontrola významu stĺpcov  \\
+         testdb5  & 1 & 10 & 0 & nie & NULL hodnoty, poradie dátumov  \\
+         testdb6  & 1 & 10 & 0 & nie & kontrola významu reťazcov  \\
+         testdb7  & 1 & 4  & 0 & nie & nízky počet unikátnych hodnôt, diakritika \\
+         testdb8  & 1 & 6  & 0 & nie & INT rozsah  \\
+         testdb9  & 1 & 5  & 0 & nie & regex (vzorové reťazce INV-YYYY-NN)  \\
+         testdb10 & 2 & 15 & 1 & nie & FK vzťah  \\
+         testdb11 & 2 & 16 & 1 & nie & CamelCase/Snake\_Case, NULL hodnoty  \\
+         testdb12 & 2 & 18 & 1 & nie & FK Courses $\rightarrow$ Authors\_Tutors\\
+         testdb14 & 2 & 13 & 1 & nie & non-numeric PK  \\
+         testdb15 & 3 & 26 & 2 & nie & 1:N  \\
+         testdb16 & 3 & 8  & 2 & áno & zložený PK  \\
+         testdb17 & 2 & 11 & 0 & nie & testovanie constraints  \\
+         testdb18 & 5 & 15 & 5 & nie & hĺbka FK reťazca (4 úrovne) \\
+         testdb19 & 3 & 7  & 2 & áno & M:N  \\
+         testdb20 & 1 & 4  & 0 & nie & CamelCase, NULL hodnoty   \\
+         \bottomrule
+         
+    \end{tabular}
+    \caption{Základné testovacie databázy}
+    \label{tab:zaklad_databazy}
+\end{table}
+
+
+
+\subsection{Testovacie databázy na reprodukciu chýb}
+Tieto testovacie databázy slúžia na reprodukciu obmedzenia generátora Dataster pri prevode hodnôt zo SMT riešiteľa do SQL pre cieľovú DBMS (MySQL). Cieľom nie je hodnotiť Dataster, ale overiť, že vyhodnocovacia metodika dokáže tieto prípady správne odlíšiť od zlyhaní pipeline.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{>{\centering\arraybackslash}p{1.5cm}>{\centering\arraybackslash}p{2cm}>{\centering\arraybackslash}p{1.5cm}>{\centering\arraybackslash}p{1.5cm}>{\centering\arraybackslash}p{1.5cm}>{\centering\arraybackslash}p{5cm}}
+    \toprule
+    \textbf{Názov db} & \textbf{počet tabuliek} & \textbf{počet stĺpcov} & \textbf{počet FK} & \textbf{zložený PK} & \textbf{Cieľ testovania} \\
+    \midrule
+         testdb21 & 1 & 4 & 0 & nie & DECIMAL/float  \\
+         testdb22 & 1 & 3 & 0 & nie & SMT uniqueness  \\
+         testdb23 & 1 & 4 & 0 & nie & DATE/DATETIME/TIME  \\
+         \bottomrule
+         
+    \end{tabular}
+    \caption{Testovacie databázy na reprodukciu chýb}
+    \label{tab:reprodukcia_chyb_databazy}
+\end{table}
+
+
+\subsection{Extrémne testovacie databázy}
+
+Zatiaľ čo predošlé testy kontrolujú či program funguje bez problémov, tieto testovacie sady boli vytvorené pre zaťaženie programu na hranici jeho limitov. Ich cieľom je zistiť ako pri vysokom počte tabuliek, šírke tabuliek a hĺbke/tvare FK grafu klesá úspešnosť alebo kvalita výsledkov.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{>{\raggedright\arraybackslash}p{3cm}>{\centering\arraybackslash}p{1cm}>{\centering\arraybackslash}p{1cm}>{\centering\arraybackslash}p{1cm}>{\centering\arraybackslash}p{1.2cm}>{\raggedright\arraybackslash}p{6cm}}
+    \toprule
+    \textbf{Názov db} & \textbf{počet tabuliek} & \textbf{počet stĺpcov} & \textbf{počet FK} & \textbf{zložený PK} & \textbf{Cieľ testovania} \\
+    \midrule
+         extreme\_testdb & 30 & 150 & 29 & nie & škálovanie počtu tabuliek  \\
+         extreme\_testdb2 & 60 & 300 & 59 & nie & škálovanie počtu tabuliek  \\
+         extreme\_testdb3 & 100 & 500 & 99 & nie & škálovanie počtu tabuliek  \\
+         extreme\_testdb4 & 1 & 50 & 0 & nie & ako šírka tabuľky zaplní kontextové okno  \\
+         extreme\_testdb5 & 1 & 100 & 0 & nie & ako šírka tabuľky zaplní kontextové okno  \\
+         extreme\_testdb6 & 1 & 200 & 0 & nie & ako šírka tabuľky zaplní kontextové okno  \\
+         extreme\_testdb7 & 10 & 19 & 9 & nie & hĺbka FK reťazca  \\
+         extreme\_testdb8 & 20 & 39 & 19 & nie & hĺbka FK reťazca   \\
+         extreme\_testdb9 & 21 & 41 & 20 & nie & fan-out   \\
+         \bottomrule
+         
+    \end{tabular}
+    \caption{Extrémne testovacie databázy}
+    \label{tab:extremne_databazy}
+\end{table}
+
+
+\section{Spôsob vyhodnotenia úspešnosti}
+\label{sub:sposob_vyhodnotenia_uspesnosti}
+Proces vyhodnotenia úspešnosti vygenerovaných receptov prebieha na troch úrovniach, kde každá z nich definuje špecifické kritériá pre úspech alebo zlyhanie
+
+\subsection{Úroveň L1: overenie správnosti YAML}
+\label{sub:uroven_l1_overenie_spravnost}
+Táto úroveň sa zameriava na úspešnosť pipeline a kontrolu štruktúry vygenerovaného receptu.  Táto vrstva overuje formát YAML,  výskyt povinných sekcií a dodržiavanie pravidiel validačnej vrstvy kódu. Celková úspešnosť sa počíta ako podiel úspešných receptov k celkovému počtu vygenerovaných receptov:
+
+\begin{equation}
+        L1\_result = \frac{L1\_success}{L1\_overall}    
+\end{equation}
+
+\begin{description}
+    \item[L1\_success] počet receptov, ktoré prešli validačnou vrstvou
+    \item[L1\_overall] celkový počet vygenerovaných receptov
+\end{description}
+
+\subsection{Úroveň L2: akceptácia nástrojom Dataster}
+Ďalšia úroveň kontroluje, či je nástroj Dataster schopný úspešne spracovať recept a vygenerovať testovaciu sadu dát. Overuje akceptáciu Datasterom, a preto ak je objavená chyba, je to okamžite vyhodnotené ako zlyhanie. L2 sa vyhodnocuje nad všetkými behmi, v ktorých vznikol recept, výsledok L1 sa hodnotí samostatne a recepty sa pre L2 sa nefiltrujú.
+
+\begin{equation}
+        L2\_result = \frac{L2\_success}{L2\_overall}
+\end{equation}
+
+\begin{description}
+    \item[L2\_success] počet receptov, ktoré boli akceptované nástrojom Dataster
+    \item[L2\_overall] celkový počet behov s vygenerovaným receptom
+\end{description}
+
+\subsection{Úroveň L3: exekúcia SQL dotazov a kontrola databázy}
+
+Posledná vrstva kontroluje použiteľnosť vygenerovaných SQL dotazov v databáze. Na rozdiel od ostatných vrstiev sa tu jednotka meranie mení z receptov na jednotlivé SQL príkazy. Príkazy sú spustené v naklonovanej databáze bez dát (obsahujú iba pôvodnú schému klonovanej databázy). Na tejto vrstve sa kontroluje, či tvary vygenerované programom Dataster sú akceptované vybranou DBMS (MySQL). Cieľom je nestranne zmerať úspešnosť vykonanie SQL výstupu, pričom zlyhania môžu byť spôsobené buď chybou v kóde, alebo zdokumentovaným obmedzením samotného nástroja. Každý neakceptovaný príkaz je zaznamenaný spolu s klasifikáciu zlyhania. Pre kategóriu dataster\_sql\_escaping je vyhodnotenie dodatočne vykonané v odlišnom režime.
+
+\begin{equation}
+       L3\_raw = \frac{L3\_success}{L3\_overall}
+\end{equation}
+
+\begin{equation}
+        L3\_adjusted = \frac{L3\_success}{L3\_overall - L3\_dataster\_fail}
+\end{equation}
+
+\begin{description}
+    \item[L3\_success] počet úspešne vykonaných SQL dotazov
+    \item[L3\_overall] celkový počet vygenerovaných SQL dotazov
+    \item[L3\_dataster\_fail] počet INSERT príkazov, ktoré boli klasifikované ako obmedzenia nástroja Dataster
+\end{description}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{obrazky-figures/flowtestovania.pdf}
+    \caption{Trojúrovňoví proces vyhodnotenia recepu}
+    \label{fig:flowtestovania}
+\end{figure}
+
+
+\section{Klasifikácia zlyhaní}
+
+Pri vyhodnocovaní úspešnosti je nutné jasne určiť, ktorá časť systému zlyhanie spôsobila. Táto tabuľka ukazuje presné pravidlá, podľa ktorých sa každé zlyhanie triedi. Vďaka tomu vieme presne vypočítať metriku L3\_Adjusted.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{>{\raggedright\arraybackslash}p{0.25\linewidth}>{\centering\arraybackslash}p{0.12\linewidth}>{\raggedright\arraybackslash}p{0.4\linewidth}>{\centering\arraybackslash}p{0.15\linewidth}}
+    \toprule
+    \textbf{ID zlyhania} & \textbf{úroveň} & \textbf{podmienka} & \textbf{komu patrí zlyhanie} \\
+    \midrule
+        pipeline\_invalid\_yaml & L1 & výstup nie je platný YAML alebo chýba povinná sekcia alebo recept nevznikol (timeout, cyklické FK, prázdna tabuľka) & pipeline \\
+         
+        dataster\_smt\_count & L2 & generátor nedokáže vytvoriť požadovaný počet unikátnych záznamov (GenerateCountError) & Dataster \\
+         
+        zero\_rows & L2 & recept prijatý, ale vygenerovaných 0 riadkov & pipeline \\
+
+         dataster\_recursion & L2 & RecursionError pri extrémne širokých tabuľkách & Dataster\\
+         
+         iná výnimka & L2 & Dataster odmietol recept z iného dôvodu & pipeline \\
+         
+        dataster\_sql\_escaping & L3 &  syntaktická chyba SQL (errno 1064) spôsobená neescapovanými znakmi v hodnotách & Dataster \\
+         
+        dataster\_finterval\_fraction & L3 & odmietnutá hodnota v tvare zlomku pre stĺpec DECIMAL (errno 1366) & Dataster \\
+         
+        pipeline\_type\_mismatch & L3 &  odmietnutá hodnota pre nesúlad typov, bez zlomku (errno 1366) & pipeline \\
+        
+        dataster\_cascade\_fk & L3 & porušenie FK (errno 1452), rodičovský riadok zlyhal na dataster\_* chybe  & Dataster \\
+        
+        fk\_violation & L3 & porušenie FK (errno 1452), táto chyba nie je len reakciou na zlyhanie rodiča, ale má vlastnú príčinu & pipeline\\
+        
+        duplicate\_pk & L3 & porušenie unikátneho kľúča (errno 1062) &  pipeline\\
+        
+        not\_null\_violation & L3 & NULL v NOT NULL stĺpci (errno 1048) & pipeline \\
+        
+        data\_too\_long & L3 &  hodnota presahuje dĺžku stĺpca (errno 1406) & pipeline\\
+        
+        other & L3 & iná chyba MySQL & pipeline\\ 
+        \bottomrule
+        
+    \end{tabular}
+    \caption{Klasifikácia zlyhaní}
+    \label{tab:klasifikacia_zlyhani}
+\end{table}
+
+Zlyhanie, ktoré nie je možné jednoznačne priradiť zdokumentovanému obmedzeniu nástroja Dataster, sú ponechané ako zlyhanie pipeline. Metrika L3\_Adjusted teda vylučuje iba kategórie s prefixom dataster\_
+
+\section{Testovacie scenáre a ich vykonanie}
+\label{sub:testovacie_scenare}
+
+Testovanie prebieha v niekoľkých fázach. Hlavne sa program testuje na referenčnom DBMS MySQL, ale keďže je implementované SQLAlchemy tak pre demonštráciu je vykonaný program s DBMS PostgreSQL s podmnožinou základných testovacích databáz. Jadrom testovanie je model qwen2.5 s rôznymi teplotami a potom nasleduje testovanie (Rozšírenie) s rôznymi rodinami pre účel porovnania výkonu modelov. Pri testovaní sa používajú testovacie databázy spomenuté v Sekcii~\ref{sub:ciele}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{obrazky-figures/rozdelenietestovania.pdf}
+    \caption{Tri fázy testovania}
+    \label{fig:rozdelenie_testovania}
+\end{figure}
+
+Každá konfigurácia beží v troch kolách, výstupy sa ukladajú oddelene pre každé kolo a analyzujú oddelene
+
+\subsection{Jadro}
+V jadre testovania sa zameriavame výhradne na model qwen2.5 a spúšťame program naprieč rôznymi teplotami pre rôzne veľkosti parametrov modelu, ako 3b, 7b a mix predom spomenutých dvoch modelov.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lccc}
+    \toprule
+    
+    \textbf{Model} & \textbf{teplota} & \textbf{počet kôl} & \textbf{počet DB} \\
+    \midrule
+        qwen2.5:3b/qwen2.5:7b & {0.0, 0.2, 0.3, 0.5, 0.8, 1.2} & 3 & 31 \\
+        qwen2.5:3b & {0.0, 0.2, 0.3, 0.5, 0.8, 1.2} & 3 & 31 \\
+        qwen2.5:7b & {0.0, 0.2, 0.3, 0.5, 0.8, 1.2} & 3 & 31 \\ \bottomrule
+        
+               
+    \end{tabular}
+    \caption{jadro testovania}
+    \label{tab:jadro_testovania}
+\end{table}
+
+\subsection{Rozšírenie}
+
+Ďalej pokračujeme na rozšírenie, kde sa zameriava na samotné rodiny modelov. Cieľom je porovnať výsledky medzi rôznymi rodinami ako aj mix týchto modelov. V tomto prípade sa nezameriavame na rôzne teploty, ale použivame referenčné nastavenie teploty (0.0).
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lc>{\centering\arraybackslash}p{0.1\linewidth}l}
+    \toprule
+    
+    \textbf{Model} & \textbf{teplota} & \textbf{počet kôl} & \textbf{počet DB} \\
+    \midrule
+        llama3.1:8b & referenčná teplota 0.0 & 3 & 19 (\ref{tab:zaklad_databazy})\\
+        mistral:7b & referenčná teplota 0.0 & 3 & 19 (\ref{tab:zaklad_databazy}) \\ \bottomrule         
+    \end{tabular}
+    \caption{rozšírenie testovania}
+    \label{tab:rozsirenie_testovania}
+\end{table}
+
+\subsection{Demonštrácia}
+Ako posledné je demonštrácia použitia iného DBMS (PostgreSQL), teda, či implementácia funguje aj pre inú DBMS ako referenčnú.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{cccc}
+    \toprule
+    
+    \textbf{Model} & \textbf{teplota} & \textbf{počet kôl} & \textbf{DB} \\
+    \midrule
+        qwen2.5:3b/qwen2.5:7b & 0.0 & 3 & testdb - testdb10\\ \bottomrule          
+    \end{tabular}
+    \caption{demonštrácia testovania}
+    \label{tab:demonstracia_testovania}
+\end{table}
+
+\section{Hranice vyhodnotenia}
+
+\begin{itemize}
+    \item \textbf{Verzia softvéru:} prezentované výsledky sú naviazané na konkrétne verzie DBMS a verziu programu Dataster. Pri využití iných verzii sa správanie programu môže líšiť. 
+    \item \textbf{Počet testovacích kôl:} použitie troch kôl je pre ukážku rozptylu výsledkov, nie je to však postačujúce na plnohodnotné testovanie.
+    \item \textbf{Hardvérové limity:} výber testovacích modelov je obmedzený dostupným hardvérom a výsledky neplatia pre väčšie a výkonnejšie modely.
+    \item \textbf{Charakter dát:} testovacie databázy slúžia na pokrytie rôznych testovacích prípadov a teda nereprezentujú skutočné dáta z reality. Nameranú úspešnosť preto nie je možné brať ako istotu pre reálne nasadenie.
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 8
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Vyhodnotenie}
+\label{ch:kap8}
+Táto kapitola sa zameriava na vyhodnotenie výsledkov experimentov, ktoré boli definované v Kapitole~\ref{ch:kap7} na otázky RQ1-RQ6. Ako prvé sa zameriava na vyhodnotenie výsledkov jadra testovania, modelu Qwen2.5 v troch konfiguráciach. Testovanie sa zameriava na testovanie modelu vo veľkostiach 3b, 7b a zmiešanú konfiguráciu oboch veľkostí, naprieč šiestimi teplotami. Ďalej sa zameriava na výsledky rozšírenia kde cieľom je porovnanie modelových rodín. Medzi modelové rodiny patrí llama3.1:8b a mistral:7b s referenčnou konfiguráciou qwen2.5. Kapitola zameriava na analýzu zlyhaní a zhrnutie limitov vyhodnotenia. Na záver kapitoly je demonštrácia, teda ukážka a overenie, že nástroj je schopný fungovať aj nad inými DBMS ako MySQL. DBMS vybrané na porovnanie je PostgreSQL. 
+
+\section{Priebeh experimentov}
+Vyhodnotenie prebieha podľa testovacích scenárov v troch fázach: jadro (31 databáz), rozšírenie (19 základných databáz) a demonštrácia (10 databáz). Každá konfigurácia bola spustená v troch kolách, pričom opakované behy ukázali, že ani teplota 0.0 nezaručuje rovnaké výstupy. Práve preto sú všetky behy vyhodnocované v troch kolách a výsledky sa ukazujú spoločne za všetky kolá.
+
+
+Ako dodatok sa uvádza úspešnosť L3\_adjusted ako vo dvoch agregáciach. Jedna ako celková úspešnosť, teda podiel úspešných prikazov zo všetkých vygenerovaných a druhá ako priemerná úspešnosť po databázach. Dôvodom je, že pri väčšie databázy ma prispievajú ku priemernej úspešnosti výrazne viac a preto je tam zavedená aj druhá miera úspešnosti, kde má každá databáza rovnakú váhu. Takto je aj možné vidieť ako sú rozložené zlyhania databáz, t.j.či sú rozložené rovnomerne alebo sa chyby ukazujú len v niektorých databázach. Keďže úspešnosti sa pohybujú v extrémnych rozdieloch 0\% a 100\%, tak sa používa Wilcoxonov test k porovnaniu tej istej databázy pri dvoch teplotách.
+
+
+Počas behu testov došlo k výpadku dvoch behov konfigurácie qwen2.5:7b (testdb18 pri teplote 0.5 a testdb9 pri teplote 1.2). Výpadok je zaznamenaný v tabuľke.
+
+\section{Vplyv teploty (RQ1)}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{ccccccc}
+    \toprule
+    & & & & \multicolumn{2}{c}{\textbf{L3\_Adjusted}} \\
+    \textbf{Konfig.} & \textbf{teplota} & \textbf{L2} & \textbf{\%} & \textbf{celková \%} & \textbf{priemer db $\pm$ sd \%} \\
+    \midrule
+        3b & 0.0 & 55/93 & 59.1 & 85.4 & 83.1 $\pm$ 32.8 \\ 
+        3b & 0.2 & 58/93 & 62.4 &  85.3 & 77.1 $\pm$ 38.6 \\ 
+        3b & 0.3 & 57/93 & 61.3 &  90.9 & 75.9 $\pm$ 41.5 \\ 
+        3b & 0.5 & 55/93 & 59.1 &  90.2 & 84.9 $\pm$ 31.9 \\ 
+        3b & 0.8 & 55/93 & 59.1 & 94.4 & 87.9 $\pm$ 29.8 \\
+        3b & 1.2 & 56/93 & 60.2 & 85.0 & 71.2 $\pm$ 42.1 \\
+        \midrule
+        7b & 0.0 & 60/93 & 64.5 &  100.0 & 100.0 $\pm$ 0.0 \\ 
+        7b & 0.2 & 68/93 & 73.1 & 100.0 & 100.0 $\pm$ 0.0 \\ 
+        7b & 0.3 & 66/93 & 71.0 &  100.0 & 100.0 $\pm$ 0.0 \\ 
+        7b & 0.5 & 63/92 & 68.5 &  100.0 & 100.0 $\pm$ 0.0 \\ 
+        7b & 0.8 & 67/93 & 72.0 &  98.8 & 97.2 $\pm$ 15.5 \\ 
+        7b & 1.2 & 61/92 & 66.3 &  99.1 & 96.4 $\pm$ 18.7 \\ 
+        \midrule
+        mix & 0.0 & 75/93 & 80.6 &  98.1 & 95.7 $\pm$ 20.5 \\ 
+        mix & 0.2 & 74/93 & 79.6 &  98.4 & 96.8 $\pm$ 17.1 \\
+        mix & 0.3 & 74/93 & 79.6 &  97.6 & 94.1 $\pm$ 23.7 \\ 
+        mix & 0.5 & 72/93 & 77.4 &  99.1 & 97.7 $\pm$ 13.3 \\ 
+        mix & 0.8 & 68/93 & 73.1 &  99.3 & 97.8 $\pm$ 13.4 \\ 
+        mix & 1.2 & 77/93 & 82.8 &  97.6 & 94.1 $\pm$ 23.7 \\ 
+    \bottomrule
+    \end{tabular}
+    \caption{Úspešnosť konfigurácií qwen2.5 (6 teplôt, 31 databáz, 3 behy), L2 = akceptované recepty}
+    \label{tab:vysledky_jadro}
+\end{table}
+
+
+
+Pri tejto otázke bolo cieľom skúmať ako veľmi má teplota vplyv na úspech v jednotlivých úrovniach, čiže správnosť YAML formátu (L1), prijatie receptu Datasterom (L2)  a spustenie SQL príkazov v databáze (L3). Testovanie prebiehalo s modelom Qwen2.5 s veľkosťami modelov 7b, 3b a ich zmiešanej konfigurácii (mix).
+
+
+Zlyhania na úrovni L1 sa vyskytli len na málo behoch (8 z 1674), čo poukazuje na to, že využitie validačnej a opravnej vrstvy programu robí štruktúrnu správnosť YAML nezávislou od teploty.
+
+
+Výsledky pre vrstvu L2 sa pohybujú v priemere okolo 60\% pre qwen2.5:3b, 69\% pre qwen2.5:7b a 78\% pre mix. Vo výsledkoch nie je vidieť nejaký vplyv teploty, toto sa potvrdilo aj Wilcoxonov test na priemeroch jednotlivých databáz. Rozdiely medzi dvojicami teplôt neboli významné.  Zaujímavé ale je ako má teplota najslabšie výsledky (1.2) a zároveň najväčšie výkyvy. 
+
+
+Pre ďalšie fázy bola zvolená teplota 0.0, nie ako najlepší výsledok, ale predvídateľný štandardný základ.
+
+\section{Vplyv veľkosti modelu (RQ2)}
+\label{sub:odpoved_rq2}
+Na rozdiel od teploty sa veľkosť modelu ukázalo ako veľký faktor ovplyvňujúci na úspešnosť behov. Spomedzi všetkých testov model 3b dosiahol najnižšie výsledky na všetkých úrovniach (L2 priemer 60\%, L3 90\%). Pri konfigurácii 7b a mix je dosiahnutá úspešnosť okolo 98 - 100\% pre L3\_Adjusted, teda ak bol recept akceptovaný v L2 tak boli SQL dotazy vykonané takmer bez chyby.
+
+
+Čo sa týka úspešnosti L2 je vidieť ako mix dosahuje vyššie čísla ako 7b (priemer 78\% oproti 69\%), toto je ale vysvetliteľné, model 7b častejšie generuje sebareferenčné odkazy FROM (stĺpec odkazuje sám na seba), ktoré validačná vrstva nezachytáva a ktoré vedú k pádu generátora. Pri modeli 7b spadlo až 49 behov, zatiaľ čo pri mix 7b a 3b len 7 a nakoniec u 3b spadlo len 5 behov. Ak tieto zlyhania odpočítame tak sa úspešnosť 7b zvýši na okolo 78\% a mix na 79\%. Záverom nie je ale ukázať, že mix  je lepší ale poznamenať ako mix dosahuje rovnakú kvalitu 7b napriek nižším nárokom, keďže dva zo štyroch fáz generovania obsluhuje menší model.
+
+
+Najviac sa rozdiely veľkostí ale prejavujú pri extrémnych schémach, úspešnosť modelu 3b prudko klesá zo 68\% na 40\%, zatiaľ čo model 7b zostáva nemenný na 69\% a mix klesá iba mierne zo 82\% na 72\% Dôležité je aj počet nezvládnutých databáz, teda až 6 pre 3b, pri konfigurácii 7b a mix bol tento počet len 3.
+
+
+\section{Vplyv modelových rodín (RQ3)}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{l r r r r} 
+    \toprule
+    & & &  \multicolumn{2}{c}{\textbf{L3\_Adjusted}} \\
+    \textbf{Model} & \textbf{L2} & \textbf{\%}  & \textbf{celková \%} & \textbf{priemer db $\pm$ \%} \\\midrule
+    
+        qwen2.5:3b & 39/57 & 68.4 & 79.8 & 82.6 $\pm$ 31.5 \\
+        qwen2.5:7b & 36/57 & 63.2 & 100.0 & 100.0 $\pm$ 0.0 \\
+        qwen mix & 51/57 & 89.5 & 94.1 & 93.8 $\pm$ 24.5 \\
+        llama3.1:8b & 38/57 & 66.7 & 95.1 & 94.3 $\pm$ 23.6 \\
+        mistral:7b & 24/57 & 42.1 & 28.7 & 40.0 $\pm$ 41.8 \\
+    \bottomrule
+    \end{tabular}
+    \caption{Porovanie rodín (teplota: 0.0, 19 zákl. databáz, 3 behy)}
+    \label{tab:vysledky_rodina}
+\end{table}
+Porovnanie rodín prebehlo s referenčnou teplotou 0.0 na 19 základných databázach. Čo sa týka modelu llama3.1:8b tak je možné vidieť podobné výsledky s qwen2.5:7b (L2 67\% oproti 63\% a L3\_Adjusted 95\% oproti 100\%), pričom k väčšine zlyhaní došlo kvôli dataster\_smt\_count~\ref{tab:klasifikacia_zlyhani}. Týmto je zjavné, že modely porovnateľnej veľkosti  z rôznych rodín poskytujú podobnú kvalitu.
+
+
+Na opačnej strane je ale možné vidieť ako mistral:7b výrazne zaostáva na oboch úrovniach (L2 42\% a L3\_Adjusted iba 29\%). Najviac sa objavujú kategórie zlyhaní sú data\_too\_long a fk\_violation. Teda je jasné, že mistral produkuje výrazne horšie dáta v akceptovaných receptoch ako aj to, že celkový počet akceptovaných receptov je menší. 
+
+
+Veľkosť modelu teda nie je postačujúca na zaručenie kvality, ale je rozhodujúca aj rodina.
+
+\section{Zmena úspešnosti s rastúcou zložitosťou databázovej schémy (RQ4, RQ5)}
+
+\begin{figure}[H]
+    
+    \centering
+    \begin{table}[H]
+    \centering
+    \begin{tabular}{ccccc}
+        \toprule
+        Typ & úroveň & 3b & 7b  & mix\\
+        \midrule
+         počet tabulie & 30 & 7/18  & 18/18  &  18/18 \\ 
+                       & 60 & 0/18 & 2/18 & 4/18 \\ 
+                       & 100 & 9/18  & 2/18  & 4/18\\ 
+        
+         šírka tabuľky & 50 & 18/18 & 18/18 & 18/18\\ 
+                       & 100 & 11/17& 18/18 & 18/18\\ 
+                       & 200 & 1/18& 1/18 & 1/18\\ 
+        
+         hĺbka FK      & 10 & 1/18& 18/18 &  18/18\\ 
+                       & 20 & 3/18 & 17/18 &  18/18\\ 
+                       & 21 & 14/17& 18/18 & 17/18\\ \bottomrule
+        \end{tabular} 
+        \caption{Zmena úspešnosti pri komplexných tabuľkách}
+        \label{tab:zlozitost_schemy}
+    \end{table}
+    
+\end{figure}
+
+
+Každý sledovaný parameter (počet tabuliek, šírka tabuliek a hĺbka FK) sa správajú inak. Pri počte tabuliek klesá úspešnosť niekde medzi 30 až 60 tabuľkami. Pri 60 tabuľkách konfigurácie 7b zvládli vygenerovať recept len pre 2 behy a mix len pre 4. Zaujímavé je ale, že priemerná úspešnosť pri 100 tabuľkách je mierne vyššia ako pri 60., takže o zlyhaní nerozhoduje len počet tabuliek ale aj ich konkrétny charakter.
+
+
+Pri šírke tabuliek (počte stĺpcov) funguje generovanie spoľahlivo do 100 stĺpcov a pri 200 stĺpcoch padá na úspešnosť 1/18 pre všetky konfigurácie. Dominantným zlyhaním je ale RecursionError vo vnútri nástroja Dataster, takže tento strop patrí Datasteru, nie modelom.
+
+
+Na záver čo sa týka hĺbky reťazca to nerobí problém konfigurácia 7b a mix a nízke čísla pre 3b spôsobuje prevažne dataster\_smt\_count, čiže interakcia receptov menšieho modelu so SMT riešiteľom, nie hĺbka reťazca samotná.
+
+
+Odpoveď na RQ5 sa líši v tom, že pri počte tabuliek nie je možné presnejšie kde leží zlom medzi 30 a 60 tabuľkami, teda, že presnejšie ho z meraných bodov nie je možné určiť. Pri šírke tabuliek je to medzi 100 a 200 stĺpcami a pri hĺbke FK reťazca v meranom rozsahu 21 tabuľkových úrovní sa zlom pre konfigurácie 7b a mix neukázal.
+
+\section{Je možné pri vyhodnocovaní spoľahlivo odlíšiť zlyhania spôsobené navrhnutou pipeline od zlyhaní generátora Dataster? (RQ6)}
+Áno, jedným z kľúčových cieľov testovania bolo spoľahlivo rozoznať priradenie chýb medzi samotným programom a generátorom Dataster. Toto sa opiera o štyri nezávislé pozorovania.
+
+
+Najčastejšie sa objavoval defekt dataster\_sql\_escaping, kde bolo odhalené, že Dataster v príkazoch INSERT vygeneroval neescapované hodnoty. To, že ide o chybu generátora potvrdil experiment, ked sa zaplo escapovanie v SQL  a tým aj zlyhania zmizli. 
+
+
+Ďalej bol pozorovaný defekt dataster\_finterval\_fraction, kde pre hodnoty finterval, boli dosadené zlomky namiesto desatinných čísel. Toto hovorí o defekte generátora  a potvrdzuje to aj podobné správanie dvoch DBMS (MySQL a PostgreSQL), tieto hodnoty boli odmietnuté, chyba teda vznikla pred databázou.
+
+
+Je dôležité spomenúť aj kategóriu smt\_count. Priradenie zlyhaniu k Dataster je v tomto prípade prísne, pretože tu bolo pri webovom rozhraní overené, že nástroj pri rovnakom recepte, pri ktorom volanie knižnice zlyhá, reálne vygeneroval  čiastočný výstup.
+
+
+Taktiež kategória ako sebareferenčný FROM, ktorý skončil pádom v Dataster, ale príčina bola priradená samotnému programu, keďže chyba nebola zachytená vo validačnej a opravnej vrstve programu. 
+
+
+Možné je aj spomenúť  model mistral:7b, kde kontrola padala hlavne v kategóriách na strane modelu (data\_too\_long: 168 a fk\_violation: 123). Tu je ukázané, že úspešnosť úrovne L3 zostáva nízka (29\%) aj po odrátaní zlyhaní pripísaných Datasteru. Metrika teda odlíši slabý model od obmedzení generátora.
+
+
+Na záver je ale aj dôležité priznať limit pri priraďovaní chýb. Hraničné a generické scenáre (zero\_rows) sa nechávajú ako zlyhanie pipeline, čo znamená, že výsledná úspešnosť podhodnocuje pipeline.  Klasifikovanie chýb je taktiež úzko spojené s formátom chybových správ referenčného DBMS. Pri prechode na PostgreSQL bolo potrebné kategórie a priraďovanie chýb pozmeniť.
+
+\section{Reprodúkcia chýb}
+
+Testovacia databázy \texttt{testdb21 - testdb23}, boli vytvorené s úmyslom testovania správania generátora Dataster.
+
+\begin{itemize}
+    \item \textbf{\texttt{testdb21} Generovanie hodnôt pre finterval} Testovací scenár sa zameriaval na generovanie číselných rozsahov s plávajúcou rádovou čiarkou. Pri vygenerovaných SQL INSERT príkazoch sa objavili zlomky a tím sa splnil aj účel testovacieho scenára.
+    \item \textbf{\texttt{testdb22} SMT jedinečnosť} Cieľom testovacieho scenára bolo žiadosť o vytvorenie viac unikátnych hodnôt ako je SMT solver schopný a tým pádom vyvolá smt\_count\_error.
+    \item \textbf{\texttt{testdb23} generovanie hodnôt pre dinterval} výsledky ukázali, že pri generovaní hodnôt pre dátum sa vygenerované hodnoty približovali prevažne ku spodnej hranici dátumového intervalu.
+\end{itemize}
+
+\section{Demonštrácia}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lc c l}
+    \toprule
+    \textbf{Databáza} & \textbf{L2} & \textbf{L3\_Adjusted} & \textbf{pozn.} \\
+    \midrule
+    testdb, 2, 5, 6, 8, 9, 10 & 3/3 & 100\% & zhodné s MySQL \\
+    testdb3 & 3/3 & 100\% & 13$\times$ dataster\_finterval\_fraction \\
+    testdb4 & -&N/A & Wrong FROM format (zhodné s MySQL) \\
+    testdb7 & -&N/A & dataster\_smt\_count (zhodné s MySQL) \\
+    \bottomrule
+    \end{tabular}
+    \caption{Demonštrácia na PostgreSQL (10 databáz, 3 kolá, teplota 0.0)}
+    \label{tab:vysledky_demostracia}
+\end{table}
+
+Cieľom bolo overiť, či nástroj funguje aj mimo referenčného DBMS. Nástroj bol spustených nad 10 základnými databázami nad PostgreSQL v troch kolách pri teplote 0.0 s konfiguráciou mix. Ukázalo sa, že 8 z 10 databáz boli plne funkčné s L3\_Adjusted 100\% na všetkých akceptovaných receptoch. 
+
+Obe zlyhania (testdb4 - wrong FROM format, testdb7 - smt\_count) sú zhodné s MySQL, čiže problém nie je v prenositeľnosti, ale ide už o zdokumentované chyby nezávislé od DBMS. Pri klasifikovaní chýb bolo potrebné prispôsobiť klasifikátor formátu chybových správ PostgreSQL (odlišné chybové správy).
+
+
+\section{Zhrnutie}
+
+V tejto kapitole boli vyhodnotené výsledky testov zamerané na otázky RQ1-RQ6 predstavené~\ref{sub:ciele}. V rámci RQ1 sa ukázalo, že teplota nemá dokázateľný vplyv na priemernú úspešnosť na databázy v testovacích sadách. Avšak pre teplotu 1.2 boli zaznamenané najslabšia úspešnosť. Výsledky viedli k zvoleniu teploty 0.0 pre testovanie v ďalších fázach. 
+
+
+Pri vyhodnotení RQ2 sa potvrdilo, že veľkosť modelu má výrazný vplyv na úspešnosť.  Tu konfigurácia 3b dosiahla najnižšiu priemernú úspešnosť a citlivosť na zložitosť schém spomedzi všetkých konfigurácii (7b, 3b a mix). Modely 7b a mix dosiahli pri L3\_Adjusted úspešnosť približujúcu sa k 100\%. Zaujímavý výsledok je schopnosť mix konfigurácie dosiahnuť podobný výsledok ako konfigurácia 7b, len pri nižších nárokoch.
+
+
+Pre porovnanie rodín modelov v RQ3 platí, že llama3.1:8b dosiahla podobné výsledky ako referenčný qwen2.5:7b, zatiaľ čo mistral výrazne zaostával na oboch úrovniach. Tu sa ukázalo, že kvalitu úspechu nezaručuje len veľkosť modelu, ale rozhoduje aj rodina.
+
+
+Pri RQ4 sa ukázalo. že každý sledovaný parameter (počet tabuliek, šírka tabuliek a hĺbka FK) sa správa inak a o konkrétnom zlyhaní rozhoduje charakter databázovej schémy. V rámci RQ5 boli identifikované body pri ktorých úspešnosť s rastúcou zložitosťou klesá. Úspešnosť klesá medzi 30 a 60 tabuľkami pri počte tabuliek, 100 a 200 stĺpcami pri šírke tabuliek a pri hĺbke FK reťazca sa zlom neukázal.
+
+
+Na záver bolo pri poslednej otázke RQ6 sa potvrdilo, že zlyhania programu možno spoľahlivo odlíšiť od defektov nástroja Dataster. Toto sa opiera o štyri nezávislé pozorovania.
+
+
+Pre zhrnutie sa pri analýze výsledkov ukázalo, že lokálne LLM dokáže generovať prevažne vykonateľné použiteľné recepty, pričom hlavné limity úspešnosti ležia v troch oblastiach, a to zdokumentované defekty Dataster, identifikované medzery validačnej vrstvy pri sebareferenčnom odkaze FROM a kapacitné limity malého modelu na zložitých schémach.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% KAPITOLA 9
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Limitácie programu a možné rozšírenia}
+\label{ch:kap9}
+
+Pri návrhu, implementácii a testovaní navrhnutého riešenia sa objavilo niekoľko obmedzení, ktoré sú nutné v tejto práci pomenovať. Zatiaľ čo sa Kapitola~\ref{ch:kap7} sa zaoberá opisom testovania a Kapitola~\ref{ch:kap8} obsahuje podrobné vyhodnotenie výsledkov, táto kapitola sa zameriava na identifikáciu limitácií nástroja (Sekcia~\ref{sub:limitacia_nastroja}), obmedzení generátora Dataster (Sekcia~\ref{sub:limitacia_generatora_dataster}) a obmedzenia pri práci s LLM (Sekcia~\ref{sub:limitacia_pri_praci_s_llm}), ako aj návrhy pre rozšírenie implementácie nástroja budúcej práci (Sekcia~\ref{sub:mozne_rozsirenia}).
+
+\section{Limitácia nástroja}
+\label{sub:limitacia_nastroja}
+
+
+
+\begin{itemize}
+    \item \textbf{Zložené primárne kľúče (M:N tabuľky)}
+    Tabuľky, ktorých zložený primárny kľúč je poskadaný výlučne z cudzích kľúčov (M:N) sú vylúčené už v predspracovaní so záznamov composite\_key. Tabuľky so zloženým PK, ktoré toto kritérium nespĺňajú, sa spracuvajú, unikátnosť kombinácie kľúča však nie je garantovaná.
+    
+    \item \textbf{Nečíselné primárne kľúče}
+    Ak primárny kľúč obsahuje textové alebo iné nečíselné hodnoty, program ich spracováva prostredníctvom zbierania vzoriek a následného generovania BLOCKS formátu. Neexistuje garancia unikátnosti, pri počte generovaných riadkov presahuje počet hodnôt v BLOCKS a tak vznikajú duplicitné kľúče.
+    \item \textbf{sebareferenčná definícia v sekcii \texttt{schema} }
+    Validačná vrstva nekontroluje prípad kde sa v YAML recept nachádza mapovanie stĺpca na ten istý stĺpec v rovnakej tabuľke. 
+
+    schema:
+    	stlpec: FROM tabulka.ten\_isty\_stlpec
+    
+    Dôvodom je medzera v implementácii vo validačnej a opravnej vrstve, nie je to zlyhanie LLM. Tým pádom chybný recept tak prejde validáciou ako správny, ale vo vrstve L2 spôsobí pád nástroja Dataster. Tento defekt môže za 49 pádov pri konfigurácii qwen2.5:7b (Sekcia~\ref{sub:odpoved_rq2}). Pre opravu stačí doplnenie kontroly, ako vo validačnej, tak aj v opravnej vrstve.
+
+    \item \textbf{Zhoršenie dátového typu pri neznámej hodnote}
+    Ak nástroj vyhodnotí, že stĺpec v sekcii types má nejaký neznámy typ, alebo nebola rozpoznaný dataset z AVAILABLE\_INCLUDES, tak sa nástroj pokusí dátový typ uhádnuť. V prípade, že sa to nepodarí, použije záložný univerzálny typ string. Toto je spôsobené nedostatočnou analýzy pri neznámych schémach. Toto vedie ku zníženiu kvality výsledného receptu, pretože dochádza ku zmene významu hodnôt vo vnútri stĺpca.
+
+    \item \textbf{Chýbajúce používateľská definícia datasetov}
+    Nástroj je limitovaný na sedem pred vytvorených datasetov v definícii AVAILABLE\_INCLUDES.  Toto je limitácia architektúry. V prípade, že sa hodnota v stĺpci v types sekcii nezhoduje ani s jedným z týchto datasetov, program zmení jeho typ na generický string. Taktiež, používateľ nemôže bez zásahu do zdrojového kódu pridať vlastné datasety. Toto zhoršuje kvalitu výsledného receptu.
+    
+\end{itemize}
+
+\section{Limitácia generátora Dataster}
+\label{sub:limitacia_generatora_dataster}
+
+Nasledujúce obmedzenia boli identifikované analýzou zdrojového kódu a reprodukované na databázach testdb21-23 a extreme\_testdb6 (Kapitola~\ref{ch:kap8}). Nejde o hodnotenie nástroja ale o vymenovní obmedzení, s ktorými musí generovanie receptov počítať.
+
+\begin{itemize}
+    \item \textbf{Escapovanie SQL hodnôt} - niektoré SQL INSERT príkazy obsahujú neescapované apostrofy a spätné lomky vo vygenerovaných reťazcoch
+    \item \textbf{Zlomkové hodnoty vo vnútri finterval} - pre hodnoty s plávacúcou čiarkou sú generované hodnoty vo forme zlomkov. Toto bolo potvrdené testom \texttt{testdb21} nad DBMS MySQL a PostgreSQL.
+    
+    \item \textbf{SMT count} - ak recept vyžaduje viac unikátnych kombinácii, než je SMT solver schopný dodať, knižnica dbgenx vyhodí výnimku \texttt{GenerateCountErrors}. Avšak webové rozhranie nástroja Dataster pri indentickom recepte nezlyhá úplne, ale vytvorí neuplný výstup.
+
+    \item \textbf{RecursionError pri širokých tabuľkách} - pri extrémnych databázach, kde tabuľka obsahuje 200 stĺpcov a vaic dochádza v Datasteri k prekročeniu limitu rekurzie \texttt{RecursionError}. Toto vyvolá pád na každom recepte.
+
+\end{itemize}
+
+
+\section{Limitácie pri práci s LLM}
+\label{sub:limitacia_pri_praci_s_llm}
+
+\begin{itemize}
+    \item \textbf{Kapacita menších modelov} - 
+    pri vyhodnocovaní modelov sa ukázalo, že menšie modely strácajú schopnosť udržiavať štruktúru a konzistenciu YAML konfigurácie.
+    
+    \item \textbf{Nedeterminizmus aj pri nulovej teplote} -
+    Hoci je teplota modelu nastavená na 0 a mala by generovať rovnaké výstupy, dochádza k drobným odchýlkam pri opakovaných spusteniach rovnakej úlohy.
+
+    \item \textbf{Orezanie kontextu pri širokých schémach} -
+    Pri databázových schémach s vykosým počtom stĺpcov a komplexnými väzbami narazil systém na limity kontextového okna, čo spôsobilo orezanie vstupných dát. Týmpádom nebol LLM schopný vygenerovať jednu z dôležitých sekcii.
+
+    \item \textbf{Halucinované pomocné stĺpce} -
+    Pri komplexnejších tabuľkách mal LLM tendenciu vymýšľať si neexistuje stĺpce. Model sa pokúľal vytvoriť pomocné typy, ktoré by mohli viesť k doplneniu logiky.
+\end{itemize}
+
+\section{Možné rozšírenia}
+\label{sub:mozne_rozsirenia}
+Na základe spomenutých obmedzení sú navrhnuté nasledujúce rozšírenia pre budúcu prácu
+\begin{itemize}
+    \item rozšírenie implementácia validačnej a opravnej vrstvy o pravidlo schema spomenute v sekcii 9.1
+    \item možnosť výberu cieľovej cesty a adresára pre ukladanie vygenerovaných YAML konfigurácii
+    \item rozšírenie nástroja o ďalšie databázové systémy (napríklad Oracle) 
+    \item priame prepojenie s existujúcou stránkou Dataster pre pohodlnejšie použitie
+
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% KAPITOLA 10
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Záver}
+\label{ch:kap10}
+
+Cieľom tejto práce bolo navrhnúť a implementovať nástroj na automatické generovanie receptov pre generátor testovacích dát Dataster (vo formáte YAML). Generovanie zabezpečujú lokálne veľké jazykové modely (LLM) spúšťané cez platformu Ollama. Nástroj bol implementovaný v štyroch fázach, ktoré boli doplnené o validačnú a opravnú vrstvu. Po implementácii nasledovalo testovanie, ktoré bolo rozdelené na tri úrovne, na sade 31 testovacích databáz.
+
+Pri testovaní sa ukázalo, že zmiešaná konfigurácia modelov (pričom 7b modely boli priradené k interpretačným úlohám potrebným pri generovaní sekcií types a constraints, 3b pre transformačné fázy schema a generate) dosiahla po odpočítaní známych defektov porovnateľnú akceptovateľnosť receptov L2 (~78 \% vs 79 \%), aj úspešnosť vykonania SQL príkazov na L3 úrovni (98 \% vs 100 \%) v porovnaní s čistým 7b modelom. Takto vyrovnala jeho kvalitu pri nižších výpočtových nárokoch v dvoch zo štyroch fáz.
+
+Úspešnosť nástroja klesá pri testovaní počtu tabuliek medzi 30 až 60 tabuľkami (dôsledok kapacitných limitov použitých modelov), zatiaľ čo zlyhanie pri šírke tabuľky medzi 100 a 200 stĺpcov patrilo výhradne obmedzeniu generátora Dataster (RecursionError). Pri hĺbke FK reťazca do 20 úrovní sa prekážka neukázala pre 7b a zmiešané konfigurácie. Navrhnutá metodika tak pomocou klasifikácie chýb dokázala odlíšiť zlyhania pipeline (napríklad sebareferenčné odkazy FROM) od obmedzení samotného Datasteru. Prínosom práce sú aj zdokumentované defekty nástroja Dataster.
+
+Podľa zadania boli splnené požiadavky, teda získanie schémy a pripojenie (REQ.1 - REQ.3) boli uskutočnené pomocou SQLAlchemy (a overené na MySQL a PostgreSQL), postupy na odvodenie vlastností a vzťahov (REQ.4 - REQ.8) sú rozdelené do štyroch fáz a ich úspešnosť sa meria v Kapitole~\ref{ch:kap8}. Akceptovateľnosť výstupov v aktuálnej verzii nástroja spĺňa REQ.10. Lokálny beh cez Ollama napĺňa REQ.9 a REQ.12-REQ.13, zaťiaľ čo opakoveteľnosť a repordukovateľnosť vyhodnotenia naprieč tromi kolami zabezpečuje REQ.11. Overiteľnosť výstupov (REQ.14) zaisťuje trojúrovňová metodika vyhodnotenia.
+
+V návrhu je odchýlka od pôvodného zadania, a to, že generovanie sekcie include a SQL dotazov, boli ponechané kódu a nie samotnému LLM, keďže jeho využitie pri nich nezvyšovalo kvalitu.
+
+Možnosti ďalšej práce nástroja, hlavne rozšírenie implementácie validačnej a opravnej vrstvy sú rozobrané v Kapitole~\ref{ch:kap9}.
+
