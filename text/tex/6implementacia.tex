@@ -6,18 +6,18 @@
 \label{ch:kap6}
 Táto kapitola sa zameriava na implementáciu predstaveného návrhu v Kapitole~\ref{ch:kap5}. Nezaoberá sa  opisom zdrojového kódu, ale implementačnými detailmi, problémy ktoré sa pri ich implementácii objavili, a spôsob ich riešenia. Opisuje použité technológie, ako Python, SQLAlchemy, Ollama, atď (Sekcia~\ref{sub:pouzite_technologie}).  Ďalej vysvetľuje akým spôsobom je získavaná štruktúra databázy a vzorové dáta z jej tabuliek (Sekcia~\ref{sub:extrakcia_a_vzorky}). Vysvetľuje rozdelenie celého procesu generovania do štyroch samostatných fáz (Sekcia~\ref{sub:fazy_generovania_receptu}) a špecializáciou lokálnych modelov pomocou textových súborov Modelfile (Sekcia~\ref{sub:implementacia_modelfiles}) a mechanizmus validácie a opráv výstupov (Sekcia~\ref{sub:validacia_oprava}). Záver kapitoly opisuje výstup nástroja (Sekcia~\ref{sub:vystupy}).
 
-\section{Použité technologie}
+\section{Použité technológie}
 \label{sub:pouzite_technologie}
 
 \begin{itemize}
     \item \textbf{Python 3.12} implementačný jazyk nástroja
     \item \textbf{SQLAlchemy} extrakcia schémy databázy nezávisle od DBMS (Sekcia~\ref{sub:extrakcia_a_vzorky})
     \item \textbf{PyYAML} spracovanie receptov vo formáte YAML, vrátane vlastného loaderu \newline \texttt{UniqueKeyLoader} na detekciu duplicitných kľúčov v schéme
-    \item \textbf{Ollama} lokálne spúštanie LLM a ich prispôsobenie cez Modelfiles (Sekcia~\ref{sub:implementacia_modelfiles})
+    \item \textbf{Ollama} lokálne spúšťanie LLM a ich prispôsobenie cez Modelfiles (Sekcia~\ref{sub:implementacia_modelfiles})
     \item \textbf{qwen2.5:3b/7b, llama3.1:8b, mistral:7b} použité jazykové modely (Sekcia~\ref{sub:testovacie_scenare})
     \item \textbf{Dataster/dbgenx} cieľový generátor testovacích dát, recepty sú overené priamym volaním knižnice dbgenx, nad ktorou je Dataster postavený
     \item \textbf{MySQL} referenčná DBMS
-    \item \textbf{PostgreSQL} DBMS pre demonštráciu prenostiteľnosti
+    \item \textbf{PostgreSQL} DBMS pre demonštráciu prenosnosti
     \item \textbf{Docker} izolované testovacie databázy
     
 \end{itemize}
@@ -25,22 +25,22 @@ Táto kapitola sa zameriava na implementáciu predstaveného návrhu v Kapitole~
 \section{Extrakcia a vzorky}
 \label{sub:extrakcia_a_vzorky}
 
-Táto časť pipeline stojí kód medzi databázou a prvou fázou LLM, zbiera všetky potrebné informácie z databázy pre generovanie a skladá ich do serializovanej štruktúry, ktorá je vstupom do \texttt{types} fázy (\ref{sub_sub:types}). Táto implementácia  sa zaoberá mechanickým získavaním informácií
+V tejto časťi pipeline stojí kód medzi databázou a prvou fázou LLM, zbiera všetky potrebné informácie z databázy pre generovanie a skladá ich do serializovanej štruktúry, ktorá je vstupom do \texttt{types} fázy (\ref{sub_sub:types}). Táto implementácia  sa zaoberá mechanickým získavaním informácií
 
 
 Štruktúra schémy sa získava prostredníctvom SQLAlchemy Inspector v module \newline schema\_extractor.py. Umožňuje nám to získavať informácie naprieč rôznych databáz bez nutnosti upravovania SQL dopytov aby sedeli pre konkrétnu {DBMS}. V počiatočných fázach vývoja bol najskôr implementovaný len mysql konektor. Tento prístup sa ukázal ako limitujúci, keďže implementácia nepodporovala ďalšie {DBMS} a tým pádom bol dosadený SQLAlchemy Inspector.
 
 
-Ďalšou dôležitou časťou sú samotné dáta posielané do generujúcich fáz. bez nich nie je možné vytvori sémanticky zmysluplný recept. Stratégia zberu vzoriek sa delí podľa charakteru stĺpca:
+Ďalšou dôležitou časťou sú samotné dáta posielané do generujúcich fáz. bez nich nie je možné vytvoriť sémanticky zmysluplný recept. Stratégia zberu vzoriek sa delí podľa charakteru stĺpca:
 
 \begin{itemize}
-    \item \textbf{Stĺpce primárneho kľúča (PK):} pri primárnych kľúčoch sa nezbierajú vzorky rovnako ako pri ostatných stĺpcoch keďže primárny kľúč je ľahko odvodieteľný. Namiesto toho sa zbierajú minimálne a maximálne hodnoty, aby bol určený presný rozsah primárneho kľúča, ktorá sa následne obalí seq, ako vidno v ukážke. 
-    \item \textbf{Ostatné stĺpce (Non–PK):} pri ostatných stĺpcoch sa používa SQL dopyt využívajúci operáciu UNION, kde sa vyberajú unikátne hodnoty vzostupne a zostupne. Dôvodom je aby sa v prípade rôznych intervalov zobrazovali skutočné hraničné hodnoty. Toto nám dáva presný obraz o dátach v tabuľkách, ktoré sú kľúčové pre generáciu types (hlavne intervalov) a obmedzení v constraints.
-    \item \textbf{Filtrovanie nulových hodnôt:} všetky SQL dopyty obsahujú podmienku pre filtrovanie prázdnych hodnôt, pretože cieľom je získať dáta ktoré nám reálne priblížia sémantiku hodnôt stĺpca.
-    \item \textbf{Limitácia vzoriek:} množstvo vzoriek je limitované funkcious calculate\_limit, ktorá na základe celkového počtu riadkov v tabuľke vypočíta ideálny počet vzoriek, okolo 25\% celkových dát, na rozsah okolo 5-20 vzoriek. Z tejto odobranej vzorky sa do promptu odovzdáva najviac 10 unikátnych hodnôt, ktoré sú vypočítané pomocou \texttt{distinct\_count\_in\_sample}. Tento limit udržiava prompt v rozumnej veľkosti, ale stále sa vybralo dosť vzoriek pre zachytenie rozsahu a charakteru hodnôt.
+    \item \textbf{Stĺpce primárneho kľúča (PK):} pri primárnych kľúčoch sa nezbierajú vzorky rovnako ako pri ostatných stĺpcoch keďže primárny kľúč je ľahko odvoditeľný. Namiesto toho sa zbierajú minimálne a maximálne hodnoty, aby bol určený presný rozsah primárneho kľúča, ktorá sa následne obalí seq, ako vidno v ukážke. 
+    \item \textbf{Ostatné stĺpce (Non–PK):} pri ostatných stĺpcoch sa používa SQL dopyt využívajúci operáciu UNION, kde sa vyberajú unikátne hodnoty vzostupne a zostupne. Dôvodom je aby sa v prípade rôznych intervalov zobrazovali skutočné hraničné hodnoty. Toto nám dáva presný obraz o dátach v tabuľkách, ktoré sú kľúčové pre generovanie types (hlavne intervalov) a obmedzení v constraints.
+    \item \textbf{Filtrovanie hodnôt NULL:} všetky SQL dopyty obsahujú podmienku pre filtrovanie prázdnych hodnôt, pretože cieľom je získať dáta ktoré nám reálne priblížia sémantiku hodnôt stĺpca.
+    \item \textbf{Limitácia vzoriek:} množstvo vzoriek je limitované funkciou calculate\_limit, ktorá na základe celkového počtu riadkov v tabuľke vypočíta ideálny počet vzoriek, okolo 25\% celkových dát, na rozsah okolo 5-20 vzoriek. Z tejto odobranej vzorky sa do promptu odovzdáva najviac 10 hodnôt, ktoré sú vypočítané pomocou \texttt{distinct\_count\_in\_sample} z celej odobranej vzorky. Tento limit udržiava prompt v rozumnej veľkosti, ale stále sa vybralo dosť vzoriek pre zachytenie rozsahu a charakteru hodnôt.
 \end{itemize}
 
-Po získaní štruktúry a dát je potrebné poskladať informácie do jedného spoločného formátu JSON, niektoré relačné databázy ale obsahujú typy, ktoré nie je možné transformovať do JSON formátu a preto sa používa pomocná funkcia json\_decimal(), ktorá transformuje typy ako \texttt{DECIMAL} na float, \texttt{timedelta} na \texttt{HH:MM:SS} a hodnoty \texttt{datetime/date} na reťazec oddelený medzerou namiesto štandartného ISO znaku \texttt{T}.
+Po získaní štruktúry a dát je potrebné poskladať informácie do jedného spoločného formátu JSON, niektoré relačné databázy ale obsahujú typy, ktoré nie je možné transformovať do JSON formátu a preto sa používa pomocná funkcia json\_decimal(), ktorá transformuje typy ako \texttt{DECIMAL} na float, \texttt{timedelta} na \texttt{HH:MM:SS} a hodnoty \texttt{datetime/date} na reťazec oddelený medzerou namiesto štandardného ISO znaku \texttt{T}.
 \begin{figure}[H]
     \centering
     \begin{lstlisting}[caption={Príklad serializovaného vstupu}, label={lst:json}, frame=single, linewidth=0.9\textwidth, xleftmargin=0.09\textwidth]
@@ -100,10 +100,10 @@ V tomto projekte je limitácia 8 GB VRAM. Fázy s interpetačne náročnejšou �
 
 \subsection{Types}
 \label{sub_sub:types}
-Vstupom fázy Types je serializovaná schéma so vzorkami dát, ich extrakciu opisuje Sekcia~\ref{sub:extrakcia_a_vzorky}. Model každému stĺpcu priradí dátový typ v súlade s nástrojom Dataster, napríklad \texttt{seq(min,max,step)} pre primárne kľúče, \texttt{interval/finterval/dinterval} s hranicami zo vzoriek, \texttt{str\_len} alebo \texttt{regex} pre reťazce a referencie na datasety. Výstup fázy types \underline{priamo} ovplyvňuje tvorbu a kvalitu ostatných sekcií. Je priamou súčasťou promptov všetkých troch nasledujúcich fáz  \texttt{schema}, \texttt{generate} aj \texttt{constraints} ho dostávajú ako vstup. Akákoľvek chyba sa preto rozšíri priamo do ostatných fáz. Samostatná fáza umožňuje vyhraničenie úlohy pre malý model, špecializovanými few-shot príkladmi a možnosťou validovať a opravovať výstupy jednotlivých fáz oddelene. Výstup sekcie je surový text sekcie types, ktorý sa validuje (Sekcia~\ref{sub:validacia_oprava}). Jedným konkrétnym príkladom opravy je napríklad nesprávne priradenie dátového typu modelom pri stĺpoch, ktoré obsahovali DECIMAL hodnoty. Príčinou tohto problému bol, že Python DECIMAL sa vložil do serializovanej schémy ako reťazec a tým pádom model interpretoval tieto hodnoty ako reťazový typ namiesto číselného. Riešením je konverzia DECIMAL na float pri serializácií vstupu.
+Vstupom fázy Types je serializovaná schéma so vzorkami dát, ich extrakciu opisuje Sekcia~\ref{sub:extrakcia_a_vzorky}. Model každému stĺpcu priradí dátový typ v súlade s nástrojom Dataster, napríklad \texttt{seq(min,max,step)} pre primárne kľúče, \texttt{interval/finterval/dinterval} s hranicami zo vzoriek, \texttt{str\_len} alebo \texttt{regex} pre reťazce a referencie na datasety. Výstup fázy types priamo ovplyvňuje tvorbu a kvalitu ostatných sekcií. Je priamou súčasťou promptov všetkých troch nasledujúcich fáz  \texttt{schema}, \texttt{generate} aj \texttt{constraints} ho dostávajú ako vstup. Akákoľvek chyba sa preto rozšíri priamo do ostatných fáz. Samostatná fáza umožňuje vyhraničenie úlohy pre malý model, špecializovanými few-shot príkladmi a možnosťou validovať a opravovať výstupy jednotlivých fáz oddelene. Výstup sekcie je surový text sekcie types, ktorý sa validuje (Sekcia~\ref{sub:validacia_oprava}). Jedným konkrétnym príkladom opravy je napríklad nesprávne priradenie dátového typu modelom pri stĺpcoch, ktoré obsahovali DECIMAL hodnoty. Príčinou tohto problému bolo, že Python DECIMAL sa vložil do serializovanej schémy ako reťazec a tým pádom model interpretoval tieto hodnoty ako reťazcový typ namiesto číselného. Riešením je konverzia DECIMAL na float pri serializácií vstupu.
 
 \subsection{Schema}
-Vstupom fázy Scheme vstupuje prompt, ktorý je zložený z výstpu sekcie \texttt{types}, kritrických pravidiel a validných príkladov. Kritické pravidlá poznamenávajú to, že každá tabuľka a jej stĺpce sa musia objaviť v schéme, ďalej sú tam pravidlá formátovania a zákaz halucinovania hodnôt, ktoré neexistulú. Bez týchto pravidiel model vynecháva stĺpce alebo vytvára také, ktoré sa v tabuľke nenachádzajú. Úlohou tejto sekcie je mapovanie stĺpcov na atribúty typov z predchádzajúcej fázy (\texttt{types}). Zároveň slúži na vyjadrenie cudzích kľúčov pomocou štruktúry \texttt{FROM}.  Konkrétny príklad opravy je zlyhanie LLM pri návrate nesprávneho názvu stĺpcov, samotný názov sa sice v tabuľke objavil, lenže pri určitej DBMS, ktorá má citlivosť na malé a veľké písmená doško k chybe. 
+Vstupom fázy Scheme je prompt, ktorý je zložený z výstupu sekcie \texttt{types}, kritických pravidiel a validných príkladov. Kritické pravidlá poznamenávajú to, že každá tabuľka a jej stĺpce sa musia objaviť v schéme, ďalej sú tam pravidlá formátovania a zákaz halucinovania hodnôt, ktoré neexistujú. Bez týchto pravidiel model vynecháva stĺpce alebo vytvára také, ktoré sa v tabuľke nenachádzajú. Úlohou tejto sekcie je mapovanie stĺpcov na atribúty typov z predchádzajúcej fázy (\texttt{types}). Zároveň slúži na vyjadrenie cudzích kľúčov pomocou štruktúry \texttt{FROM}.  Konkrétny príklad opravy je zlyhanie LLM pri návrate nesprávneho názvu stĺpcov, samotný názov sa síce v tabuľke objavil, lenže pri určitej DBMS, ktorá má citlivosť na malé a veľké písmená došlo k chybe. 
 
 \subsection{Generate}
 Vstupom fázy \texttt{generate} je prompt poskladaný z \texttt{types} sekcie vygenerovanej z predchádzajúcej fázy, kritických pravidiel a platných príkladov. Kritické pravidlá upozorňujú na správny formát sekcie \texttt{generate}, ako aj pravidlo, že nech je pre každú tabuľku vygenerovaný počet riadkov. Ako posledné pravidlo je aby počty riadkov odzrkadľovali hodnoty vo vnútri seq, inač tam dosadí generické číslo. Bez týchto pravidiel model vytvára hodnoty, ktoré môžu spôsobiť zlyhanie pri generovaní testovacích dát. 
@@ -111,7 +111,7 @@ Vstupom fázy \texttt{generate} je prompt poskladaný z \texttt{types} sekcie vy
 \subsection{Constraints}
 Úlohou tejto fázy je interpretovať význam hodnôt v \texttt{types} sekcii a vytvoriť logické obmedzenia. Vstupom fázy je prompt zložený z \texttt{types} výstupu, prísnych pravidiel a platného príkladu. 
 
-Pravidlá obmedzení hovoria o tom, že pri generovaní obmedzení sa majú používať len platné názvy tabuliek a ich stĺpcov, ktoré sú uvedené v predom vygenerovanej časti \texttt{types}, každé obmedzenie sa píše na nový riadok so špecifickým formátom, ďalej určuje nepovolené operátory a ako posledné upozorňuje aby sa negeneroval obmedzenia s referenciami na samého seba. Táto fáza je spoločne so sekciu \texttt{types} jediná interpretačná úloha. Jeden z problémov pri generovaní \texttt{constraints} bolo referencia na samého seba \newline (\textit{users.age = users.age}). Toto obmedzenie nepridáva do výsledného receptu žiadnu hodnotu a preto sú tieto obmedzenia vynechané.
+Pravidlá obmedzení hovoria o tom, že pri generovaní obmedzení sa majú používať len platné názvy tabuliek a ich stĺpcov, ktoré sú uvedené v predom vygenerovanej časti \texttt{types}, každé obmedzenie sa píše na nový riadok so špecifickým formátom, ďalej určuje nepovolené operátory a ako posledné upozorňuje aby sa negeneroval obmedzenia s referenciami na samého seba. Táto fáza je spoločne so sekciou \texttt{types} jediná interpretačná úloha. Jeden z problémov pri generovaní \texttt{constraints} bola referencia na samého seba \newline (\textit{users.age = users.age}). Toto obmedzenie nepridáva do výsledného receptu žiadnu hodnotu a preto sú tieto obmedzenia vynechané.
 
 
 
@@ -120,14 +120,14 @@ Pravidlá obmedzení hovoria o tom, že pri generovaní obmedzení sa majú pou�
 Modelfile je textový súbor, ktorý slúži ako podklad pre vytváranie a prispôsobenie LLM pre mechanizmus Ollama. Každá fáza má vlastný špecializovaný Modelfile so systémovým promptom a few-shot príkladmi. Zatiaľ čo Modelfile má v sebe pravidlá správania a few-shot príklady, prompty zo súboru \textbf{prompts.py} mu dodávajú serializované schémy konkrétnej databázy.
 
 
-Každý Modelfile má podobnú štruktúru , teda tri základné bloky:
+Každý Modelfile má podobnú štruktúru, teda tri základné bloky:
 \begin{itemize}
     \item \textbf{FROM:} týmto sa určuje ako aj vybraná rodina modelov, tak aj veľkosť a kapacita modelu. 
     \item \textbf{SYSTEM:} obsahuje všeobecné inštrukcie, pravidlá a logické obmedzenie, ktoré musí model dodržiavať
     \item \textbf{Few-shot MESSAGE user/assistant:} slúži ako podklad konverzácií medzi používateľom a asistentom. Model ich používa ako vzor správania.
 \end{itemize}
 
-Všeobecné inštrukcie vo vnútri \textbf{SYSTEM} promptu vznikali postupne počas testovanie programu. Každé pravidlo predstavuje nejakú chybu, alebo moment ked sa model odchýlil od inštrukcií. Modelfile preto obsahuje explicitné zákazy a pravidlá.
+Všeobecné inštrukcie vo vnútri \textbf{SYSTEM} promptu vznikali postupne počas testovanie programu. Každé pravidlo predstavuje nejakú chybu, alebo moment keď sa model odchýlil od inštrukcií. Modelfile preto obsahuje explicitné zákazy a pravidlá.
 
 \begin{figure}[H]
     \centering
@@ -182,9 +182,9 @@ Aj napriek všetkým pravidlám sa môže stať, že ich model poruší. Práve 
 \section{Validácia a oprava}
 \label{sub:validacia_oprava}
 
-Výstup jazykového modelu je nedeterministický a ani prísne prompty nedokážu zaručiť validný výstup. Preto po poskladaní celého receptu nasleduje aautomatická oprava a validácia. Namiesto opakovaného volania modelu sa opravy vykonávajú v kóde. Dôvodom je, že oprava v kóde je je reprodukovateľná a výhodnejšia ako opakované volanie modelu. Bola vytvorená postupnosť opráv, ktorý vygenerovaný recept postupne opravuje. Oprava nečaká na vygenerovanie celého dokumentu, ale zasahuje po výstupe každej fáze.
+Výstup jazykového modelu je nedeterministický a ani prísne prompty nedokážu zaručiť validný výstup. Preto po poskladaní celého receptu nasleduje automatická oprava a validácia. Namiesto opakovaného volania modelu sa opravy vykonávajú v kóde. Dôvodom je, že oprava v kóde je reprodukovateľná a výhodnejšia ako opakované volanie modelu. Bola vytvorená postupnosť opráv, ktorý vygenerovaný recept postupne opravuje. Oprava nečaká na vygenerovanie celého dokumentu, ale zasahuje po výstupe každej fázy.
 
-Priebeh validácie zloženého receptu znázorňuje obrázok~\ref{fig:opravavalidacia}. Ak je YAML vygenerovaný bez chýb, recept sa úspešne uloži. V prípade, že sa v recepte objaví chyba, tak sa zaznamená a recept sa taktiež uloží. V prípade, že sa v recepte nachádza chyba, ktorú nie je možné objaviť, dochádza ku zlyhaniu.~\ref{ch:kap7}.
+Priebeh validácie zloženého receptu znázorňuje obrázok~\ref{fig:opravavalidacia}. Ak je YAML vygenerovaný bez chýb, recept sa úspešne uloží. V prípade, že sa v recepte objaví chyba, tak sa zaznamená a recept sa taktiež uloží. V prípade, že sa v recepte nachádza chyba, ktorú nie je možné opraviť, dochádza ku zlyhaniu (Kapitola~\ref{ch:kap7}).
 
 \begin{figure}[h]
     \centering
