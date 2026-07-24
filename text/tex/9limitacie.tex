@@ -1,4 +1,3 @@
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % KAPITOLA 9
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -41,25 +40,30 @@ Nasledujúce obmedzenia boli identifikované analýzou zdrojového kódu a repro
 
 \begin{itemize}
     \item \textbf{Escapovanie SQL hodnôt} - niektoré SQL INSERT príkazy obsahujú neescapované apostrofy a spätné lomky vo vygenerovaných reťazcoch
-    
     \item \textbf{Zlomkové hodnoty vo vnútri finterval} - pre hodnoty s plávacúcou čiarkou sú generované hodnoty vo forme zlomkov. Toto bolo potvrdené testom \texttt{testdb21} nad DBMS MySQL a PostgreSQL.
     
     \item \textbf{SMT count} - ak recept vyžaduje viac unikátnych kombinácii, než je SMT solver schopný dodať, knižnica dbgenx vyhodí výnimku \texttt{GenerateCountErrors}. Avšak webové rozhranie nástroja Dataster pri indentickom recepte nezlyhá úplne, ale vytvorí neuplný výstup.
 
     \item \textbf{RecursionError pri širokých tabuľkách} - pri extrémnych databázach, kde tabuľka obsahuje 200 stĺpcov a vaic dochádza v Datasteri k prekročeniu limitu rekurzie \texttt{RecursionError}. Toto vyvolá pád na každom recepte.
 
-    \item \textbf{Unikátnosť zložených PK} - hodnoty stĺpcov sa generujú nezávisle, kombinácia nie je garantovaná (dôvod vylúčenia M:N)
-
 \end{itemize}
 
 
 \section{Limitácie pri práci s LLM}
 \label{sub:limitacia_pri_praci_s_llm}
+
 \begin{itemize}
-    \item \textbf{Kapacita menších modelov} - pri vyhodnocovaní modelov sa ukázalo, že menšie modely strácajú schopnosť udržiavať štruktúru a konzistenciu YAML konfigurácie.
-    \item \textbf{Nedeterminizmus aj pri teplote 0.0} 
-    \item \textbf{Orezanie kontextu} 
+    \item \textbf{Kapacita menších modelov} - 
+    pri vyhodnocovaní modelov sa ukázalo, že menšie modely strácajú schopnosť udržiavať štruktúru a konzistenciu YAML konfigurácie.
     
+    \item \textbf{Nedeterminizmus aj pri nulovej teplote} -
+    Hoci je teplota modelu nastavená na 0 a mala by generovať rovnaké výstupy, dochádza k drobným odchýlkam pri opakovaných spusteniach rovnakej úlohy.
+
+    \item \textbf{Orezanie kontextu pri širokých schémach} -
+    Pri databázových schémach s vykosým počtom stĺpcov a komplexnými väzbami narazil systém na limity kontextového okna, čo spôsobilo orezanie vstupných dát. Týmpádom nebol LLM schopný vygenerovať jednu z dôležitých sekcii.
+
+    \item \textbf{Halucinované pomocné stĺpce} -
+    Pri komplexnejších tabuľkách mal LLM tendenciu vymýšľať si neexistuje stĺpce. Model sa pokúľal vytvoriť pomocné typy, ktoré by mohli viesť k doplneniu logiky.
 \end{itemize}
 
 \section{Možné rozšírenia}
@@ -72,3 +76,4 @@ Na základe spomenutých obmedzení sú navrhnuté nasledujúce rozšírenia pre
     \item priame prepojenie s existujúcou stránkou Dataster pre pohodlnejšie použitie
 
 \end{itemize}
+
