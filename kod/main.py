@@ -1,3 +1,8 @@
+"""
+2file main.py
+@author: Jasmina Hajdukova (xhajdu07)
+@brief entry point of pipeline
+"""
 
 import argparse
 import getpass
@@ -14,6 +19,7 @@ import os
 from llm_processor import CyclicDependencyError
 from prompts import json_decimal
 from typing import List, Tuple, Dict, Set, Any
+from sqlalchemy.engine import Engine
 
 
 DBMS_PROMPT = {
@@ -22,12 +28,18 @@ DBMS_PROMPT = {
 }
 
 def get_dbms(name: str) -> str:
+    """
+    Maps SQLAlchemy dialect to the DBMS name
+
+    @param name: dialect name
+    @return: display name of the DBMS
+    """
     return DBMS_PROMPT.get(name.lower(), name.capitalize())
 
 
 def parse_arguments() -> argparse.Namespace:
     """
-    Parser and validates CLI arguments
+    Parses CLI arguments
 
     @return: Namespace object containing the parsed arguments
     """
@@ -52,7 +64,7 @@ def check_ollama_models() -> bool:
     """
     Checks if the Ollama service is running and checks if all required models exist
     
-    @return: True is Ollama is available and all models exist, False otherwise
+    @return: True if Ollama is available and all models exist, False otherwise
     """
     try:
         response = ollama.list()        
@@ -82,7 +94,7 @@ def go_over_prime_keys(p_keys: list[Any]) -> List[str]:
     Processes the primary key information and extracts valid column names
 
     @param p_keys: List of tuples or lists containing primary key information from the database
-    @return: Clean list of column names that form the primary key
+    @return: list of column names that form the primary key, malformed entries skipped
     """
     extracted_pks = []
     req_length = 2
@@ -114,7 +126,7 @@ def go_over_prime_keys(p_keys: list[Any]) -> List[str]:
 
 
 def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
-                    server: Any, prime_keys: List[str],
+                    server: Engine, prime_keys: List[str],
                     samples: Dict[str, Dict[str, Any]],
                     generate_count: Dict[str, int],
                     db_name: str, row_count: int) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, int]]:
@@ -124,9 +136,9 @@ def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
     @param columns: List of column metadata extracted from the database schema
     @param table_name: Name of the current table that is being procesed
     @param limit: Maximum number of rows to query for samples
-    @param server: MySQL database connection server instance
+    @param server: SQLAlchemy engine connected to the target database
     @param prime_keys: List of column names that acts as primary keys for the table
-    @param samples: Data samples are stored into this
+    @param samples: collected samples per table are stored into this
     @param generate_count: Maps tables names to their expected generation row counts
     @param db_name: Name of the target database
     @param row_count: current total row count of the database table
@@ -187,14 +199,14 @@ def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
 
 def go_over_foreign_keys(fk_result: List[Tuple[Any, ...]],
                          fk_map: Dict[str, Dict[str, Tuple[str, str]]],
-                         table_name: str, valid_tables: Set[str]) -> Dict[str, Dict[str, Tuple[str, str]]]:
+                         table_name: str, valid_tables: List[str] | None) -> Dict[str, Dict[str, Tuple[str, str]]]:
     """
     Processes the raw SQL foreign key query results and maps relationships, ignoring out-of-scope tables
 
     @param fk_result: Raw SQL query result containing foreign key relationships
     @param kf_map: Dict structure stroing table-to-table foreign key mappings
     @param table_name: Name of the child whose foreign keys are being processed
-    @param valid_tables: Set of valid tables currently in scope for generation
+    @param valid_tables: List of valid tables currently in scope for generation
     @return: Updated fk_map structure filled with validated foreigh key relations
     """
     for row in fk_result:
@@ -215,13 +227,13 @@ def go_over_foreign_keys(fk_result: List[Tuple[Any, ...]],
 
 
 
-def get_result(db_name: str, table_name: str | None, server: Any, sql_type: str) -> List[Any]:
+def get_result(db_name: str, table_name: str | None, server: Engine, sql_type: str) -> List[Any]:
     """
     Formats the requested SQL template, executed the query, and handles initial empty checks
 
     @param db_name: Name of the target database
     @param table_name: Optional table name
-    @param server: MySQL database connection server instance
+    @param server: SQLAlchemy engine connected to the target database
     @param sql_typ: Type of the SQL template query
     @return: Reulting data rows returned from the executed SQL query
     """
@@ -235,7 +247,7 @@ def get_result(db_name: str, table_name: str | None, server: Any, sql_type: str)
 
     return result
 
-def main():
+def main() -> None:
     """
     Manages database connection, schema extraction, sample compilation, LLM YAML generation and final configuration validation
     """
