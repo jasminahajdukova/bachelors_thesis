@@ -1,10 +1,26 @@
+"""
+@file prompts.py
+@author Jasmina Hajdukova (xhajdu07)
+@brief 
+
+"""
+
 import json
 import datetime
 from decimal import Decimal
+from typing import Any
 import logger_setup
 
 
-def json_decimal(dec):
+def json_decimal(dec: Any) -> str | int | float | None:
+    """
+    Converts database values 
+
+    @param dec: value from a database sample
+    @return JSON representation of the value 
+
+    """
+
     if dec is None:
         return None
     
@@ -23,12 +39,21 @@ def json_decimal(dec):
         minutes = (total_seconds % 3600) // 60
         seconds = total_seconds % 60
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    
     if isinstance(dec, (str, int, float)):
         return dec
+    
     raise TypeError(f"Object of type {type(dec)} is not JSON serializable")
 
 
-def build_types_prompt(samples, sql_server_type):
+def build_types_prompt(samples: dict, sql_server_type: str) -> str:
+    """
+    Builds prompt for types section
+
+    @param samples: sample values and column info per table
+    @sql_server_type: name of the source DBMS
+    @return: prompt text
+    """
     json_data = json.dumps(samples, default=json_decimal)
     
     prompt = f"""Generate ONLY the 'types:' section for a Dataster YAML from a {sql_server_type} database.
@@ -42,7 +67,15 @@ def build_types_prompt(samples, sql_server_type):
     return prompt
 
 
-def build_schema_prompt(types_section, sql_server_type):
+def build_schema_prompt(types_section: str, sql_server_type: str) -> str:
+    """
+    Builds prompt for schema section
+
+    @param types_section: generated types section
+    @param sql_server_types: name of the source DBMS
+    @return: prompt text
+    """
+
     prompt = f"""Generate ONLY the 'schema:' section for a Dataster YAML from a {sql_server_type} database.
 
     Here are the defined types:
@@ -70,7 +103,14 @@ def build_schema_prompt(types_section, sql_server_type):
     return prompt
 
 
-def build_generate_prompt(types_section, sql_server_type):
+def build_generate_prompt(types_section: str, sql_server_type: str) -> str:
+    """
+    Builds prompt for generate section
+
+    @param types_section: generated types section
+    @param sql_server_types: name of the source DBMS
+    @return: prompt text
+    """
     prompt = f"""Generate ONLY the 'generate:' section for a Dataster YAML from a {sql_server_type} database.
 
     Here are the defined types:
@@ -92,7 +132,15 @@ def build_generate_prompt(types_section, sql_server_type):
     return prompt
 
 
-def build_constraints_prompt(types_section, sql_server_type):
+def build_constraints_prompt(types_section: str, sql_server_type: str) -> str:
+    """
+    Builds prompt for constraints section
+
+    @param types_section: generated types section
+    @param sql_server_types: name of the source DBMS
+    @return: prompt text
+    """
+    
     prompt = f"""Generate ONLY the 'constraints:' section for a Dataster YAML from a {sql_server_type} database.
 
     Here are the generated types:
