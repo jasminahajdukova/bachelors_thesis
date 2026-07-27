@@ -1,5 +1,13 @@
+"""
+@file logger_setup.py
+@author Jasmina Hajdukova (xhajdu07)
+@brief color console logging with custom log levels
+"""
+
 import logging
 import colorlog
+
+from typing import Any
 
 
 FIX    = 25
@@ -7,19 +15,19 @@ STAGE  = 26
 TOKENS = 27
 FINISH = 28
 
-def fix(self, message, *args, **kwargs):
+def fix(self: logging.Logger, message: str, *args: Any, **kwargs: Any) -> None:
         if self.isEnabledFor(FIX):
             self._log(FIX, message, args, **kwargs)
 
-def stage(self, message, *args, **kwargs):
+def stage(self: logging.Logger, message: str, *args: Any, **kwargs: Any) -> None:
         if self.isEnabledFor(STAGE):
             self._log(STAGE, message, args, **kwargs)
 
-def tokens(self, message, *args, **kwargs):
+def tokens(self: logging.Logger, message: str, *args: Any, **kwargs: Any) -> None:
         if self.isEnabledFor(TOKENS):
             self._log(TOKENS, message, args, **kwargs)
 
-def finish(self, message, *args, **kwargs):
+def finish(self: logging.Logger, message: str, *args: Any, **kwargs: Any) -> None:
         if self.isEnabledFor(FINISH):
             self._log(FINISH, message, args, **kwargs)
 
@@ -28,7 +36,7 @@ logging.Logger.stage  = stage
 logging.Logger.tokens = tokens
 logging.Logger.finish = finish
 
-def setup_logging():
+def setup_logging() -> logging.Logger:
 
     logging.addLevelName(FIX, "FIX")
     logging.addLevelName(STAGE, "STAGE")
