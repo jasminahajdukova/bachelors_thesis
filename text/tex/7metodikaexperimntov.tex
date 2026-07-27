@@ -5,7 +5,7 @@
 \chapter{Metodika experimentov}
 \label{ch:kap7}
 
-Kapitola~\ref{ch:kap6} opísala implementáciu nástroja a táto kapitola definuje spôsob, akým sa vyhodnocuje kvalita generovaných receptov. Cieľom tejto kapitoly nie je zhodnotenie správnosti kódu. Kapitola najskôr formuluje ciele experimentov(Sekcia ~\ref{sub:ciele}) a definuje testovacie databázy (Sekcia~\ref{sub:testovacie_databazy}) a vrstvy vyhodnotenia ako aj celkové spôsoby testovania (Sekcia~\ref{sub:sposob_vyhodnotenia_uspesnosti}). Samotné výsledky sú prezentované v Kapitole~\ref{ch:kap8}.
+Kapitola~\ref{ch:kap6} opísala implementáciu nástroja a táto kapitola definuje spôsob, akým sa vyhodnocuje kvalita generovaných receptov. Cieľom tejto kapitoly nie je zhodnotenie správnosti kódu. Kapitola najskôr formuluje ciele experimentov (Sekcia~\ref{sub:ciele}) a definuje testovacie databázy (Sekcia~\ref{sub:testovacie_databazy}) a vrstvy vyhodnotenia ako aj celkové spôsoby testovania (Sekcia~\ref{sub:sposob_vyhodnotenia_uspesnosti}).  Následne klasifikuje zlyhania (Sekcia~\ref{sub:k7_klasifikacia_zlyhani}), popíše testovacie scenáre (Sekcia~\ref{sub:testovacie_scenare}) a reprodukovateľnosť experimentov (Sekcia~\ref{sub:k7_reprodukovatelnost_experimentov}). Na záver definuje hranice vyhodnotenia (Sekcia~\ref{sub:k7_hranice_vyhodnotenia}). Samotné výsledky sú prezentované v Kapitole~\ref{ch:kap8}.
 
 \section{Ciele}
 \label{sub:ciele}
@@ -16,13 +16,13 @@ Kapitola~\ref{ch:kap6} opísala implementáciu nástroja a táto kapitola definu
     \item \textbf{RQ2} Aký je vplyv veľkosti modelu v rámci jednej rodiny na úspešnosť?
     \item \textbf{RQ3} Líši sa úspešnosť medzi modelovými rodinami porovnateľnej veľkosti?
     \item \textbf{RQ4} Ako sa mení úspešnosť s rastúcou zložitosťou databázovej schémy?
-    \item \textbf{RQ5} Pri akej veľkosti schémy dochádza k poklesu kvality a úspešnosti ?
+    \item \textbf{RQ5} Pri akej veľkosti schémy dochádza k poklesu kvality a úspešnosti?
     \item \textbf{RQ6} Je možné pri vyhodnocovaní spoľahlivo odlíšiť zlyhania spôsobené navrhnutou pipeline od zlyhaní generátora Dataster?
 \end{itemize}
 
 Celkovo je na testovanie pripravených 19 základných testovacích databáz (testdb-testdb20), 3 testovacie databázy na reprodukciu chýb a 9 extrémnych testovacích databáz (extreme\_testdb-extreme\_testdb9). Každá z nich slúži na testovanie pipeline na rôznych typoch  databázových schém. Databáza testdb13 bola zo sady vylúčená ako duplikát testdb12.
 
-Databázy sú usporiadané podľa rastúcej zložitosti. Samotná zložitosť je definovaná pomocou týchto kritérií:
+Databázy sú usporiadané podľa rastúcej zložitosti. Samotná zložitosť je charakterizovaná pomocou týchto kritérií:
 \begin{itemize}
     \item \textbf{počet tabuliek a stĺpcov:} s rastúcim počtom sa zvyšuje objem dát, ktoré musí LLM spracovať
     
@@ -38,7 +38,7 @@ Databázy sú usporiadané podľa rastúcej zložitosti. Samotná zložitosť je
 
 \subsection{Základné testovacie databázy}
 
-Účelom týchto testovacích dát je skontrolovať celkovú funkčnosť programu.
+Účelom týchto testovacích databáz je skontrolovať celkovú funkčnosť programu.
 
 \begin{table}[H]
     \centering
@@ -76,7 +76,7 @@ Databázy sú usporiadané podľa rastúcej zložitosti. Samotná zložitosť je
 
 
 \subsection{Testovacie databázy na reprodukciu chýb}
-Tieto testovacie databázy slúžia na reprodukciu obmedzenia generátora Dataster pri prevode hodnôt zo SMT riešiteľa do SQL pre cieľovú DBMS (MySQL). Cieľom nie je hodnotiť Dataster, ale overiť, že vyhodnocovacia metodika dokáže tieto prípady správne odlíšiť od zlyhaní pipeline.
+Tieto testovacie databázy slúžia na reprodukciu obmedzenia generátora Dataster pri prevode hodnôt zo SMT riešiteľa do SQL pre cieľovú DBMS (MySQL). Cieľom nie je hodnotiť Dataster, ale overiť, že vyhodnocovacia metodika dokáže tieto prípady správne odlíšiť od zlyhaní pipeline (Tabuľka~\ref{tab:reprodukcia_chyb_databazy}).
 
 \begin{table}[H]
     \centering
@@ -98,7 +98,7 @@ Tieto testovacie databázy slúžia na reprodukciu obmedzenia generátora Datast
 
 \subsection{Extrémne testovacie databázy}
 
-Zatiaľ čo predošlé testy kontrolujú či program funguje bez problémov, tieto testovacie sady boli vytvorené pre zaťaženie programu na hranici jeho limitov. Ich cieľom je zistiť ako pri vysokom počte tabuliek, šírke tabuliek a hĺbke/tvare FK grafu klesá úspešnosť alebo kvalita výsledkov.
+Zatiaľ čo predošlé testy kontrolujú či program funguje bez problémov, tieto testovacie sady boli vytvorené pre zaťaženie programu na hranici jeho limitov. Ich cieľom je zistiť ako pri vysokom počte tabuliek, šírke tabuliek a hĺbke/tvare FK grafu klesá úspešnosť alebo kvalita výsledkov (Tabuľka~\ref{tab:extremne_databazy}).
 
 \begin{table}[H]
     \centering
@@ -128,13 +128,6 @@ Zatiaľ čo predošlé testy kontrolujú či program funguje bez problémov, tie
 \label{sub:sposob_vyhodnotenia_uspesnosti}
 Proces vyhodnotenia úspešnosti vygenerovaných receptov prebieha na troch úrovniach, kde každá z nich definuje špecifické kritériá pre úspech alebo zlyhanie
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.5\linewidth]{obrazky-figures/flowtestovania.pdf}
-    \caption{Trojúrovňoví proces vyhodnotenia recepu}
-    \label{fig:flowtestovania}
-\end{figure}
-
 \subsection{Úroveň L1: overenie správnosti YAML}
 \label{sub:uroven_l1_overenie_spravnost}
 Táto úroveň sa zameriava na úspešnosť pipeline a kontrolu štruktúry vygenerovaného receptu.  Táto vrstva overuje formát YAML,  výskyt povinných sekcií a dodržiavanie pravidiel validačnej vrstvy kódu. Celková úspešnosť sa počíta ako podiel úspešných receptov k celkovému počtu vygenerovaných receptov:
@@ -149,7 +142,7 @@ Táto úroveň sa zameriava na úspešnosť pipeline a kontrolu štruktúry vyge
 \end{description}
 
 \subsection{Úroveň L2: akceptácia nástrojom Dataster}
-Ďalšia úroveň kontroluje, či je nástroj Dataster schopný úspešne spracovať recept a vygenerovať testovaciu sadu dát. Overuje akceptáciu Datasterom, a preto ak je objavená chyba, je to okamžite vyhodnotené ako zlyhanie. L2 sa vyhodnocuje nad všetkými behmi, v ktorých vznikol recept, výsledok L1 sa hodnotí samostatne a recepty sa pre L2 sa nefiltrujú.
+Ďalšia úroveň kontroluje, či je nástroj Dataster schopný úspešne spracovať recept a vygenerovať testovaciu sadu dát. Overuje akceptáciu Datasterom, a preto ak je objavená chyba, je to okamžite vyhodnotené ako zlyhanie. L2 sa vyhodnocuje nad všetkými behmi, v ktorých vznikol recept, výsledok L1 sa hodnotí samostatne a recepty sa pre L2 nefiltrujú.
 
 \begin{equation}
         L2\_result = \frac{L2\_success}{L2\_overall}
@@ -162,14 +155,14 @@ Táto úroveň sa zameriava na úspešnosť pipeline a kontrolu štruktúry vyge
 
 \subsection{Úroveň L3: exekúcia SQL dotazov a kontrola databázy}
 
-Posledná vrstva kontroluje použiteľnosť vygenerovaných SQL dotazov v databáze. Na rozdiel od ostatných vrstiev sa tu jednotka meranie mení z receptov na jednotlivé SQL príkazy. Príkazy sú spustené v naklonovanej databáze bez dát (obsahujú iba pôvodnú schému klonovanej databázy). Na tejto vrstve sa kontroluje, či tvary vygenerované programom Dataster sú akceptované vybranou DBMS (MySQL). Cieľom je nestranne zmerať úspešnosť vykonanie SQL výstupu, pričom zlyhania môžu byť spôsobené buď chybou v kóde, alebo zdokumentovaným obmedzením samotného nástroja. Každý neakceptovaný príkaz je zaznamenaný spolu s klasifikáciu zlyhania. Pre kategóriu dataster\_sql\_escaping je vyhodnotenie dodatočne vykonané v odlišnom režime.
+Posledná vrstva kontroluje použiteľnosť vygenerovaných SQL dotazov v databáze. Na rozdiel od ostatných vrstiev, jednotka merania sa mení z receptov na jednotlivé SQL príkazy. Príkazy sú spustené v naklonovanej databáze bez dát (obsahujú iba pôvodnú schému klonovanej databázy). Na tejto vrstve sa kontroluje, či tvary vygenerované programom Dataster sú akceptované vybranou DBMS (MySQL). Cieľom je nestranne zmerať úspešnosť vykonania SQL výstupu, pričom zlyhania môžu byť spôsobené buď chybou v kóde, alebo zdokumentovaným obmedzením samotného nástroja. Každý neakceptovaný príkaz je zaznamenaný spolu s klasifikáciu zlyhania. Pre kategóriu dataster\_sql\_escaping je vyhodnotenie dodatočne vykonané v odlišnom režime. V tomto režime sa vygenerovaný SQL príkaz spúšťa voči databáze, čím sa overuje syntaktická správnosť a správne ošetrenie špeciálnych znakov.
 
 \begin{equation}
        L3\_raw = \frac{L3\_success}{L3\_overall}
 \end{equation}
 
 \begin{equation}
-        L3\_adjusted = \frac{L3\_success}{L3\_overall - L3\_dataster\_fail}
+        L3\_Adjusted = \frac{L3\_success}{L3\_overall - L3\_dataster\_fail}
 \end{equation}
 
 \begin{description}
@@ -179,9 +172,19 @@ Posledná vrstva kontroluje použiteľnosť vygenerovaných SQL dotazov v datab�
 \end{description}
 
 
-\section{Klasifikácia zlyhaní}
+Trojúrovňový proces vyhodnotenia receptu je znázornený na obrázku~\ref{fig:flowtestovania}.
 
-Pri vyhodnocovaní úspešnosti je nutné jasne určiť, ktorá časť systému zlyhanie spôsobila. Táto tabuľka ukazuje presné pravidlá, podľa ktorých sa každé zlyhanie triedi. Vďaka tomu vieme presne vypočítať metriku L3\_Adjusted.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{obrazky-figures/flowtestovania.pdf}
+    \caption{Trojúrovňový proces vyhodnotenia receptu}
+    \label{fig:flowtestovania}
+\end{figure}
+
+
+\section{Klasifikácia zlyhaní}
+\label{sub:k7_klasifikacia_zlyhani}
+Pri vyhodnocovaní úspešnosti je nutné jasne určiť, ktorá časť systému zlyhanie spôsobila. Táto tabuľka ukazuje presné pravidlá, podľa ktorých sa každé zlyhanie triedi. Vďaka tomu je možné presne vypočítať metriku L3\_Adjusted.
 
 \begin{table}[H]
     \centering
@@ -190,13 +193,13 @@ Pri vyhodnocovaní úspešnosti je nutné jasne určiť, ktorá časť systému 
     \toprule
     \textbf{ID zlyhania} & \textbf{úroveň} & \textbf{podmienka} & \textbf{komu patrí zlyhanie} \\
     \midrule
-        pipeline\_invalid\_yaml & L1 & výstup nie je platný YAML alebo chýba povinná sekcia alebo recept nevznikol (timeout, cyklické FK, prázdna taabuľka) & pipeline \\
+        pipeline\_invalid\_yaml & L1 & výstup nie je platný YAML alebo chýba povinná sekcia alebo recept nevznikol (timeout, cyklické FK, prázdna tabuľka) & pipeline \\
          
         dataster\_smt\_count & L2 & generátor nedokáže vytvoriť požadovaný počet unikátnych záznamov (GenerateCountError) & Dataster \\
          
         zero\_rows & L2 & recept prijatý, ale vygenerovaných 0 riadkov & pipeline \\
 
-         dataster_recursion & L2 & RecursionError pri extrémne tabuľkách & Dataster\\
+         dataster\_recursion & L2 & RecursionError pri extrémne širokých tabuľkách & Dataster\\
          
          iná výnimka & L2 & Dataster odmietol recept z iného dôvodu & pipeline \\
          
@@ -224,24 +227,26 @@ Pri vyhodnocovaní úspešnosti je nutné jasne určiť, ktorá časť systému 
     \label{tab:klasifikacia_zlyhani}
 \end{table}
 
-Zlyhanie, ktoré nie je možné jednoznačne priradiť zdokumentovanému obmedzeniu nástroja Dataster, sú ponechané ako zlyhanie pipeline. Metrika L3\_Adjusted teda vylučuje iba kategórie s prefixom dataster\_
+Zlyhania, ktoré nie je možné jednoznačne priradiť zdokumentovanému obmedzeniu nástroja Dataster, sú ponechané ako zlyhanie pipeline. Metrika L3\_Adjusted teda vylučuje iba kategórie s prefixom dataster\_.
 
 \section{Testovacie scenáre a ich vykonanie}
 \label{sub:testovacie_scenare}
 
-Testovanie prebieha v niekoľkých fázach. Hlavne sa program testuje na referenčnom DBMS MySQL, ale keďže je implementované SQLAlchemy tak pre demonštráciu je vykonaný program s DBMS PostgreSQL s podmnožinou základných testovacích databáz. Jadrom testovanie je model qwen2.5 s rôznymi teplotami a potom nasleduje testovanie (Rozšírenie) s rôznymi rodinami pre účel porovnania výkonu modelov. Pri testovaní sa používajú testovacie databázy spomenuté v Sekcii~\ref{sub:ciele}.
+Testovanie prebieha v niekoľkých fázach. Hlavne sa program testuje na referenčnom DBMS MySQL, ale keďže je implementované SQLAlchemy tak pre demonštráciu je vykonaný program s DBMS PostgreSQL s podmnožinou základných testovacích databáz. Jadrom testovania je model qwen2.5 s rôznymi teplotami a potom nasleduje testovanie (Rozšírenie) s rôznymi rodinami pre účel porovnania výkonu modelov. Parametre generovania sa nachádzajú v Sekcii~\ref{sub:fazy_generovania_receptu}. Pri testovaní sa používajú testovacie databázy spomenuté v Sekcii~\ref{sub:testovacie_databazy}.
 
-\begin{figure}[h]
+Rozdelenie testovania je znázornené na obrázku~\ref{fig:rozdelenie_testovania}.
+
+\begin{figure}[H]
     \centering
-    \includegraphics[width=1\linewidth]{obrazky-figures/rozdelenietestovania.pdf}
+    \includegraphics[width=0.75\linewidth]{obrazky-figures/rozdelenietestovania.pdf}
     \caption{Tri fázy testovania}
     \label{fig:rozdelenie_testovania}
 \end{figure}
 
-Každá konfigurácia beží v troch kolách, výstupy sa ukladajú oddelene pre každé kolo a analyzujú oddelene
+Každá konfigurácia beží v troch kolách, výstupy sa ukladajú oddelene pre každé kolo a analyzujú oddelene.
 
 \subsection{Jadro}
-V jadre testovania sa zameriavame výhradne na model qwen2.5 a spúšťame program naprieč rôznymi teplotami pre rôzne veľkosti parametrov modelu, ako 3b, 7b a mix predom spomenutých dvoch modelov.
+V jadre testovania sa zameriava výhradne na model qwen2.5 a spúšťa program naprieč rôznymi teplotami pre rôzne veľkosti parametrov modelu, ako 3b, 7b a mix vyššie spomenutých dvoch modelov (Tabuľka~\ref{tab:jadro_testovania}).
 
 \begin{table}[H]
     \centering
@@ -249,7 +254,7 @@ V jadre testovania sa zameriavame výhradne na model qwen2.5 a spúšťame progr
     \begin{tabular}{lccc}
     \toprule
     
-    \textbf{Model} & \textbf{teplota} & \textbf{počet kôl} & \textbf{počet DB} \\
+    \textbf{Model} & \textbf{Teplota} & \textbf{Počet kôl} & \textbf{Počet DB} \\
     \midrule
         qwen2.5:3b/qwen2.5:7b & {0.0, 0.2, 0.3, 0.5, 0.8, 1.2} & 3 & 31 \\
         qwen2.5:3b & {0.0, 0.2, 0.3, 0.5, 0.8, 1.2} & 3 & 31 \\
@@ -257,13 +262,13 @@ V jadre testovania sa zameriavame výhradne na model qwen2.5 a spúšťame progr
         
                
     \end{tabular}
-    \caption{jadro testovania}
+    \caption{Jadro testovania}
     \label{tab:jadro_testovania}
 \end{table}
 
 \subsection{Rozšírenie}
 
-Ďalej pokračujeme na rozšírenie, kde sa zameriava na samotné rodiny modelov. Cieľom je porovnať výsledky medzi rôznymi rodinami ako aj mix týchto modelov. V tomto prípade sa nezameriavame na rôzne teploty, ale použivame referenčné nastavenie teploty (0.0).
+Ďalej pokračuje na rozšírenie, kde sa zameriava na samotné rodiny modelov. Cieľom je porovnať výsledky medzi rôznymi rodinami ako aj s ich mixom. V tomto prípade sa nezameriava na rôzne teploty, ale používa referenčné nastavenie teploty (0.0) (Tabuľka~\ref{tab:rozsirenie_testovania}).
 
 \begin{table}[H]
     \centering
@@ -271,17 +276,17 @@ V jadre testovania sa zameriavame výhradne na model qwen2.5 a spúšťame progr
     \begin{tabular}{lc>{\centering\arraybackslash}p{0.1\linewidth}l}
     \toprule
     
-    \textbf{Model} & \textbf{teplota} & \textbf{počet kôl} & \textbf{počet DB} \\
+    \textbf{Model} & \textbf{Teplota} & \textbf{Počet kôl} & \textbf{Počet DB} \\
     \midrule
         llama3.1:8b & referenčná teplota 0.0 & 3 & 19 (\ref{tab:zaklad_databazy})\\
         mistral:7b & referenčná teplota 0.0 & 3 & 19 (\ref{tab:zaklad_databazy}) \\ \bottomrule         
     \end{tabular}
-    \caption{rozšírenie testovania}
+    \caption{Rozšírenie testovania}
     \label{tab:rozsirenie_testovania}
 \end{table}
 
 \subsection{Demonštrácia}
-Ako posledné je demonštrácia použitia iného DBMS (PostgreSQL), teda, či implementácia funguje aj pre inú DBMS ako referenčnú.
+Ako posledné je demonštrácia použitia iného DBMS (PostgreSQL), teda, či implementácia funguje aj pre inú DBMS ako referenčnú (Tabuľka~\ref{tab:demonstracia_testovania}).
 
 \begin{table}[H]
     \centering
@@ -293,16 +298,44 @@ Ako posledné je demonštrácia použitia iného DBMS (PostgreSQL), teda, či im
     \midrule
         qwen2.5:3b/qwen2.5:7b & 0.0 & 3 & testdb - testdb10\\ \bottomrule          
     \end{tabular}
-    \caption{demonštrácia testovania}
+    \caption{Demonštrácia testovania}
     \label{tab:demonstracia_testovania}
 \end{table}
 
-\section{Hranice vyhodnotenia}
+\section{Reprodukovateľnosť experimentov}
+Reprodukovateľnosť sa v tejto práci rozumie ako možnosť opakovaného spustenia rovnakého scenára s dosiahnutím podobných celkových výsledkov naprieč kolami, nie doslovnej zhody výstupov LLM (Sekcia~\ref{sub:limitacia_pri_praci_s_llm}). Referenčná konfigurácia je zaznamenaná v tabuľke~\ref{tab:repo_modely}.
 
+\label{sub:k7_reprodukovatelnost_experimentov}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{l l c c c}
+    \toprule
+    \textbf{Fáza} & \textbf{Model} & \textbf{Kvantizácia} & \textbf{Parametre} & \textbf{Teplota} \\
+    \midrule
+    types       & qwen2.5:7b & Q4\_K\_M & 7.6B & 0.0 \\
+    schema      & qwen2.5:3b & Q4\_K\_M & 3.1B & 0.0 \\
+    generate    & qwen2.5:3b & Q4\_K\_M & 3.1B & 0.0 \\
+    constraints & qwen2.5:7b & Q4\_K\_M & 7.6B & 0.0 \\
+    \bottomrule
+    \end{tabular}
+    \caption{Konfigurácia modelov použitá pre jednotlivé fázy generovania}
+    \label{tab:repo_modely}
+\end{table}
+
+
+\begin{lstlisting}
+    num_ctx        = 16384
+    num_predict    = 8192
+    timeout        = 600s (10 min)
+\end{lstlisting}
+
+\section{Hranice vyhodnotenia}
+\label{sub:k7_hranice_vyhodnotenia}
 \begin{itemize}
-    \item \textbf{Verzia softvéru:} prezentované výsledky sú naviazané na konkrétne verzie DBMS a verziu programu Dataster. Pri využití iných verzii sa správanie programu môže líšiť. 
+    \item \textbf{Verzia softvéru:} prezentované výsledky sú naviazané na konkrétne verzie DBMS a verziu programu Dataster. Pri využití iných verzií sa správanie programu môže líšiť. 
     \item \textbf{Počet testovacích kôl:} použitie troch kôl je pre ukážku rozptylu výsledkov, nie je to však postačujúce na plnohodnotné testovanie.
     \item \textbf{Hardvérové limity:} výber testovacích modelov je obmedzený dostupným hardvérom a výsledky neplatia pre väčšie a výkonnejšie modely.
     \item \textbf{Charakter dát:} testovacie databázy slúžia na pokrytie rôznych testovacích prípadov a teda nereprezentujú skutočné dáta z reality. Nameranú úspešnosť preto nie je možné brať ako istotu pre reálne nasadenie.
+    \item \textbf{Sémantická správnosť:} úrovne L1-L3 vyhodnocujú hlavne použiteľnosť, nie ich sémantický význam. To znamená, že riadok môže prejsť úrovňou aj v tom prípade, že obsahuje hodnoty ktoré pre daný kontext nedávajú zmysel.
 \end{itemize}
 

@@ -19,19 +19,19 @@ V súčasnosti sú LLM založené na architektúre transformer, to znamená, že
 Model generuje komplexný text iteratívne, v jednotlivých krokoch predpovedá nasledujúci token, ktorý sa pripojí k doteraz vygenerovanému výstupu, dokým nie je vygenerovaný koncový token. Toto umožňuje modelu vytvárať rozsiahlejšie výstupy.
 
 
-Samotné trénovanie prebieha v dvoch fázach a to predtrénovaním s veľkým množstvom textu, a následným dolandením pre konkrétne úlohy (angl. fine-tuning)~\cite{Naveed2024}.
+Samotné trénovanie prebieha v dvoch fázach a to predtrénovaním s veľkým množstvom textu, a následným doladením pre konkrétne úlohy (angl. fine-tuning)~\cite{Naveed2024}.
 
 
-Presnosť LLM rastie zvýšujúcim sa počtom vnútorných parametrov modelu. Ich veľkosť je v súčasných modeloch niekoľko miliárd~\cite{Naveed2024}. S rastúcou veľkosťou rastú aj náklady na ich spustenie, ktoré sa pri lokálnych modeloch prejavujú hlavne na kapacite VRAM grafickej karty. Táto práca je limitovaná dostupným hardvérom, čo obmedzuje výber použitých modelov (Kapitola~\ref{ch:kap7}).
+    Presnosť LLM rastie so zvýšujúcim sa počtom vnútorných parametrov modelu. Počet parametrov sa v súčasných modeloch pohybuje v miliardách~\cite{Naveed2024}. S rastúcou veľkosťou rastú aj náklady na ich spustenie, ktoré sa pri lokálnych modeloch prejavujú hlavne na kapacite VRAM grafickej karty. Táto práca je limitovaná dostupným hardvérom, čo obmedzuje výber použitých modelov (Kapitola~\ref{ch:kap7}).
 
 \section{Prispôsobenie LLM konkrétnej úlohe}
 \label{sub:prisposobenie_llm}
 Existuje mnoho spôsobov, ako prispôsobiť LLM, pričom nie každý je vhodný na použitie v tejto práci.
 
 \begin{itemize}
-    \item \textbf{Fine-tuning} - dodatočné doladenie už predtrénovaného modelu pomocou špecifických dát. Funguje na princípe úpravy vnútorných parametrov (váh)~\cite{Naveed2024}. Vyžaduje tisícky kvalitných príkladov na prispôsobenie modelu a keďže tie pre využitie v tejto práci neexistujú a ich ručné vytvorenie je mimo rozsah práce, je tento spôsob prispôsobenia vylúčený. 
+    \item \textbf{Fine-tuning} - dodatočné doladenie už predtrénovaného modelu pomocou špecifických dát. Funguje na princípe úpravy vnútorných parametrov (váh)~\cite{Naveed2024}. Vyžaduje vytvorenie a prípravu špecifickej trénovacej sady príkladov. Keďže tie pre využitie v tejto práci neexistujú a ich ručné vytvorenie je mimo rozsah práce, je tento spôsob prispôsobenia vylúčený. 
     
-    \item \textbf{RAG (Retrieval-Augmented Generation)} - spôsob prispôsobenia, kde sa pred generovaním odpovede hľadajú relevantné dokumenty z externej znalostnej bázy a vložia sa do promptu ako kontext. Tým pádom model čerpá z aktuálnych alebo doménových znalostí bez zmeny váh~\cite{Lewis2020}. Tento projekt nevyžaduje vyhľadávanie v znalostnej báze, pretože všetky potrebné informácie poznáme dopredu a vkladajú sa do promptu priamo.
+    \item \textbf{RAG (Retrieval-Augmented Generation)} - spôsob prispôsobenia, kde sa pred generovaním odpovede hľadajú relevantné dokumenty z externej znalostnej bázy a vložia sa do promptu ako kontext. Tým pádom model čerpá z aktuálnych alebo doménových znalostí bez zmeny váh~\cite{Lewis2020}. Tento projekt nevyžaduje vyhľadávanie v znalostnej báze, pretože všetky potrebné informácie sú známe dopredu a vkladajú sa do promptu priamo.
 
     \item  \textbf{Few-shot prompting} - spôsob prispôsobenia modelu pri ktorom sa modelu v prompte poskytne niekoľko príkladov na demonštráciu vstupu a výstupu. Model rieši úlohy tak, že napodobňuje vzory riešení bez úpravy váh~\cite{Brown2020}. V riešení projektu sa používa Modelfile s príkladmi pre konkrétne generovanie sekcií types, schema, generate a constraints (Sekcia~\ref{sub:implementacia_modelfiles}).
 
@@ -45,7 +45,7 @@ Existujú dva spôsoby, ako používať LLM, buď cez lokálne spustenie (naprí
 
 \subsection{API modely}
 
-API modely bežia na infraštruktúre poskytovateľa a pristupuje sa k nim cez sieťové rozhranie. Poskytujú prístup k najvýkonnejším modelom bez hardvérových nárokov, lenže dáta opúšťajú lokálne prostredie a ich spracovanie závisí od podmienok poskytovateľa, a náklady rastú s počtom volaní. Verzia modelu nie je pod kontrolou používateľa a  môže sa meniť.
+API modely bežia na infraštruktúre poskytovateľa a pristupuje sa k nim cez sieťové rozhranie. Poskytujú prístup k najvýkonnejším modelom bez hardvérových nárokov, lenže dáta opúšťajú lokálne prostredie a ich spracovanie závisí od podmienok poskytovateľa a náklady rastú s počtom volaní. Verzia modelu nie je pod kontrolou používateľa a  môže sa meniť.
 
 \subsection{Lokálne modely}
 
@@ -66,7 +66,7 @@ LLM vyžadujú značné výpočtové zdroje a pamäť na fungovanie, čo výrazn
 \section{Použitie LLM na generovanie testovacích dát}
 \label{sub:pouzitie_llm_na_generovanie_dat}
 
-S rastúcim rozsahom a zložitosťou softvérových systémov rastie aj záujem o využitie LLM pri testovaní softvéru~\cite{Wang2024}. LLM možno pri generovaní použiť dvoma spôsobmi, a to buď priamym generovaním dát alebo generovaním špecifikácie pre externý generátor. Priamy prístup spočíva v tom, že model na základe zadanej databázovej schémy vygeneruje priamo riadky dát alebo INSERT príkazy. Výhodou je jednoduchosť a sémanticky realistické hodnoty. Tento prístup má aj nevýhody. Každý riadok dát vyžaduje beh modelu a tak s objemom rastú aj náklady. Pri veľkom počte riadkov má model problém udržať väzby cudzích kľúčov medzi tabuľkami či unikátnosť hodnôt~\cite{Wang2024}, tým pádom nie je konzistencia garantovaná. Ďalšou nevýhodou je neopakovateľnosť, ten istý vstup dá zakaždým iné dáta. Napokon sa halucinované hodnoty dostávajú do testovacej sady bez kontroly. 
+S rastúcim rozsahom a zložitosťou softvérových systémov rastie aj záujem o využitie LLM pri testovaní softvéru~\cite{Wang2024}. LLM možno pri generovaní použiť dvoma spôsobmi, a to buď priamym generovaním dát alebo generovaním špecifikácie pre externý generátor. Priamy prístup spočíva v tom, že model na základe zadanej databázovej schémy vygeneruje priamo riadky dát alebo INSERT príkazy. Výhodou je jednoduchosť a sémanticky realistické hodnoty. Tento prístup má aj nevýhody. Každý riadok dát vyžaduje beh modelu a tak s objemom rastú aj náklady. Pri veľkom počte riadkov má model problém udržať väzby cudzích kľúčov medzi tabuľkami či unikátnosť hodnôt, tým pádom nie je konzistencia garantovaná. Ďalšou nevýhodou je neopakovateľnosť, ten istý vstup dá zakaždým iné dáta. Napokon sa halucinované hodnoty dostávajú do testovacej sady bez kontroly. 
 
 
 V tejto práci sa lokálne LLM používa na generovanie receptu pre nástroj Dataster (Kapitola~\ref{ch:kap4}), samotný recept je generovaný len raz a následne sú testovacie dáta vytvorené cez Dataster so SMT (angl. Satisfiability modulo theories) riešiteľom. Samotný model neslúži ako generátor dát, ale ako prekladač databázovej schémy na špecifikáciu. Model sa spúšťa raz pre schému bez ohľadu na objem generovaných dát. Generovanie je opakovateľné a tak sa nevýhody buď eliminujú, alebo presúvajú do receptu, kde sú ľahko opraviteľné.

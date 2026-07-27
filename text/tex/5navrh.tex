@@ -1,4 +1,3 @@
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % KAPITOLA 5
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -13,14 +12,11 @@ Táto kapitola sa zaoberá vysokoúrovňovým návrhom nástroja na automatizova
 Vstupom nástroja sú identifikačné údaje pre pripojenie k relačnej databáze. Na začiatku sa program pripojí k databáze, extrahuje tabuľky, informácie o nich, teda stĺpce, ich dátové typy, primárne a cudzie kľúče. Po získaní týchto informácií sa z tabuľky vytiahnu rôzne vzorky krajných hodnôt z oboch koncov usporiadania, ktoré vymedzujú rozsah hodnôt stĺpca, čo jazykovému modelu umožní lepšie pochopiť charakter jednotlivých stĺpcov.
 
 
-
 V ďalšej fáze LLM ako prvé vygeneruje sekciu \texttt{types}, keďže na tejto sekcii závisia ostatné sekcie YAML. Následne sa vygenerujú ďalšie sekcie. Sekcie schema, generate a constraints sa generujú nezávisle, každá samostatným volaním modelu s types sekciou ako vstupom. 
 
+Surové výstupy jednotlivých fáz sa následne poskladajú do jedného predbežného YAML, ktorý je validovaný a v prípade chýb opravený. Zložený recept prechádza automatickými opravami, následne jednou validáciou a uloží sa. Architektúra nástroja je znázornená na obrázku~\ref{fig:diagram1}.
 
-
-Surové výstupy jednotlivých fáz sa následne poskladajú do jedného predbežného YAML, ktorý je validovaný a v prípade chýb opravený. Zložený recept prechádza automatickými opravami, následne jednou validáciou a uloží sa.
-
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
     \includegraphics[width=1\linewidth]{obrazky-figures/diagram1.pdf}
     \caption{Architektúra nástroja}
@@ -46,13 +42,13 @@ Pri \textbf{fáze generate} sa určujú jednotlivé počty generovaných riadkov
 Ako posledná \textbf{fáza} je \textbf{constraints}, ktorá podľa vstupu types odvodzuje logické obmedzenia hodnôt, ktoré nie sú zachytené v schéme databázy, ale vyplývajú z kontextu hodnôt, ako napríklad rozsahy veku alebo nezáporné ceny. Tieto obmedzenia nie je možné mechanicky vyčítať, model ich musí vyvodiť zo sekcie types.
 
 
-Toto poradie je dôležité, pretože types je spoločným vstupom ostatných troch generovaných sekcií. Types definuje množinu tabuliek, stĺpcov a ich typov, na ktorú sa ostatné sekcie odkazujú. Ostatné fázy sú navzájom nezávislé a preto sa volajú oddelene, chyba v jednej z týchto častí neruší ostatné. 
+Toto poradie je dôležité, pretože types je spoločným vstupom ostatných troch generovaných sekcií. types definuje množinu tabuliek, stĺpcov a ich typov, na ktorú sa ostatné sekcie odkazujú. Ostatné fázy sú navzájom nezávislé a preto sa volajú oddelene, chyba v jednej z týchto častí neruší ostatné. 
 
 \section{Využitie veľkých jazykových modelov (LLM)}
 
 \label{sub:vyuzitie_vlk_jaz_modelov}
 
-Jazykový model v návrhu nefunguje ako autonómny agent, ktorý sám rozhoduje o ďalšom kroku, poradie fáz vrátane validácie a opráv sú pevne riadené programom. AI agenti sú síce populárni v oblasti zabezpečovania kvality softvéru~\cite{Pysmennyi2025}, ale pre tento program to bolo vyhodnotené ako nevhodné hneď z niekoľkých dôvodov. Po prvé, experimentálne vyhodnotenie vyžaduje reprodukovateľnosť, rovnaký vstup musí prejsť tou istou cestou. S agentom pribudne ďalšia neistota, pretože pri každom spustení sa môže líšiť nielen odpoveď modelu, ale aj počet a poradie krokov. Po druhé, spoľahlivé plánovanie je zdokumentovaným problémom aj pri väčších modeloch~\cite{Valmeekam2023}, pri modeloch s okolo 7 miliardami parametrov, ktoré si vynucuje dostupná pamäť (8 GB VRAM), ho nemožno preto predpokladať. Po tretie, keď má každá fáza svoje pevné miesto, zlyhanie je priraditeľné k fáze, v ktorej sa objavilo, pri slučke tvorenej agentom sa chyba stráca v trajektórii.
+Jazykový model v návrhu nefunguje ako autonómny agent, ktorý sám rozhoduje o ďalšom kroku, poradie fáz vrátane validácie a opráv je pevne riadené programom. AI agenti sú síce populárni v oblasti zabezpečovania kvality softvéru~\cite{Pysmennyi2025}, ale pre tento program to bolo vyhodnotené ako nevhodné hneď z niekoľkých dôvodov. Po prvé, experimentálne vyhodnotenie vyžaduje reprodukovateľnosť, rovnaký vstup musí prejsť tou istou cestou. S agentom pribudne ďalšia neistota, pretože pri každom spustení sa môže líšiť nielen odpoveď modelu, ale aj počet a poradie krokov. Po druhé, spoľahlivé plánovanie je zdokumentovaným problémom aj pri väčších modeloch~\cite{Valmeekam2023}, pri modeloch s okolo 7 miliardami parametrov, ktoré si vynucuje dostupná pamäť (8 GB VRAM), ho nemožno preto predpokladať. Po tretie, keď má každá fáza svoje pevné miesto, zlyhanie je priraditeľné k fáze, v ktorej sa objavilo, pri slučke tvorenej agentom sa chyba stráca v trajektórii.
 
 
 Modely tak rozhodujú výhradne o obsahu generovaných sekcií, nie o štruktúre procesu. Všetko, čo je možné vykonať algoritmicky, vykonáva kód.
@@ -61,9 +57,9 @@ Modely tak rozhodujú výhradne o obsahu generovaných sekcií, nie o štruktúr
 
 \label{sub:validacia_a_kontrola}
 
-Priebeh validácie zloženého receptu znázorňuje obrázok~\ref{fig:diagram2}, teda pri validácii môžu nastať dva prípady. Buď je vygenerovaný YAML bez chýb a uloží sa, alebo prechádza kontrolou a radom opráv, pričom sa odchytené chyby zaznamenajú a recept sa uloží. Tento prístup bol zvolený zámerne, aby použivateľ mohol recept opraviť alebo nástroj spustiť znova. Zároveň to umožňuje vyhodnocovať aj recepty, ktoré validáciou neprešli (Kapitola~\ref{ch:kap7}). V prípade, že kód narazí na vážnu chybu, kód končí s chybovým hlásením.  
+Priebeh validácie zloženého receptu znázorňuje obrázok~\ref{fig:diagram2}, teda pri validácii môžu nastať dva prípady. Buď je vygenerovaný YAML bez chýb a uloží sa, alebo prechádza kontrolou a radom opráv, pričom sa odchytené chyby zaznamenajú a recept sa uloží. Tento prístup bol zvolený zámerne, aby použivateľ mohol recept opraviť alebo nástroj spustiť znova. Zároveň to umožňuje vyhodnocovať aj recepty, ktoré validáciou neprešli (Kapitola~\ref{ch:kap7}). V prípade, že kód narazí na vážnu chybu, končí s chybovým hlásením.  
 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.75\linewidth]{obrazky-figures/diagram2.pdf}
     \caption{Schéma automatickej opravy a validácie zloženého receptu}
@@ -89,6 +85,5 @@ Samotný kód dostáva úlohy na mechanickej báze, kde je nutný presný postup
 V počiatočných fázach návrhu bol testovaný aj variant fázy, ktorý sám opravoval chybný recept, lenže opravy boli pomalé a nespoľahlivé a nakoniec sa oprava kódom ukázala ako lepšia voľba. 
 
 
-Pôvodný návrh zo zadania počítal s LLM aj pri generovaní SQL dotazov ako aj generovaní YAML include sekcie. Obe úlohy sa ale ukázali byť plne programovateľné a keďže LLM nepridávalo hodnotu ani jednej zo spomenutých častí a vytváral zbytočné chyby, implementácia týchto častí bola zverená kódu.
-
+Pôvodný návrh zo zadania počítal s LLM aj pri generovaní SQL dotazov ako aj generovaní YAML include sekcie. Obe úlohy sa ale ukázali ako plne programovateľné a keďže LLM nepridávalo hodnotu ani v jednej zo spomenutých častí a vytváralo zbytočné chyby, implementácia týchto častí bola zverená kódu. Ide o zámernú odchýlku od zadania.
 
