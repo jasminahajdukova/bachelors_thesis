@@ -1,14 +1,26 @@
-
-from sqlalchemy import inspect, text # type: ignore
-from sqlalchemy.engine import Engine # type: ignore
-from sqlalchemy.exc import SQLAlchemyError # type: ignore
-
-import logger_setup
-import data_sampler
+"""
+@file schema_extractor.py
+@author Jasmina Hajdukova (xhajdu07)
+@brief extraction of schema information and execution if SQL statements
+"""
 import re
+
+from sqlalchemy import inspect, text  # type: ignore
+from sqlalchemy.engine import Engine  # type: ignore
+from sqlalchemy.exc import SQLAlchemyError  # type: ignore
+
+import data_sampler
+import logger_setup
 
 
 def fix_db_type(db_type: str) -> str:
+    """
+    Fixes database type string  into true form
+    
+    @param dd_type: type string
+    @return: fixed string, 'unknown' for empty input
+    """
+    
     if not db_type:
         return "unknown"
     
@@ -33,7 +45,15 @@ def fix_db_type(db_type: str) -> str:
 
     return fixed
 
-def error_check(types: str, table_name: str) -> None:
+
+def error_check(types: str, table_name: str | None) -> None:
+    """
+    Checks that query type is known and that table name exists
+
+    @param types: type of the SQL template query
+    @param table_name: table name
+    """
+
     if types not in ["tables","columns", "prime_keys", "foreign_keys", "count"]:
         raise ValueError(f"Search type:{types} is not part of templates for tables,columns, prime_keys, foreign_keys, count")
     
@@ -43,11 +63,20 @@ def error_check(types: str, table_name: str) -> None:
 
 
 
-def query_templates(engine: Engine, types: str, table_name: str):
+def query_templates(engine: Engine, types: str, table_name: str | None) -> list[tuple]:
+    """
+    Runs the schema query for the given type
+
+
+    @param engine:      SQLAlchemy engine
+    @param types:       type of the SQL template query
+    @param table_name:  table name
+    @return:            list of tuples with the schema information
+    """
 
     error_check(types, table_name)
-    
 
+    
     if types == "count":
         query = data_sampler.count_template(engine, table_name)
         return execute_sql(engine, query)
@@ -79,7 +108,16 @@ def query_templates(engine: Engine, types: str, table_name: str):
     raise ValueError(f"Unknown types parameter: {types}")
 
 
-def execute_sql(engine: Engine, query: str):
+def execute_sql(engine: Engine, query: str) -> list[tuple]:
+    """
+    Executes the SQL query
+
+    @param engine: SQLAlchemy engine
+    @param query: SQL query to execute
+    @return: list of rows
+    """
+
+
     try:
         logger_setup.logger.debug(query)
 
@@ -90,7 +128,7 @@ def execute_sql(engine: Engine, query: str):
         logger_setup.logger.debug(f"MY RESULT {myresult}")
         logger_setup.logger.debug(f"Query returned {len(myresult)} rows")
 
-        return myresult
+        return myresult # type: ignore[return-value]
     
     except SQLAlchemyError as err:
         logger_setup.logger.error(f"Failed to execute query =  {query} \n{err}")

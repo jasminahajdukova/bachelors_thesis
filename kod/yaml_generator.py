@@ -1,12 +1,19 @@
+"""
+@file yaml_generator.py
+@author Jasmina Hajdukova (xhajdu07)
+@brief validation of generated YAML
+"""
+
+import csv
 import os
-import yaml # type: ignore
 import re
-import logger_setup
 from dataclasses import dataclass
 from datetime import datetime
-import csv
-from yaml.loader import SafeLoader # type: ignore
 
+import yaml  # type: ignore
+from yaml.loader import SafeLoader  # type: ignore
+
+import logger_setup
 
 AVAILABLE_INCLUDES = [
     "psc_cs",               # postal codes of cities in Czech Republic
@@ -20,6 +27,9 @@ AVAILABLE_INCLUDES = [
 
 @dataclass
 class YAML_result:
+    """
+    Error that was found during  the validation of YAML
+    """
     database: str
     section: str
     error_type: str
@@ -29,7 +39,17 @@ class YAML_result:
 
 ### UniqueKeyLoader ###
 class UniqueKeyLoader(SafeLoader):
-    def construct_mapping(self, node, deep = False):
+    """
+    YAML loader that does not allow duplicate keys
+    """
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False):
+        """
+        Build mapping and checks that no key is used twice
+
+        @param node:        mapping node from YAML
+        @param deep:        True if the values should be built right away
+        @return:            mapping built from the node
+        """
         mapping = {}
         for key_node, value_node in node.value:
             key = self.construct_object(key_node, deep=deep)
@@ -41,18 +61,25 @@ class UniqueKeyLoader(SafeLoader):
 
 ### load_yaml ###
 
-def load_yaml(yaml_str, db_name):
+def load_yaml(yaml_str: str, db_name: str) -> tuple:
+    """
+    Loads YAML string into dict
+
+    @param yaml_str:    generated YAML
+    @param db_name:     name of database
+    @return:            loaded YAML and list of errors
+    """
     errors = []
     try:
         loaded_yaml = yaml.load(yaml_str, Loader=UniqueKeyLoader)
     except ValueError as ve:
-        logger_setup.logger.error(f"YAML Duplicate Error: {str(ve)}")
-        errors.append(YAML_result(db_name, "YAML", "invalid_yaml", 1, f"YAML Duplicate Error: {str(ve)}"))
+        logger_setup.logger.error(f"YAML Duplicate Error: {ve!s}")
+        errors.append(YAML_result(db_name, "YAML", "invalid_yaml", 1, f"YAML Duplicate Error: {ve!s}"))
         save_yaml(yaml_str, db_name)
         return None, errors
     except Exception as e:
-        logger_setup.logger.error(f"YAML Syntax Error: {str(e)}")
-        errors.append(YAML_result(db_name, "YAML", "invalid_yaml", 1, f"YAML Syntax Error: {str(e)}"))
+        logger_setup.logger.error(f"YAML Syntax Error: {e!s}")
+        errors.append(YAML_result(db_name, "YAML", "invalid_yaml", 1, f"YAML Syntax Error: {e!s}"))
         save_yaml(yaml_str, db_name)
         return None, errors
     
@@ -61,7 +88,14 @@ def load_yaml(yaml_str, db_name):
 
 ### check_yaml  ###
 
-def check_yaml(loaded_yaml, db_name):
+def check_yaml(loaded_yaml: dict, db_name: str) -> list[YAML_result]:
+    """
+    Check that the loaded YAML is dict and has all the needed sections
+    
+    @param loaded_yaml:     YAML loaded into dict
+    @param db_name:         name of database
+    @return:                list of found errors
+    """
     # check is loaded YAML is a dictionary
     errors = []
     if not isinstance(loaded_yaml, dict):
@@ -80,8 +114,17 @@ def check_yaml(loaded_yaml, db_name):
 ### validate_yaml ### 
 
 def validate_yaml(db_name: str, yaml_str: str, samples: dict) -> list[YAML_result]:
+    """
+    Valides YAML section by section and saves it
+
+
+    @param db_name:     name of database
+    @param yaml_str:    generated YAML
+    @param samples:     samples from the database
+    @return:            list of all errors found
+    """
     errors = []
-    logger_setup.logger.stage(f"Validating YAML for database: {db_name}")
+    logger_setup.logger.stage(f"Validating YAML for database: {db_name}") # type: ignore[attr-defined]
     
     # loads YAML
     loaded_yaml, errors = load_yaml(yaml_str, db_name)
@@ -129,14 +172,23 @@ def validate_yaml(db_name: str, yaml_str: str, samples: dict) -> list[YAML_resul
     
     # if no major errors occured during the validation -> yaml is saved
     if any(result.severity == 1 for result in errors):
-        logger_setup.logger.error(f"Found critical error(s)")            
+        logger_setup.logger.error("Found critical error(s)")            
     
     save_yaml(yaml_str, db_name)
 
     return errors
 
 
-def is_valid_type(val_str, includes):
+### IS VALID TYPE ###
+
+def is_valid_type(val_str: str, includes: list) -> bool:
+    """
+    Checks if the value is one of the allowed data types
+    
+    @param val_str:     value from the types section
+    @param includes:    list of datasets
+    @eturn:             True if the value is known type
+    """
     basic_types = ["int", "bool", "string", "float", "bigint"]
     param_types = ["seq", "interval", "dinterval", "finterval", "str_len", "regex"]
 
@@ -154,7 +206,15 @@ def is_valid_type(val_str, includes):
 
 ### check_types ###
 
-def check_types(db_name, types_section, samples):
+def check_types(db_name: str, types_section: dict, samples: dict) -> list[YAML_result]:
+    """
+    Checks the tables in types, BLOCKS list and FORMAT/VALUE structure
+
+    @param db_name:         name of database
+    @param types_section:   types section from YAML
+    @param samples:         samples from database
+    @return:                list of errors
+    """
 
     err = []
 
@@ -272,7 +332,16 @@ def check_types(db_name, types_section, samples):
 
 ### validate_seq ###
 
-def validate_seq(db_name, generate, types) -> list[YAML_result]:
+def validate_seq(db_name: str, generate: list, types: dict) -> list[YAML_result]:
+    """
+    Check that the number of generated rows is not higer that the lenght of sequence
+
+    @param db_name:         name of database
+    @param generate:        generate section from YAML
+    @param types:           types section of the YAML
+    @return:                list of errors
+
+    """
     errors = []
 
     if types is None:
@@ -341,7 +410,14 @@ def validate_seq(db_name, generate, types) -> list[YAML_result]:
 
 ### check_param ###    
     
-def check_param(db_name, value) -> list[YAML_result]:
+def check_param(db_name: str, value: str) -> list[YAML_result]:
+    """
+    Checks regex, interval, finterval, seq, str_len and dinterval inside types section
+    
+    @param db_name:     name of database
+    @param value:       value with data type and arguments
+    @return:            list of errors
+    """
     errors = []
     
     value_raw = value.strip()
@@ -413,17 +489,17 @@ def check_param(db_name, value) -> list[YAML_result]:
             return errors
         try:
             # converts to float -> error is thrown if it cannot be converted
-            value1 = float(args[0])
-            value2 = float(args[1])
+            f_value1 = float(args[0])
+            f_value2 = float(args[1])
         except (ValueError, IndexError) as vie:
-            logger_setup.logger.error(f"{str(vie)}")
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"{str(vie)}"))
+            logger_setup.logger.error(f"{vie!s}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"{vie!s}"))
             return errors
         
         # in case finterval(min, max), where min is greater than max
-        if value1 >= value2:
-            logger_setup.logger.error(f"Min value: {value1} of finterval exceeds or is equal to the max value: {value2}")
-            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Min value: {value1} of finterval exceeds or is equal to the max value: {value2}"))
+        if f_value1 >= f_value2:
+            logger_setup.logger.error(f"Min value: {f_value1} of finterval exceeds or is equal to the max value: {f_value2}")
+            errors.append(YAML_result(db_name, "types", "invalid_types", 1, f"Min value: {f_value1} of finterval exceeds or is equal to the max value: {f_value2}"))
             return errors
     
     # seq(min, max, step)
@@ -462,7 +538,7 @@ def check_param(db_name, value) -> list[YAML_result]:
             if bracket_match:
                 categories = bracket_match.group(1)
                 if re.search(r"[^cCsSd]", categories):
-                    raise ValueError(f"Invalid chars inside categoru inside []. Only c, C, d, s, S allowed")
+                    raise ValueError("Invalid chars inside categoru inside []. Only c, C, d, s, S allowed")
 
 
             min_clean = re.sub(r"\[.*?\]", "", args[0])
@@ -478,7 +554,7 @@ def check_param(db_name, value) -> list[YAML_result]:
             if len(args) == 2:
 
                 if re.search(r"[<>=]", args[0]):
-                    raise ValueError(f"Operators >, <, >=, <= are not allowed inside str_len with min, max values")
+                    raise ValueError("Operators >, <, >=, <= are not allowed inside str_len with min, max values")
 
                 max_val = args[1].strip() 
 
@@ -533,7 +609,16 @@ def check_param(db_name, value) -> list[YAML_result]:
 
 ### validate_types ###
 
-def validate_types(db_name, each_type: dict, includes) -> list[YAML_result]:
+def validate_types(db_name: str, each_type: dict, includes: list) -> list[YAML_result]:
+    """
+    Validate data types of collumns in table
+    
+
+    @param db_name:         name of database
+    @param each_type:       columns from types section
+    @param include:         list of datasets
+    @return:                list of errors
+    """
     errors                     = []
     # types without parameters
     basic_types: list[str]     = ["int", "bool", "string", "float", "bigint"]
@@ -585,7 +670,15 @@ def validate_types(db_name, each_type: dict, includes) -> list[YAML_result]:
     return errors
 
 ### iterate_types ###
-def iterate_types(db_name, types: dict, includes) -> list[YAML_result]:
+def iterate_types(db_name: str, types: dict, includes: list) -> list[YAML_result]:
+    """
+    Goes over tables inside types section and sends them for validation
+    
+    @param db_name:     name of database
+    @param types:       types section from YAML
+    @param includes:    list of datasets
+    @return:            liat of found errors
+    """
     errors = []
 
     # if types empty
@@ -606,7 +699,16 @@ def iterate_types(db_name, types: dict, includes) -> list[YAML_result]:
     return errors
 
 ### validate_schema ###
-def validate_schema(db_name, each_schema: dict, types_section) -> list[YAML_result]:
+def validate_schema(db_name: str, each_schema: dict, types_section: dict) -> list[YAML_result]:
+    """
+    Validates references of taable in schema section
+
+    @param db_name:         name of database
+    @param each_types:      columns of table inside schema section
+    @param types_section:   types section from YAML
+    @return:                list of errors
+    
+    """
     errors = []
 
     if types_section is None:
@@ -680,7 +782,16 @@ def validate_schema(db_name, each_schema: dict, types_section) -> list[YAML_resu
     return errors
 
 ### iterate_schemas ###
-def iterate_schemas(db_name, schema: dict, types_section) -> list[YAML_result]:
+def iterate_schemas(db_name: str, schema: dict, types_section: dict) -> list[YAML_result]:
+    """
+    Goes over tables inside schema and sends them for validation
+
+    @param db_name:         name of database
+    @param schema:          schema section of YAML
+    @param types_section:   types section from YAML
+    @return:                list of errors
+    
+    """
     errors = []
 
     if types_section is None:
@@ -706,7 +817,16 @@ def iterate_schemas(db_name, schema: dict, types_section) -> list[YAML_result]:
 
 ### validate_generate ###
 
-def validate_generate(db_name, generate: list, types_section) -> list[YAML_result]:
+def validate_generate(db_name: str, generate: list, types_section: dict) -> list[YAML_result]:
+    """
+    Checks taht every row inside generate section has a valid table and count
+
+
+    @param db_name:         name of database
+    @param generate:        generate section from YAML
+    @param types_section:   types section from YAML
+    @return:                list of errros
+    """
     
     errors = []
     
@@ -757,7 +877,16 @@ def validate_generate(db_name, generate: list, types_section) -> list[YAML_resul
 
     return errors
 
-def validate_include(db_name, includes: list[str]) -> list[YAML_result]:
+### VALIDATE INCLUDE ###
+
+def validate_include(db_name: str, includes: list[str]) -> list[YAML_result]:
+    """
+    Checks that all includes are part of the available DATASETS
+    
+    @param db_name:         name of database
+    @param includes:        include section from YAML
+    @return:                list of errros
+    """
     errors = []
 
     # checks if there are any invalid includes
@@ -768,9 +897,20 @@ def validate_include(db_name, includes: list[str]) -> list[YAML_result]:
 
     return errors
 
+### VALIDATE REL RESULTS ###
 
+def validate_rel_result(db_name: str, constraint: str, con_split: list, types_section: dict) -> list[YAML_result]:
+    """
+    Valides one constraints, its operator and value, plus data types of both sides
+    
+    
+    @param db_name:         name of database
+    @param constraints:     constraint section in one string
+    @param con_split:       constraint split into left side, operator and right side
+    @param types_section:   types section from YAML
+    @return:                list of errros
+    """
 
-def validate_rel_result(db_name, constraint, con_split, types_section):
     errors = []
     
 
@@ -878,7 +1018,17 @@ def validate_rel_result(db_name, constraint, con_split, types_section):
     
     return errors
 
-def validate_constraints(db_name, constraints: list, types_section) -> list[YAML_result]:
+### VALIDATE CONSTRAINTS ###
+
+def validate_constraints(db_name: str, constraints: list, types_section: dict) -> list[YAML_result]:
+    """
+    Goes over costraint section, checks format and sends each constraint for validation
+
+    @param db_name:         name of database
+    @param constraints:     constraints section from YAML
+    @param types_section:   types section from YAML
+    @return:                list of errros
+    """
 
     errors = []
     supported_op = {"=", "!=", "<", ">", "<=", ">="}
@@ -906,7 +1056,18 @@ def validate_constraints(db_name, constraints: list, types_section) -> list[YAML
         
     return errors
 
-def save_yaml(yaml_string: str, db_name: str):
+
+### SAVE YAML ###
+
+def save_yaml(yaml_string: str, db_name: str) -> None:
+    """
+    Appends final YAML into the results file
+
+    @param yaml_string:         final YAML
+    @param db_name:             name of database
+    @return:                    None, final YAML is saved into results/dataster
+    """
+
     filepath = f"results/dataster/dataster_config-{db_name}.yaml"
     with open(filepath, "a") as f:
         f.write(yaml_string)
@@ -915,8 +1076,18 @@ def save_yaml(yaml_string: str, db_name: str):
     
     logger_setup.logger.info(f"Final yaml saved into {filepath}")
 
+### SAVE ORIGINAL YAML ###
 
-def save_original_yaml(yaml_string: str, db_name: str):
+def save_original_yaml(yaml_string: str, db_name: str) -> None:
+    """
+    Appends the YAML generated bt LLM into the results file
+    
+    @param yaml_string:     original YAML
+    @param db_name:         name of database
+    @return:                None, original YAML is saved into results/original_yaml
+
+    """
+
     filepath = f"results/original_yaml/original-dataster_config-{db_name}.yaml" 
     with open(filepath, "a") as f:
         f.write(yaml_string)
@@ -926,7 +1097,16 @@ def save_original_yaml(yaml_string: str, db_name: str):
     logger_setup.logger.info(f"Original yaml saved into {filepath}")
 
 
-def save_csv(errors: list[YAML_result], db_name: str):
+### SAVE CSV ###
+
+def save_csv(errors: list[YAML_result], db_name: str) -> None:
+    """
+    Appends the found errors into a CSV report
+    
+    @param errors:      errors found during the validation
+    @param db_name:     name of database
+    @return:            None, results are saved into results/csv
+    """
     filepath = f"results/csv/results-{db_name}.csv"
     field_names = ["database", "section", "error_type", "severity", "detail"]
 

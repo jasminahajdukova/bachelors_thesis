@@ -5,9 +5,9 @@
 @brief  creating and closing connection to target database
 """
 
-from sqlalchemy import create_engine   
-from sqlalchemy.exc import SQLAlchemyError 
+from sqlalchemy import create_engine
 from sqlalchemy.engine import URL, Engine
+from sqlalchemy.exc import SQLAlchemyError
 
 import logger_setup
 
@@ -39,7 +39,7 @@ def connect_to_db(host_name: str, user_name: str, db_password: str, db_name: str
 
         engine = create_engine(connection_url)
 
-        with engine.connect() as connection:
+        with engine.connect():
             pass
 
         logger_setup.logger.info(f"Connection to {dbms} successful")
@@ -61,7 +61,7 @@ def disconnect_from_db(mydb):
     
     try:
         mydb.dispose()
-        logger_setup.logger.info(f"Connection closed")
+        logger_setup.logger.info("Connection closed")
         
     except Exception as err:
         logger_setup.logger.error(f"Error while closing MySQL connection: {err}")

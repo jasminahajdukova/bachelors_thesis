@@ -5,10 +5,9 @@
 """
 
 import logging
-import colorlog
-
 from typing import Any
 
+import colorlog
 
 FIX    = 25
 STAGE  = 26
@@ -31,10 +30,10 @@ def finish(self: logging.Logger, message: str, *args: Any, **kwargs: Any) -> Non
         if self.isEnabledFor(FINISH):
             self._log(FINISH, message, args, **kwargs)
 
-logging.Logger.fix    = fix 
-logging.Logger.stage  = stage
-logging.Logger.tokens = tokens
-logging.Logger.finish = finish
+logging.Logger.fix    = fix # type: ignore[attr-defined]
+logging.Logger.stage  = stage # type: ignore[attr-defined]
+logging.Logger.tokens = tokens # type: ignore[attr-defined]
+logging.Logger.finish = finish # type: ignore[attr-defined]
 
 def setup_logging() -> logging.Logger:
 

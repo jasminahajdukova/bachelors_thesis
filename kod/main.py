@@ -6,21 +6,22 @@
 
 import argparse
 import getpass
-import db_connector
-import data_sampler
-import llm_processor
-import schema_extractor
-import yaml_generator
-import ollama
-import time
-import httpx
-import logger_setup
 import os
-from llm_processor import CyclicDependencyError
-from prompts import json_decimal
-from typing import List, Tuple, Dict, Set, Any
+import time
+from typing import Any
+
+import httpx
+import ollama
 from sqlalchemy.engine import Engine
 
+import data_sampler
+import db_connector
+import llm_processor
+import logger_setup
+import schema_extractor
+import yaml_generator
+from llm_processor import CyclicDependencyError
+from prompts import json_decimal
 
 DBMS_PROMPT = {
     "mysql": "MySQL",
@@ -75,7 +76,7 @@ def check_ollama_models() -> bool:
         logger_setup.logger.error("Ollama has no models")
         return False
 
-    found_models = [(model.model).split(":")[0] for model in response.models]
+    found_models = [(model.model).split(":")[0] for model in response.models] #type: ignore
 
     required_models = ["yaml-generator-types", "yaml-generator-constraints", "yaml-generator-schema", "yaml-generator-generate"]
 
@@ -89,7 +90,7 @@ def check_ollama_models() -> bool:
     logger_setup.logger.info("Ollama is running with all required models")
     return True 
 
-def go_over_prime_keys(p_keys: list[Any]) -> List[str]:
+def go_over_prime_keys(p_keys: list[Any]) -> list[str]:
     """
     Processes the primary key information and extracts valid column names
 
@@ -111,7 +112,7 @@ def go_over_prime_keys(p_keys: list[Any]) -> List[str]:
             continue
 
         if len(pk) < req_length: 
-            logger_setup.logger.error(f"Unexpected tuple length for prime keys")
+            logger_setup.logger.error("Unexpected tuple length for prime keys")
             continue
         
         column_name = pk[1]
@@ -125,11 +126,11 @@ def go_over_prime_keys(p_keys: list[Any]) -> List[str]:
     return extracted_pks
 
 
-def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
-                    server: Engine, prime_keys: List[str],
-                    samples: Dict[str, Dict[str, Any]],
-                    generate_count: Dict[str, int],
-                    db_name: str, row_count: int) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, int]]:
+def go_over_columns(columns: list[tuple[Any, ...]], table_name: str, limit: int,
+                    server: Engine, prime_keys: list[str],
+                    samples: dict[str, dict[str, Any]],
+                    generate_count: dict[str, int],
+                    db_name: str, row_count: int) -> tuple[dict[str, dict[str, Any]], dict[str, int]]:
     """
     Iterates over all table columns, separates primary keys and collects data samples
 
@@ -197,9 +198,9 @@ def go_over_columns(columns: List[Tuple[Any, ...]], table_name: str, limit: int,
             
     return samples, generate_count
 
-def go_over_foreign_keys(fk_result: List[Tuple[Any, ...]],
-                         fk_map: Dict[str, Dict[str, Tuple[str, str]]],
-                         table_name: str, valid_tables: List[str] | None) -> Dict[str, Dict[str, Tuple[str, str]]]:
+def go_over_foreign_keys(fk_result: list[tuple[Any, ...]],
+                         fk_map: dict[str, dict[str, tuple[str, str]]],
+                         table_name: str, valid_tables: list[str] | None) -> dict[str, dict[str, tuple[str, str]]]:
     """
     Processes the raw SQL foreign key query results and maps relationships, ignoring out-of-scope tables
 
@@ -227,7 +228,7 @@ def go_over_foreign_keys(fk_result: List[Tuple[Any, ...]],
 
 
 
-def get_result(db_name: str, table_name: str | None, server: Engine, sql_type: str) -> List[Any]:
+def get_result(db_name: str, table_name: str | None, server: Engine, sql_type: str) -> list[Any]:
     """
     Formats the requested SQL template, executed the query, and handles initial empty checks
 
@@ -237,7 +238,6 @@ def get_result(db_name: str, table_name: str | None, server: Engine, sql_type: s
     @param sql_typ: Type of the SQL template query
     @return: Reulting data rows returned from the executed SQL query
     """
-    schema_extractor.error_check(sql_type, table_name)
     
     result = schema_extractor.query_templates(server, sql_type, table_name)
     
@@ -281,12 +281,12 @@ def main() -> None:
     server = db_connector.connect_to_db(host, user, password, db_name, dbms, port)
     
     if server is None:
-        logger_setup.logger.error(f"Database connection error")
-        yaml_generator.save_csv([yaml_generator.YAML_result(db_name, "connection_error", "connection", 1, f"Database connection error: ")], db_name)
+        logger_setup.logger.error("Database connection error")
+        yaml_generator.save_csv([yaml_generator.YAML_result(db_name, "connection_error", "connection", 1, "Database connection error: ")], db_name)
         return 
 
         
-    logger_setup.logger.stage(f"Connected to database: {db_name}. Ready to start generating YAML...")
+    logger_setup.logger.stage(f"Connected to database: {db_name}. Ready to start generating YAML...") # type: ignore[attr-defined]
 
     try:
         tables = get_result(db_name, None, server, "tables")
@@ -296,9 +296,9 @@ def main() -> None:
             return
         
         logger_setup.logger.info(f"Found {len(tables)} table(s) => {[table[0] for table in tables]}, ")
-        samples = {}
-        fk_map = {}
-        generate_count = {}
+        samples: dict = {}
+        fk_map: dict = {}
+        generate_count: dict = {}
 
         valid_tables = []
         table_pk = {}
@@ -397,7 +397,7 @@ def main() -> None:
                 errors.append(yaml_generator.YAML_result(db_name, "pipeline", "generation_skipped", 2, "All tables skipped or resulted in composite/invalid samples. Skipped llm generation"))
 
         else:
-            logger_setup.logger.stage(f"Sending samples to LLM for YAML generation:\n {samples}")
+            logger_setup.logger.stage(f"Sending samples to LLM for YAML generation:\n {samples}") # type: ignore[attr-defined]
 
             try:
                 db_dialect = server.dialect.name
@@ -438,7 +438,7 @@ def main() -> None:
     elapsed = time.time() - start_time
     minutes = int(elapsed // 60)
     seconds = int(elapsed % 60)
-    logger_setup.logger.finish(f"Done. Total execution time: {minutes}m {seconds}s")
+    logger_setup.logger.finish(f"Done. Total execution time: {minutes}m {seconds}s") # type: ignore[attr-defined]
     
 
 if __name__ == "__main__":

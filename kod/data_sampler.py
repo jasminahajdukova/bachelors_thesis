@@ -4,8 +4,10 @@
 @brief SQL templates for column ranges and value sampling
 """
 
-import logger_setup
 from sqlalchemy.engine import Engine
+
+import logger_setup
+
 
 def calculate_limit(row_count: int) -> int:
     """
