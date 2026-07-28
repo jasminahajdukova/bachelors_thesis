@@ -13,7 +13,6 @@ Program na automatizované generovanie repceptu pre nástroj Dataster. Nástroj 
 - **DBMS**: MySQL/PostgreSQL 
 - Program bol testovaný na tomto **hardvéri**: 
     - RTX 3070 Ti Laptop
-    - 8 GB VRAM
     - 32 GB RAM
 
 
@@ -45,7 +44,7 @@ Program na automatizované generovanie repceptu pre nástroj Dataster. Nástroj 
 - pri prázdnom ```dbms``` sa použije MySQL
 - ```--password``` povoľuje vloženie hesla k pripojeniu na DBMS (inak je heslo vyžadované cez getpass)
 - ```--no-password``` v prípade, že DBMS nemá heslo
-- ```--port``` ak nie je uvedený, použije sa predvolený port
+- ```--port``` ak nie je uvedený, použije sa predvolený port danej databázy
 
 
 - Príklad spustenia pre MySQL:
@@ -77,7 +76,7 @@ Program na automatizované generovanie repceptu pre nástroj Dataster. Nástroj 
 
 ## Testovacie databázy
 
-- Pôvododné databázy použité pri meraní úspešnosti vymazané. Ich schémy boli následne znova vytvorené pomocou AI na základne pôvodných zápisov
+- Pôvododné databázy boli vymazané. Ich schémy boli následne znova vytvorené pomocou AI na základne pôvodných zápisov
 - Pre rozsiahlejšie testovanie bolo pomocou AI vytvorené špeciálne databázy pre hraničné a extrémne prípady
 - PostgreSQL verzie vznikli použitím AI pre konverziu z MySQL
 - Na týchto znovu vytvorených databázach prebehlo aj záverečné testovanie.
@@ -85,9 +84,7 @@ Program na automatizované generovanie repceptu pre nástroj Dataster. Nástroj 
 
 ## Modelfiles
 
-- pravidlá v Modelfiles vychádzajú z chýb, ktoré boli objavené počas testovania. 
-- Úpravu jednotlivých pravidiel som konzultovala s nástrojom AI.
-- Samotný obsah a logika pravidiel vychádzajú z chýb počas testovania
+- Pravidlá v Modelfiles vychádzajú z chýb, ktoré boli objavené počas testovania. 
 - AI bola použitá výhradne na formuláciu a vetnú stavbu promptov v anglickom jazyku
 
 
