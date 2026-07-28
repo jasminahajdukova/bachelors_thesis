@@ -1,5 +1,5 @@
 """
-2file main.py
+file main.py
 @author: Jasmina Hajdukova (xhajdu07)
 @brief entry point of pipeline
 """
@@ -264,7 +264,6 @@ def main() -> None:
     os.makedirs("results/dataster", exist_ok=True)
     os.makedirs("results/original_yaml", exist_ok=True)
     os.makedirs("results/csv", exist_ok=True)
-    os.makedirs("results/logs", exist_ok=True)
  
     if not check_ollama_models():
         return
