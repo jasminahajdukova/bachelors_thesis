@@ -76,19 +76,22 @@ def query_templates(engine: Engine, types: str, table_name: str | None) -> list[
 
     error_check(types, table_name)
 
+    if types == "tables":
+        tables = inspect(engine).get_table_names()
+        return [(table,) for table in tables]
     
+    if table_name is None:
+        raise ValueError(f"Table name needed for {types}")
+
+
     if types == "count":
         query = data_sampler.count_template(engine, table_name)
         return execute_sql(engine, query)
 
     inspector = inspect(engine)
     
-    if types == "tables":
-
-        tables = inspector.get_table_names()
-        return [(table,) for table in tables]
-
-    elif types == "columns":
+    
+    if types == "columns":
         columns_data = inspector.get_columns(table_name)
         return [(col['name'], fix_db_type(str(col['type']))) for col in columns_data]
 
