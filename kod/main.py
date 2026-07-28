@@ -1,5 +1,5 @@
 """
-file main.py
+@file main.py
 @author: Jasmina Hajdukova (xhajdu07)
 @brief entry point of pipeline
 """
