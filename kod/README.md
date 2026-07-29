@@ -13,6 +13,7 @@ Program na automatizované generovanie repceptu pre nástroj Dataster. Nástroj 
 - **DBMS**: MySQL/PostgreSQL 
 - Program bol testovaný na tomto **hardvéri**: 
     - RTX 3070 Ti Laptop
+    - 8 GB VRAM
     - 32 GB RAM
 
 
